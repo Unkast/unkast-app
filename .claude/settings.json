@@ -15,7 +15,8 @@
       "Bash(npx next:*)",
       "Bash(node -e \"const p = require\\(''./node_modules/@supabase/supabase-js/package.json''\\); console.log\\(p.version\\)\")",
       "Bash(taskkill /PID 136156 /F)",
-      "Bash(cmd //c \"taskkill /PID 136156 /F\")"
+      "Bash(cmd //c \"taskkill /PID 136156 /F\")",
+      "Bash(gh auth:*)"
     ]
   }
 }
