@@ -10,6 +10,8 @@ import type {
   ProjectCategory,
 } from "@/types/database";
 import VideoEmbed from "@/components/VideoEmbed";
+import { motion } from "framer-motion";
+import { FadeInView } from "@/components/motion";
 
 type CreditWithProfile = ProjectCredit & {
   profile:
@@ -56,14 +58,14 @@ export default function ProjetClient({
   const catColor = categoryColors[project.category];
 
   return (
-    <div className="pb-16 lg:pb-0">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-16 lg:pb-0">
       <main>
         {/* Video player — full width cinematic */}
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6">
-          <div className="rounded-xl overflow-hidden border border-border">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+          <div className="rounded-xl overflow-hidden border border-white/5">
             <VideoEmbed url={project.video_url} title={project.title} />
           </div>
-        </div>
+        </motion.div>
 
         {/* Content area: main + sidebar */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
@@ -71,27 +73,29 @@ export default function ProjetClient({
             {/* Main content */}
             <div className="flex-1 min-w-0">
               {/* Title + meta */}
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary">
-                  {project.title}
-                </h1>
-                <span
-                  className="px-3 py-1 rounded-full text-xs font-semibold"
-                  style={{
-                    backgroundColor: catColor + "15",
-                    color: catColor,
-                    border: `1px solid ${catColor}30`,
-                  }}
-                >
-                  {categoryLabels[project.category]}
-                </span>
-              </div>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary">
+                    {project.title}
+                  </h1>
+                  <span
+                    className="px-3 py-1 rounded-full text-xs font-semibold"
+                    style={{
+                      backgroundColor: catColor + "15",
+                      color: catColor,
+                      border: `1px solid ${catColor}30`,
+                    }}
+                  >
+                    {categoryLabels[project.category]}
+                  </span>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary mb-4">
-                <span className="font-mono text-text-tertiary">
-                  {project.year}
-                </span>
-              </div>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary mb-4">
+                  <span className="font-mono text-text-tertiary">
+                    {project.year}
+                  </span>
+                </div>
+              </motion.div>
 
               {/* Description */}
               {project.description && (
@@ -106,7 +110,7 @@ export default function ProjetClient({
               )}
 
               {/* Tabs */}
-              <div className="border-b border-border mb-4">
+              <div className="border-b border-white/5 mb-4">
                 <div className="flex gap-6">
                   <button
                     onClick={() => setActiveTab("equipe")}
@@ -149,12 +153,16 @@ export default function ProjetClient({
                       credit.profile?.full_name ?? credit.ghost_name ?? "Inconnu";
 
                     return (
-                      <div
+                      <motion.div
                         key={credit.id}
-                        className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-border-hover transition"
+                        whileHover={{ scale: 1.01, x: 4 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                      <div
+                        className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/5 rounded-xl hover:border-white/10 transition"
                       >
                         {/* Avatar */}
-                        <div className="w-11 h-11 rounded-xl bg-background border border-border overflow-hidden flex-shrink-0">
+                        <div className="w-11 h-11 rounded-xl bg-background border border-white/5 ring-1 ring-white/10 overflow-hidden flex-shrink-0">
                           {credit.profile?.avatar_url ? (
                             <img
                               src={credit.profile.avatar_url}
@@ -257,6 +265,7 @@ export default function ProjetClient({
                           </Link>
                         )}
                       </div>
+                      </motion.div>
                     );
                   })}
 
@@ -283,7 +292,7 @@ export default function ProjetClient({
                           <Link
                             key={rp.id}
                             href={`/projet/${rp.slug}`}
-                            className="bg-card border border-border rounded-xl p-4 hover:border-border-hover transition group"
+                            className="bg-white/[0.03] border border-white/5 rounded-xl p-4 hover:border-white/10 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-300 group"
                           >
                             <div className="flex items-center gap-2 mb-2">
                               <span
@@ -340,9 +349,10 @@ export default function ProjetClient({
             </div>
 
             {/* Sidebar (desktop) */}
+            <FadeInView delay={0.3}>
             <aside className="w-full lg:w-80 flex-shrink-0 space-y-6">
               {/* Fiche technique */}
-              <div className="bg-card border border-border rounded-xl p-5">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">
                   Fiche technique
                 </h3>
@@ -370,12 +380,12 @@ export default function ProjetClient({
               </div>
 
               {/* Creator card */}
-              <div className="bg-card border border-border rounded-xl p-5">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">
                   Createur
                 </h3>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-background border border-border overflow-hidden flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-background border border-white/5 ring-1 ring-white/10 overflow-hidden flex-shrink-0">
                     {project.owner.avatar_url ? (
                       <img
                         src={project.owner.avatar_url}
@@ -441,9 +451,10 @@ export default function ProjetClient({
                 </Link>
               </div>
             </aside>
+            </FadeInView>
           </div>
         </div>
       </main>
-    </div>
+    </motion.div>
   );
 }

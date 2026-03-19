@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
-
-const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
+import { useState, useEffect } from "react";
+import ReactPlayer from "react-player";
 
 interface Props {
   url: string;
 }
 
 export default function HeroPlayer({ url }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [playing, setPlaying] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
 
   return (
     <div className="w-full h-full">

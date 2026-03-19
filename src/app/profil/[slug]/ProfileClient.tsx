@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { FadeInView, cardHover, staggerContainer, fadeUp } from "@/components/motion";
 import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoEmbed from "@/components/VideoEmbed";
 import ContactModal from "@/components/ContactModal";
@@ -58,12 +60,12 @@ export default function ProfileClient({
   }
 
   return (
-    <div className="pb-16 lg:pb-0">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-16 lg:pb-0">
       <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
         {/* Profile header */}
-        <section className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+        <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
           {/* Avatar */}
-          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-card border border-border overflow-hidden flex-shrink-0">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-white/[0.03] border border-white/5 overflow-hidden flex-shrink-0 ring-1 ring-white/10">
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -132,206 +134,209 @@ export default function ProfileClient({
               <div className="relative">
                 <button
                   onClick={handleShare}
-                  className="px-6 py-2.5 border border-border-active text-text-secondary text-sm rounded-lg hover:border-border-hover hover:text-text-primary transition"
+                  className="px-6 py-2.5 border border-border-active text-text-secondary text-sm rounded-lg hover:border-white/10 hover:text-text-primary transition"
                 >
                   Partager le profil
                 </button>
                 {shareTooltip && (
-                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-card border border-border rounded text-xs text-lime whitespace-nowrap">
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-white/[0.03] border border-white/5 rounded text-xs text-lime whitespace-nowrap">
                     Lien copie !
                   </span>
                 )}
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Projects section */}
-        <section className="mt-8">
-          <h2 className="text-xl font-bold text-text-primary mb-4">
-            Projets
-            <span className="text-text-tertiary font-normal ml-2 text-base">
-              ({profile.projects.length})
-            </span>
-          </h2>
+        <FadeInView>
+          <section className="mt-8">
+            <h2 className="text-xl font-bold text-text-primary mb-4">
+              Projets
+              <span className="text-text-tertiary font-normal ml-2 text-base">
+                ({profile.projects.length})
+              </span>
+            </h2>
 
-          {/* Category filters */}
-          {categories.length > 1 && (
-            <div className="flex flex-wrap gap-2 mb-5">
-              <button
-                onClick={() => setActiveFilter("all")}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
-                  activeFilter === "all"
-                    ? "bg-white/10 text-text-primary border border-white/20"
-                    : "border border-border text-text-secondary hover:border-border-hover"
-                }`}
-              >
-                Tous
-              </button>
-              {categories.map((cat) => (
+            {/* Category filters */}
+            {categories.length > 1 && (
+              <div className="flex flex-wrap gap-2 mb-5">
                 <button
-                  key={cat}
-                  onClick={() => setActiveFilter(cat)}
+                  onClick={() => setActiveFilter("all")}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
-                    activeFilter === cat
-                      ? "border text-text-primary"
-                      : "border border-border text-text-secondary hover:border-border-hover"
+                    activeFilter === "all"
+                      ? "bg-white/10 text-text-primary border border-white/20"
+                      : "border border-white/5 text-text-secondary hover:border-white/10"
                   }`}
-                  style={
-                    activeFilter === cat
-                      ? {
-                          borderColor: categoryColors[cat] + "60",
-                          backgroundColor: categoryColors[cat] + "15",
-                          color: categoryColors[cat],
-                        }
-                      : undefined
-                  }
                 >
-                  {categoryLabels[cat]}
+                  Tous
                 </button>
-              ))}
-            </div>
-          )}
-
-          {/* Project cards */}
-          {filteredProjects.length === 0 ? (
-            <p className="text-text-tertiary text-sm">Aucun projet pour le moment.</p>
-          ) : (
-            <div className="space-y-8">
-              {filteredProjects.map((project) => {
-                const ownerCredit = project.credits.find(
-                  (c) => c.profile_id === profile.id
-                );
-                const isExpanded = expandedCredits.has(project.id);
-
-                return (
-                  <article
-                    key={project.id}
-                    className="bg-card border border-border rounded-xl overflow-hidden hover:border-border-hover transition"
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveFilter(cat)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+                      activeFilter === cat
+                        ? "border text-text-primary"
+                        : "border border-white/5 text-text-secondary hover:border-white/10"
+                    }`}
+                    style={
+                      activeFilter === cat
+                        ? {
+                            borderColor: categoryColors[cat] + "60",
+                            backgroundColor: categoryColors[cat] + "15",
+                            color: categoryColors[cat],
+                          }
+                        : undefined
+                    }
                   >
-                    {/* Video embed */}
-                    <VideoEmbed url={project.video_url} title={project.title} />
+                    {categoryLabels[cat]}
+                  </button>
+                ))}
+              </div>
+            )}
 
-                    {/* Project info */}
-                    <div className="p-5 sm:p-6">
-                      <div className="flex flex-wrap items-center gap-3 mb-3">
-                        <Link
-                          href={`/projet/${project.slug}`}
-                          className="text-lg font-bold text-text-primary hover:text-lime transition"
-                        >
-                          {project.title}
-                        </Link>
-                        <span
-                          className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-                          style={{
-                            backgroundColor: categoryColors[project.category] + "15",
-                            color: categoryColors[project.category],
-                            border: `1px solid ${categoryColors[project.category]}30`,
-                          }}
-                        >
-                          {categoryLabels[project.category]}
-                        </span>
-                        <span className="text-text-tertiary text-xs font-mono">
-                          {project.year}
-                        </span>
-                      </div>
+            {/* Project cards */}
+            {filteredProjects.length === 0 ? (
+              <p className="text-text-tertiary text-sm">Aucun projet pour le moment.</p>
+            ) : (
+              <div className="space-y-8">
+                {filteredProjects.map((project) => {
+                  const ownerCredit = project.credits.find(
+                    (c) => c.profile_id === profile.id
+                  );
+                  const isExpanded = expandedCredits.has(project.id);
 
-                      {/* Role on project */}
-                      {ownerCredit && (
-                        <p className="text-sm text-text-secondary mb-2">
-                          <span className="text-text-tertiary">Role :</span>{" "}
-                          {ownerCredit.role_on_project}
-                        </p>
-                      )}
+                  return (
+                    <motion.article
+                      key={project.id}
+                      {...cardHover}
+                      className="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition"
+                    >
+                      {/* Video embed */}
+                      <VideoEmbed url={project.video_url} title={project.title} />
 
-                      {/* Description */}
-                      {project.description && (
-                        <p className="text-sm text-text-secondary leading-relaxed mb-4">
-                          {project.description}
-                        </p>
-                      )}
-
-                      {/* Credits toggle */}
-                      {project.credits.length > 0 && (
-                        <div>
-                          <button
-                            onClick={() => toggleCredits(project.id)}
-                            className="flex items-center gap-2 text-xs text-text-tertiary hover:text-text-secondary transition"
+                      {/* Project info */}
+                      <div className="p-5 sm:p-6">
+                        <div className="flex flex-wrap items-center gap-3 mb-3">
+                          <Link
+                            href={`/projet/${project.slug}`}
+                            className="text-lg font-bold text-text-primary hover:text-lime transition"
                           >
-                            <svg
-                              className={`w-3.5 h-3.5 transition-transform ${
-                                isExpanded ? "rotate-90" : ""
-                              }`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 5l7 7-7 7"
-                              />
-                            </svg>
-                            Equipe ({project.credits.length})
-                          </button>
-
-                          {isExpanded && (
-                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {project.credits.map((credit) => (
-                                <div
-                                  key={credit.id}
-                                  className="flex items-center gap-3 p-2.5 rounded-lg bg-background border border-border"
-                                >
-                                  {/* Avatar */}
-                                  <div className="w-8 h-8 rounded-lg bg-card border border-border overflow-hidden flex-shrink-0">
-                                    {credit.profile?.avatar_url ? (
-                                      <img
-                                        src={credit.profile.avatar_url}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-xs font-bold text-text-tertiary">
-                                        {(
-                                          credit.profile?.full_name ??
-                                          credit.ghost_name ??
-                                          "?"
-                                        ).charAt(0)}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="min-w-0">
-                                    {credit.profile ? (
-                                      <Link
-                                        href={`/profil/${credit.profile.slug}`}
-                                        className="text-sm font-semibold text-text-primary hover:text-lime transition truncate block"
-                                      >
-                                        {credit.profile.full_name}
-                                      </Link>
-                                    ) : (
-                                      <span className="text-sm font-semibold text-text-secondary truncate block">
-                                        {credit.ghost_name}
-                                      </span>
-                                    )}
-                                    <span className="text-xs text-text-tertiary">
-                                      {credit.role_on_project}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                            {project.title}
+                          </Link>
+                          <span
+                            className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                            style={{
+                              backgroundColor: categoryColors[project.category] + "15",
+                              color: categoryColors[project.category],
+                              border: `1px solid ${categoryColors[project.category]}30`,
+                            }}
+                          >
+                            {categoryLabels[project.category]}
+                          </span>
+                          <span className="text-text-tertiary text-xs font-mono">
+                            {project.year}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+
+                        {/* Role on project */}
+                        {ownerCredit && (
+                          <p className="text-sm text-text-secondary mb-2">
+                            <span className="text-text-tertiary">Role :</span>{" "}
+                            {ownerCredit.role_on_project}
+                          </p>
+                        )}
+
+                        {/* Description */}
+                        {project.description && (
+                          <p className="text-sm text-text-secondary leading-relaxed mb-4">
+                            {project.description}
+                          </p>
+                        )}
+
+                        {/* Credits toggle */}
+                        {project.credits.length > 0 && (
+                          <div>
+                            <button
+                              onClick={() => toggleCredits(project.id)}
+                              className="flex items-center gap-2 text-xs text-text-tertiary hover:text-text-secondary transition"
+                            >
+                              <svg
+                                className={`w-3.5 h-3.5 transition-transform ${
+                                  isExpanded ? "rotate-90" : ""
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                              Equipe ({project.credits.length})
+                            </button>
+
+                            {isExpanded && (
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {project.credits.map((credit) => (
+                                  <div
+                                    key={credit.id}
+                                    className="flex items-center gap-3 p-2.5 rounded-lg bg-background border border-white/5"
+                                  >
+                                    {/* Avatar */}
+                                    <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/5 overflow-hidden flex-shrink-0 ring-1 ring-white/10">
+                                      {credit.profile?.avatar_url ? (
+                                        <img
+                                          src={credit.profile.avatar_url}
+                                          alt=""
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-text-tertiary">
+                                          {(
+                                            credit.profile?.full_name ??
+                                            credit.ghost_name ??
+                                            "?"
+                                          ).charAt(0)}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="min-w-0">
+                                      {credit.profile ? (
+                                        <Link
+                                          href={`/profil/${credit.profile.slug}`}
+                                          className="text-sm font-semibold text-text-primary hover:text-lime transition truncate block"
+                                        >
+                                          {credit.profile.full_name}
+                                        </Link>
+                                      ) : (
+                                        <span className="text-sm font-semibold text-text-secondary truncate block">
+                                          {credit.ghost_name}
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-text-tertiary">
+                                        {credit.role_on_project}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </FadeInView>
       </main>
 
       {/* Contact Modal */}
@@ -341,7 +346,6 @@ export default function ProfileClient({
         profileId={profile.id}
         profileName={profile.full_name}
       />
-    </div>
+    </motion.div>
   );
 }
-

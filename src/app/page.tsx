@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import HeroPlayer from "./HeroPlayer";
+import { HeroContent, Section, AnimatedCard } from "./HomeAnimations";
 
 interface ProjectCard {
   id: string;
@@ -54,7 +55,6 @@ async function getHomeData() {
     };
   }
 
-  // Featured project (most recent)
   const { data: featuredRaw } = await supabase
     .from("projects")
     .select("id, title, slug, category, year, description, video_url, profile_id")
@@ -64,7 +64,6 @@ async function getHomeData() {
 
   const featured = featuredRaw ? await enrichProject(featuredRaw) : null;
 
-  // Recent projects (skip featured)
   const { data: recentRaw } = await supabase
     .from("projects")
     .select("id, title, slug, category, year, description, video_url, profile_id")
@@ -76,35 +75,23 @@ async function getHomeData() {
     ? recentAll.filter((p) => p.id !== featured.id).slice(0, 12)
     : recentAll.slice(0, 12);
 
-  // Projects by category
   const categoryRows: ContentRow[] = [];
   const categoriesToShow: ProjectCategory[] = ["court-metrage", "publicite", "clip", "documentaire"];
-
   for (const cat of categoriesToShow) {
     const { data: catRaw } = await supabase
       .from("projects")
       .select("id, title, slug, category, year, description, video_url, profile_id")
-      .eq("category", cat)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
+      .eq("category", cat).order("created_at", { ascending: false }).limit(10);
     if (catRaw && catRaw.length > 0) {
       const items = await Promise.all(catRaw.map(enrichProject));
-      categoryRows.push({
-        title: CATEGORY_LABELS[cat],
-        href: `/recherche?category=${cat}`,
-        items,
-      });
+      categoryRows.push({ title: CATEGORY_LABELS[cat], href: `/recherche?category=${cat}`, items });
     }
   }
 
-  // Talents
   const { data: rawTalents } = await supabase
     .from("profiles")
     .select("id, full_name, slug, avatar_url, location, is_available")
-    .eq("status", "approved")
-    .order("created_at", { ascending: false })
-    .limit(12);
+    .eq("status", "approved").order("created_at", { ascending: false }).limit(12);
 
   const talents: TalentCard[] = await Promise.all(
     (rawTalents ?? []).map(async (t) => {
@@ -124,45 +111,42 @@ export default async function Home() {
 
   return (
     <div className="pb-16 lg:pb-0">
-      {/* ===== HERO ===== */}
+      {/* HERO */}
       {featured && (
-        <section className="relative w-full" style={{ aspectRatio: "21/9", minHeight: 280, maxHeight: 520 }}>
-          {/* Video background */}
+        <section className="relative w-full" style={{ aspectRatio: "21/9", minHeight: 280, maxHeight: 560 }}>
           <div className="absolute inset-0">
             <HeroPlayer url={featured.video_url} />
           </div>
 
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+          {/* Cinematic gradient — 60% height from bottom */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background from-10% via-background/70 via-50% to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/30 to-transparent" />
 
-          {/* Content */}
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 sm:px-8 sm:pb-8">
-            {/* Category pill */}
+          <HeroContent>
             <span
-              className="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold mb-3"
+              className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase mb-3"
               style={{
-                backgroundColor: CATEGORY_COLORS[featured.category] + "25",
+                backgroundColor: CATEGORY_COLORS[featured.category] + "20",
                 color: CATEGORY_COLORS[featured.category],
               }}
             >
               {CATEGORY_LABELS[featured.category]}
             </span>
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight max-w-2xl">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.05] max-w-2xl tracking-tight">
               {featured.title}
             </h1>
 
             {featured.description && (
-              <p className="mt-2 text-sm sm:text-base text-white/70 max-w-xl line-clamp-2">
+              <p className="mt-3 text-sm sm:text-base text-white/60 max-w-xl line-clamp-2 leading-relaxed">
                 {featured.description}
               </p>
             )}
 
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex items-center gap-3 mt-5">
               <Link
                 href={`/projet/${featured.slug}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#0d0d0d] font-bold text-sm rounded-lg hover:bg-white/90 transition"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0d0d0d] font-bold text-sm rounded-xl hover:bg-white/90 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
@@ -171,97 +155,96 @@ export default async function Home() {
               </Link>
               <Link
                 href={`/profil/${featured.owner_slug}`}
-                className="px-4 py-2.5 bg-white/10 backdrop-blur-sm text-white text-sm font-medium rounded-lg border border-white/20 hover:bg-white/20 transition"
+                className="px-5 py-3 bg-white/8 backdrop-blur-md text-white/90 text-sm font-medium rounded-xl border border-white/10 hover:bg-white/15 hover:border-white/20 transition-all duration-300"
               >
                 {featured.owner_name}
               </Link>
             </div>
-          </div>
+          </HeroContent>
         </section>
       )}
 
-      {/* ===== CONTENT ROWS ===== */}
-      <div className="space-y-6 py-5">
-        {/* Recent projects */}
+      {/* CONTENT ROWS */}
+      <div className="space-y-8 py-6">
         {recent.length > 0 && (
-          <ProjectRow
-            title="Projets recents"
-            href="/recherche?type=projets"
-            items={recent}
-          />
+          <Section delay={0}>
+            <ProjectRow title="Projets recents" href="/recherche?type=projets" items={recent} />
+          </Section>
         )}
 
-        {/* Category rows */}
-        {categoryRows.map((row) => (
-          <ProjectRow key={row.title} {...row} />
+        {categoryRows.map((row, i) => (
+          <Section key={row.title} delay={(i + 1) * 0.1}>
+            <ProjectRow {...row} />
+          </Section>
         ))}
 
-        {/* Talents row */}
         {talents.length > 0 && (
-          <section className="px-5 sm:px-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[15px] font-bold text-text-primary">Talents a decouvrir</h2>
-              <Link href="/recherche?type=talents" className="text-[11px] text-text-tertiary hover:text-lime transition">
-                Tout voir
-              </Link>
-            </div>
-            <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 pb-1">
-              {talents.map((talent) => (
-                <Link
-                  key={talent.id}
-                  href={`/profil/${talent.slug}`}
-                  className="flex-shrink-0 w-44 bg-card border border-border rounded-lg p-3 hover:border-border-hover transition group"
-                >
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-9 h-9 rounded-lg bg-background border border-border overflow-hidden flex-shrink-0">
-                      {talent.avatar_url ? (
-                        <img src={talent.avatar_url} alt={talent.full_name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-text-tertiary">
-                          {talent.full_name.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[12px] font-semibold text-text-primary group-hover:text-lime transition truncate">
-                          {talent.full_name}
-                        </span>
-                        {talent.is_available && <span className="w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0" />}
-                      </div>
-                      {talent.location && (
-                        <p className="text-[10px] text-text-tertiary truncate">{talent.location}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {talent.roles.slice(0, 2).map((role) => (
-                      <span key={role} className="px-1.5 py-0.5 rounded bg-lime/8 text-lime text-[9px] font-semibold">
-                        {role}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-text-tertiary mt-1.5">
-                    {talent.project_count} projet{talent.project_count > 1 ? "s" : ""}
-                  </p>
+          <Section delay={(categoryRows.length + 1) * 0.1}>
+            <section className="glow-lime px-5 sm:px-8">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[15px] font-bold text-text-primary">Talents a decouvrir</h2>
+                <Link href="/recherche?type=talents" className="text-[11px] text-text-tertiary hover:text-lime transition-colors duration-300">
+                  Tout voir
                 </Link>
-              ))}
-            </div>
-          </section>
+              </div>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 pb-1">
+                {talents.map((talent) => (
+                  <AnimatedCard key={talent.id}>
+                    <Link
+                      href={`/profil/${talent.slug}`}
+                      className="flex-shrink-0 w-48 bg-white/[0.03] border border-white/5 rounded-xl p-3.5 hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group block"
+                    >
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden flex-shrink-0">
+                          {talent.avatar_url ? (
+                            <img src={talent.avatar_url} alt={talent.full_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-text-tertiary">
+                              {talent.full_name.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors duration-300 truncate">
+                              {talent.full_name}
+                            </span>
+                            {talent.is_available && <span className="w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0" />}
+                          </div>
+                          {talent.location && (
+                            <p className="text-[10px] text-text-tertiary truncate">{talent.location}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {talent.roles.slice(0, 2).map((role) => (
+                          <span key={role} className="px-2 py-0.5 rounded-full bg-lime/8 text-lime text-[9px] font-semibold">
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-text-tertiary mt-2">
+                        {talent.project_count} projet{talent.project_count > 1 ? "s" : ""}
+                      </p>
+                    </Link>
+                  </AnimatedCard>
+                ))}
+              </div>
+            </section>
+          </Section>
         )}
       </div>
     </div>
   );
 }
 
-/* ===== PROJECT ROW COMPONENT ===== */
-
+/* PROJECT ROW */
 function ProjectRow({ title, href, items }: ContentRow) {
   return (
     <section className="px-5 sm:px-8">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[15px] font-bold text-text-primary">{title}</h2>
-        <Link href={href} className="text-[11px] text-text-tertiary hover:text-lime transition">
+        <Link href={href} className="text-[11px] text-text-tertiary hover:text-lime transition-colors duration-300">
           Tout voir
         </Link>
       </div>
@@ -269,56 +252,50 @@ function ProjectRow({ title, href, items }: ContentRow) {
         {items.map((project) => {
           const catColor = CATEGORY_COLORS[project.category];
           return (
-            <Link
-              key={project.id}
-              href={`/projet/${project.slug}`}
-              className="flex-shrink-0 w-56 sm:w-64 group"
-            >
-              {/* Thumbnail */}
-              <div
-                className="relative w-full bg-card border border-border rounded-lg overflow-hidden hover:border-border-hover transition"
-                style={{ aspectRatio: "16/9" }}
-              >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-text-tertiary/15" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-                {/* Hover play overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-[#0d0d0d] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <AnimatedCard key={project.id}>
+              <Link href={`/projet/${project.slug}`} className="flex-shrink-0 w-60 sm:w-72 group block">
+                <div
+                  className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:bg-white/[0.05] transition-all duration-300"
+                  style={{ aspectRatio: "16/9" }}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-white/[0.08]" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
                     </svg>
                   </div>
-                </div>
-                {/* Category badge */}
-                <span
-                  className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold"
-                  style={{ backgroundColor: catColor + "25", color: catColor }}
-                >
-                  {CATEGORY_LABELS[project.category]}
-                </span>
-              </div>
-              {/* Info */}
-              <div className="mt-2 px-0.5">
-                <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition truncate leading-tight">
-                  {project.title}
-                </h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[11px] text-text-tertiary truncate">{project.owner_name}</span>
-                  <span className="text-[11px] text-text-tertiary font-mono">{project.year}</span>
-                  {project.team_size > 0 && (
-                    <span className="flex items-center gap-0.5 text-[11px] text-text-tertiary">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="w-11 h-11 rounded-full bg-white/90 flex items-center justify-center shadow-lg shadow-black/30">
+                      <svg className="w-4 h-4 text-[#0d0d0d] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
                       </svg>
-                      {project.team_size}
-                    </span>
-                  )}
+                    </div>
+                  </div>
+                  <span
+                    className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase"
+                    style={{ backgroundColor: catColor + "20", color: catColor }}
+                  >
+                    {CATEGORY_LABELS[project.category]}
+                  </span>
                 </div>
-              </div>
-            </Link>
+                <div className="mt-2.5 px-0.5">
+                  <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors duration-300 truncate leading-tight">
+                    {project.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-text-tertiary truncate">{project.owner_name}</span>
+                    <span className="text-[11px] text-text-tertiary/50 font-mono">{project.year}</span>
+                    {project.team_size > 0 && (
+                      <span className="flex items-center gap-0.5 text-[11px] text-text-tertiary/50">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {project.team_size}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            </AnimatedCard>
           );
         })}
       </div>

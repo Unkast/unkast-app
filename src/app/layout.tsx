@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import SplashScreen from "@/components/SplashScreen";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -14,6 +15,14 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
 });
+
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Unkast — Decouvre l'oeuvre. Trouve le talent.",
@@ -39,7 +48,9 @@ export default function RootLayout({
       className={`${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full font-sans">
-        <AppShell>{children}</AppShell>
+        <SplashScreen>
+          <AppShell>{children}</AppShell>
+        </SplashScreen>
       </body>
     </html>
   );

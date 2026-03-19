@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 
@@ -95,6 +96,7 @@ export default function RechercheClient() {
   const hasFilters = roleFilter || categoryFilter || locationFilter;
 
   return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
     <div className="pb-16 lg:pb-0">
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
         {/* Search bar */}
@@ -118,7 +120,7 @@ export default function RechercheClient() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un talent, un projet, un metier..."
-              className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-xl text-text-primary text-base placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+              className="w-full pl-12 pr-4 py-4 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-base placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
             />
           </div>
         </div>
@@ -126,7 +128,7 @@ export default function RechercheClient() {
         {/* Tabs + controls row */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           {/* Tabs */}
-          <div className="flex gap-1 bg-card border border-border rounded-lg p-1">
+          <div className="flex gap-1 bg-white/[0.03] border border-white/5 rounded-lg p-1">
             {(
               [
                 { key: "all", label: "Tout" },
@@ -167,7 +169,7 @@ export default function RechercheClient() {
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition ${
                 filtersOpen || hasFilters
                   ? "border-lime/30 text-lime bg-lime/5"
-                  : "border-border text-text-secondary hover:border-border-hover"
+                  : "border-white/5 text-text-secondary hover:border-white/10"
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,7 +185,7 @@ export default function RechercheClient() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}
-              className="px-3 py-2 rounded-lg text-sm border border-border bg-card text-text-secondary focus:outline-none focus:border-lime/50 transition"
+              className="px-3 py-2 rounded-lg text-sm border border-white/5 bg-white/[0.03] text-text-secondary focus:outline-none focus:border-lime/50 transition"
             >
               <option value="pertinence">Pertinence</option>
               <option value="date">Date</option>
@@ -191,7 +193,7 @@ export default function RechercheClient() {
             </select>
 
             {/* View mode toggle */}
-            <div className="flex border border-border rounded-lg overflow-hidden">
+            <div className="flex border border-white/5 rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-2 transition ${viewMode === "grid" ? "bg-white/10 text-text-primary" : "text-text-tertiary hover:text-text-secondary"}`}
@@ -219,7 +221,7 @@ export default function RechercheClient() {
 
         {/* Filters panel */}
         {filtersOpen && (
-          <div className="bg-card border border-border rounded-xl p-5 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Role filter */}
             <div>
               <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
@@ -228,7 +230,7 @@ export default function RechercheClient() {
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-lime/50 transition"
+                className="w-full px-3 py-2 bg-background border border-white/5 rounded-lg text-sm text-text-primary focus:outline-none focus:border-lime/50 transition"
               >
                 <option value="">Tous les metiers</option>
                 {ROLES_SUGGESTIONS.map((r) => (
@@ -247,7 +249,7 @@ export default function RechercheClient() {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-lime/50 transition"
+                className="w-full px-3 py-2 bg-background border border-white/5 rounded-lg text-sm text-text-primary focus:outline-none focus:border-lime/50 transition"
               >
                 <option value="">Toutes les categories</option>
                 {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
@@ -268,7 +270,7 @@ export default function RechercheClient() {
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 placeholder="Paris, Lyon..."
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                className="w-full px-3 py-2 bg-background border border-white/5 rounded-lg text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
               />
             </div>
 
@@ -302,7 +304,7 @@ export default function RechercheClient() {
             {results.counts.total === 0 ? (
               /* Empty state */
               <div className="text-center py-20">
-                <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -363,6 +365,7 @@ export default function RechercheClient() {
         )}
       </main>
     </div>
+    </motion.div>
   );
 }
 
@@ -373,9 +376,9 @@ function TalentCard({ talent, viewMode }: { talent: TalentResult; viewMode: View
     return (
       <Link
         href={`/profil/${talent.slug}`}
-        className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-border-hover transition"
+        className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/5 rounded-xl hover:border-white/10 transition"
       >
-        <div className="w-11 h-11 rounded-xl bg-background border border-border overflow-hidden flex-shrink-0">
+        <div className="w-11 h-11 rounded-xl bg-background border border-white/5 overflow-hidden flex-shrink-0">
           {talent.avatar_url ? (
             <img src={talent.avatar_url} alt={talent.full_name} className="w-full h-full object-cover" />
           ) : (
@@ -406,10 +409,10 @@ function TalentCard({ talent, viewMode }: { talent: TalentResult; viewMode: View
   return (
     <Link
       href={`/profil/${talent.slug}`}
-      className="bg-card border border-border rounded-xl p-5 hover:border-border-hover transition group"
+      className="bg-white/[0.03] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group"
     >
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-12 h-12 rounded-xl bg-background border border-border overflow-hidden flex-shrink-0">
+        <div className="w-12 h-12 rounded-xl bg-background border border-white/5 overflow-hidden flex-shrink-0">
           {talent.avatar_url ? (
             <img src={talent.avatar_url} alt={talent.full_name} className="w-full h-full object-cover" />
           ) : (
@@ -463,7 +466,7 @@ function ProjectCard({ project, viewMode }: { project: ProjectResult; viewMode: 
     return (
       <Link
         href={`/projet/${project.slug}`}
-        className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-border-hover transition"
+        className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/5 rounded-xl hover:border-white/10 transition"
       >
         <span
           className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0"
@@ -488,7 +491,7 @@ function ProjectCard({ project, viewMode }: { project: ProjectResult; viewMode: 
   return (
     <Link
       href={`/projet/${project.slug}`}
-      className="bg-card border border-border rounded-xl p-5 hover:border-border-hover transition group"
+      className="bg-white/[0.03] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group"
     >
       <div className="flex items-center gap-2 mb-3">
         <span

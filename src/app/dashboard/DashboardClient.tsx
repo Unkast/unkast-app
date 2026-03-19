@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE } from "@/lib/constants";
 import type {
   Profile,
@@ -188,6 +189,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   }
 
   return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
     <div className="pb-16 lg:pb-0">
       <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
         {/* Header */}
@@ -197,7 +199,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
         </div>
 
         {/* Section tabs */}
-        <div className="flex gap-1 bg-card border border-border rounded-lg p-1 mb-5">
+        <div className="flex gap-1 bg-white/[0.03] border border-white/5 rounded-lg p-1 mb-5">
           {(
             [
               { key: "profil", href: "/dashboard", label: "Mon profil" },
@@ -224,7 +226,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
         {section === "profil" && (
           <div>
             {editingProfile ? (
-              <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6 space-y-5">
                 <h2 className="text-lg font-bold text-text-primary mb-4">Editer mon profil</h2>
 
                 <div>
@@ -233,7 +235,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                   />
                 </div>
 
@@ -245,10 +247,10 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                       value={editRoleInput}
                       onChange={(e) => setEditRoleInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEditRole(); } }}
-                      className="flex-1 px-4 py-2.5 bg-background border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                      className="flex-1 px-4 py-2.5 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                       placeholder="Ajouter un metier..."
                     />
-                    <button onClick={addEditRole} className="px-4 py-2.5 bg-background border border-border rounded-xl text-text-secondary hover:border-lime/50 hover:text-lime transition text-sm">+</button>
+                    <button onClick={addEditRole} className="px-4 py-2.5 bg-background border border-white/5 rounded-xl text-text-secondary hover:border-lime/50 hover:text-lime transition text-sm">+</button>
                   </div>
                   {editRoles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -268,7 +270,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     type="text"
                     value={editLocation}
                     onChange={(e) => setEditLocation(e.target.value)}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                   />
                 </div>
 
@@ -278,7 +280,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     rows={4}
                     value={editBio}
                     onChange={(e) => setEditBio(e.target.value)}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition resize-none"
+                    className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition resize-none"
                   />
                 </div>
 
@@ -294,16 +296,16 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   <button onClick={saveProfile} disabled={saving} className="px-6 py-2.5 bg-lime text-[#0d0d0d] font-bold text-sm rounded-lg hover:brightness-110 transition disabled:opacity-50">
                     {saving ? "Sauvegarde..." : "Sauvegarder"}
                   </button>
-                  <button onClick={() => setEditingProfile(false)} className="px-6 py-2.5 border border-border-active text-text-secondary text-sm rounded-lg hover:text-text-primary transition">
+                  <button onClick={() => setEditingProfile(false)} className="px-6 py-2.5 border border-white/15 text-text-secondary text-sm rounded-lg hover:text-text-primary transition">
                     Annuler
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-card border border-border rounded-xl p-6">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6">
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-background border border-border overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 rounded-2xl bg-background border border-white/5 overflow-hidden flex-shrink-0">
                       {profile.avatar_url ? (
                         <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
                       ) : (
@@ -333,7 +335,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                       )}
                     </div>
                   </div>
-                  <button onClick={startEditProfile} className="px-4 py-2 border border-border-active text-text-secondary text-sm rounded-lg hover:border-border-hover hover:text-text-primary transition">
+                  <button onClick={startEditProfile} className="px-4 py-2 border border-white/15 text-text-secondary text-sm rounded-lg hover:border-white/10 hover:text-text-primary transition">
                     Editer
                   </button>
                 </div>
@@ -387,7 +389,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
 
             {/* Add project form */}
             {addingProject && (
-              <div className="bg-card border border-lime/30 rounded-xl p-6 mb-6 space-y-4">
+              <div className="bg-white/[0.03] border border-lime/30 rounded-xl p-6 mb-6 space-y-4">
                 <h3 className="text-lg font-bold text-text-primary">Nouveau projet</h3>
 
                 <input
@@ -395,14 +397,14 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Titre du projet"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                 />
 
                 <div className="grid grid-cols-2 gap-4">
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as ProjectCategory)}
-                    className="px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                   >
                     {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
@@ -412,7 +414,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     type="number"
                     value={newYear}
                     onChange={(e) => setNewYear(parseInt(e.target.value) || new Date().getFullYear())}
-                    className="px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                     min={1990} max={2030}
                   />
                 </div>
@@ -422,7 +424,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   value={newVideoUrl}
                   onChange={(e) => setNewVideoUrl(e.target.value)}
                   placeholder="URL video (Vimeo ou YouTube)"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                 />
 
                 <input
@@ -430,7 +432,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   value={newOwnerRole}
                   onChange={(e) => setNewOwnerRole(e.target.value)}
                   placeholder="Ton role sur ce projet"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                 />
 
                 <textarea
@@ -438,7 +440,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Description"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
+                  className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
                 />
 
                 <div className="flex gap-3">
@@ -451,7 +453,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   </button>
                   <button
                     onClick={() => setAddingProject(false)}
-                    className="px-6 py-2.5 border border-border-active text-text-secondary text-sm rounded-lg hover:text-text-primary transition"
+                    className="px-6 py-2.5 border border-white/15 text-text-secondary text-sm rounded-lg hover:text-text-primary transition"
                   >
                     Annuler
                   </button>
@@ -475,7 +477,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 {projects.map((project) => {
                   const catColor = CATEGORY_COLORS[project.category];
                   return (
-                    <div key={project.id} className="bg-card border border-border rounded-xl p-5 flex items-center justify-between">
+                    <div key={project.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-5 flex items-center justify-between">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span
@@ -498,13 +500,13 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                       <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                         <Link
                           href={`/projet/${project.slug}`}
-                          className="px-3 py-1.5 border border-border text-text-secondary text-xs rounded-lg hover:border-border-hover hover:text-text-primary transition"
+                          className="px-3 py-1.5 border border-white/5 text-text-secondary text-xs rounded-lg hover:border-white/10 hover:text-text-primary transition"
                         >
                           Voir
                         </Link>
                         <button
                           onClick={() => deleteProject(project.id)}
-                          className="px-3 py-1.5 border border-border text-text-tertiary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition"
+                          className="px-3 py-1.5 border border-white/5 text-text-tertiary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition"
                         >
                           Supprimer
                         </button>
@@ -564,6 +566,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
         )}
       </main>
     </div>
+    </motion.div>
   );
 }
 
@@ -616,7 +619,7 @@ function ContactCard({
   });
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
+    <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -653,7 +656,7 @@ function ContactCard({
           </button>
           <button
             onClick={onDecline}
-            className="px-4 py-2 border border-border-active text-text-secondary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition"
+            className="px-4 py-2 border border-white/15 text-text-secondary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition"
           >
             Refuser
           </button>

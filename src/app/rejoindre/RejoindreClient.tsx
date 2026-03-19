@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { CATEGORY_LABELS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 
@@ -162,6 +163,7 @@ export default function RejoindreClient() {
   }
 
   return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
     <div className="pb-16 lg:pb-0">
       <main className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
         {/* Progress bar */}
@@ -179,7 +181,7 @@ export default function RejoindreClient() {
                         ? "bg-lime text-[#0d0d0d] border-lime"
                         : isActive
                           ? "border-lime text-lime"
-                          : "border-border text-text-tertiary"
+                          : "border-white/5 text-text-tertiary"
                     }`}
                   >
                     {isDone ? (
@@ -229,7 +231,7 @@ export default function RejoindreClient() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="Lucas Meriaux"
                 />
               </div>
@@ -243,7 +245,7 @@ export default function RejoindreClient() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="lucas@example.com"
                 />
               </div>
@@ -257,7 +259,7 @@ export default function RejoindreClient() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="Minimum 6 caracteres"
                 />
                 {password.length > 0 && password.length < 6 && (
@@ -291,7 +293,7 @@ export default function RejoindreClient() {
                     onChange={(e) => setRoleInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRole(); } }}
                     list="roles-list"
-                    className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                    className="flex-1 px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                     placeholder="Ex: Realisateur, Monteur..."
                   />
                   <datalist id="roles-list">
@@ -302,7 +304,7 @@ export default function RejoindreClient() {
                   <button
                     type="button"
                     onClick={addRole}
-                    className="px-4 py-3 bg-card border border-border rounded-xl text-text-secondary hover:border-lime/50 hover:text-lime transition text-sm"
+                    className="px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-secondary hover:border-lime/50 hover:text-lime transition text-sm"
                   >
                     +
                   </button>
@@ -336,7 +338,7 @@ export default function RejoindreClient() {
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="Paris, Lyon, Marseille..."
                 />
               </div>
@@ -350,7 +352,7 @@ export default function RejoindreClient() {
                   rows={4}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
                   placeholder="Parle de toi en quelques lignes..."
                 />
               </div>
@@ -377,7 +379,7 @@ export default function RejoindreClient() {
                   type="text"
                   value={projectTitle}
                   onChange={(e) => setProjectTitle(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="Le titre de ton film, clip, pub..."
                 />
               </div>
@@ -390,7 +392,7 @@ export default function RejoindreClient() {
                   <select
                     value={projectCategory}
                     onChange={(e) => setProjectCategory(e.target.value as ProjectCategory)}
-                    className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                   >
                     {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
@@ -405,7 +407,7 @@ export default function RejoindreClient() {
                     type="number"
                     value={projectYear}
                     onChange={(e) => setProjectYear(parseInt(e.target.value) || new Date().getFullYear())}
-                    className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                     min={1990}
                     max={2030}
                   />
@@ -420,7 +422,7 @@ export default function RejoindreClient() {
                   type="url"
                   value={projectVideoUrl}
                   onChange={(e) => setProjectVideoUrl(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="https://vimeo.com/... ou https://youtube.com/..."
                 />
               </div>
@@ -433,7 +435,7 @@ export default function RejoindreClient() {
                   type="text"
                   value={projectOwnerRole}
                   onChange={(e) => setProjectOwnerRole(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                   placeholder="Ex: Realisateur, Chef operateur..."
                 />
               </div>
@@ -446,7 +448,7 @@ export default function RejoindreClient() {
                   rows={3}
                   value={projectDescription}
                   onChange={(e) => setProjectDescription(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
+                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
                   placeholder="Decris brievement le projet..."
                 />
               </div>
@@ -461,7 +463,7 @@ export default function RejoindreClient() {
                     type="text"
                     value={creditName}
                     onChange={(e) => setCreditName(e.target.value)}
-                    className="flex-1 px-4 py-2.5 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                    className="flex-1 px-4 py-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                     placeholder="Nom"
                   />
                   <input
@@ -469,13 +471,13 @@ export default function RejoindreClient() {
                     value={creditRole}
                     onChange={(e) => setCreditRole(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCredit(); } }}
-                    className="flex-1 px-4 py-2.5 bg-card border border-border rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                    className="flex-1 px-4 py-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                     placeholder="Role"
                   />
                   <button
                     type="button"
                     onClick={addCredit}
-                    className="px-4 py-2.5 bg-card border border-border rounded-xl text-text-secondary hover:border-lime/50 hover:text-lime transition text-sm"
+                    className="px-4 py-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-text-secondary hover:border-lime/50 hover:text-lime transition text-sm"
                   >
                     +
                   </button>
@@ -485,7 +487,7 @@ export default function RejoindreClient() {
                     {credits.map((c, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between px-3 py-2 bg-background border border-border rounded-lg"
+                        className="flex items-center justify-between px-3 py-2 bg-background border border-white/5 rounded-lg"
                       >
                         <span className="text-sm text-text-primary">
                           {c.name}{" "}
@@ -534,7 +536,7 @@ export default function RejoindreClient() {
               </button>
               <button
                 onClick={() => router.push("/dashboard")}
-                className="px-6 py-3 border border-border-active text-text-secondary text-sm rounded-lg hover:border-border-hover hover:text-text-primary transition"
+                className="px-6 py-3 border border-white/15 text-text-secondary text-sm rounded-lg hover:border-white/10 hover:text-text-primary transition"
               >
                 Aller au dashboard
               </button>
@@ -555,7 +557,7 @@ export default function RejoindreClient() {
             {step > 1 ? (
               <button
                 onClick={prevStep}
-                className="px-6 py-3 border border-border-active text-text-secondary text-sm rounded-lg hover:border-border-hover hover:text-text-primary transition"
+                className="px-6 py-3 border border-white/15 text-text-secondary text-sm rounded-lg hover:border-white/10 hover:text-text-primary transition"
               >
                 Retour
               </button>
@@ -579,5 +581,6 @@ export default function RejoindreClient() {
         )}
       </main>
     </div>
+    </motion.div>
   );
 }

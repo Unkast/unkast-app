@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { ModalBackdrop } from "@/components/motion";
 import type { ContactSubject } from "@/types/database";
 
 interface Props {
@@ -25,7 +26,6 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -37,10 +37,6 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
       document.body.style.overflow = "";
     };
   }, [open]);
-
-  function handleOverlayClick(e: React.MouseEvent) {
-    if (e.target === overlayRef.current) onClose();
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,16 +72,9 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-    >
-      <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-6 sm:p-8">
+    <ModalBackdrop open={open} onClose={onClose}>
+      <div className="p-6 sm:p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-text-primary">
@@ -114,7 +103,7 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
               </p>
               <button
                 onClick={onClose}
-                className="mt-6 px-6 py-2 border border-border-active text-text-secondary text-sm rounded-lg hover:text-text-primary transition"
+                className="mt-6 px-6 py-2 border border-white/5-active text-text-secondary text-sm rounded-lg hover:text-text-primary transition"
               >
                 Fermer
               </button>
@@ -135,7 +124,7 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
                     required
                     value={fromName}
                     onChange={(e) => setFromName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-2.5 bg-background border border-white/5 rounded-lg text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                     placeholder="Jean Dupont"
                   />
                 </div>
@@ -149,7 +138,7 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
                     required
                     value={fromEmail}
                     onChange={(e) => setFromEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-2.5 bg-background border border-white/5 rounded-lg text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition"
                     placeholder="jean@example.com"
                   />
                 </div>
@@ -161,7 +150,7 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
                   <select
                     value={subject}
                     onChange={(e) => setSubject(e.target.value as ContactSubject)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
+                    className="w-full px-4 py-2.5 bg-background border border-white/5 rounded-lg text-text-primary text-sm focus:outline-none focus:border-lime/50 transition"
                   >
                     {SUBJECT_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -180,7 +169,7 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
                     rows={4}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
+                    className="w-full px-4 py-2.5 bg-background border border-white/5 rounded-lg text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none"
                     placeholder="Decrivez votre demande..."
                   />
                 </div>
@@ -200,7 +189,6 @@ export default function ContactModal({ open, onClose, profileId, profileName }: 
             </>
           )}
         </div>
-      </div>
-    </div>
+    </ModalBackdrop>
   );
 }
