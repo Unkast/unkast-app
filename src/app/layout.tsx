@@ -28,6 +28,16 @@ export const metadata: Metadata = {
   title: "Unkast — Decouvre l'oeuvre. Trouve le talent.",
   description:
     "La plateforme ou les professionnels du cinema et de l'audiovisuel francais se font decouvrir a travers leurs realisations.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Unkast",
+  },
   openGraph: {
     title: "Unkast — Decouvre l'oeuvre. Trouve le talent.",
     description:
