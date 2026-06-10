@@ -1,0 +1,60 @@
+import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
+import RechercheClient from "./RechercheClient";
+
+export const revalidate = 3600; // Cache 1 hour (static counts)
+
+export const metadata: Metadata = {
+  title: "Explorer — Unkast",
+  description:
+    "Découvrez les talents et les projets du cinéma et de l'audiovisuel français.",
+};
+
+async function getCategoryCounts(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("category")
+    .eq("status", "approved");
+
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    counts[row.category] = (counts[row.category] || 0) + 1;
+  }
+  return counts;
+}
+
+async function getRecruitingProfiles() {
+  const supabase = await createClient();
+  // Single query with join for roles
+  const { data } = await supabase
+    .from("profiles")
+    .select(`
+      id, full_name, slug, avatar_url, location, is_recruiting, recruiting_roles, account_type,
+      profile_roles ( role_name )
+    `)
+    .eq("status", "approved")
+    .eq("is_recruiting", true)
+    .order("updated_at", { ascending: false })
+    .limit(10);
+
+  return (data ?? []).map((p: Record<string, unknown>) => {
+    const roles = p.profile_roles as { role_name: string }[] | null;
+    return {
+      id: p.id,
+      full_name: p.full_name,
+      slug: p.slug,
+      avatar_url: p.avatar_url,
+      location: p.location,
+      is_recruiting: p.is_recruiting,
+      recruiting_roles: p.recruiting_roles,
+      account_type: p.account_type,
+      main_role: roles?.[0]?.role_name || "",
+    };
+  });
+}
+
+export default async function RecherchePage() {
+  const [counts, recruiting] = await Promise.all([getCategoryCounts(), getRecruitingProfiles()]);
+  return <RechercheClient categoryCounts={counts} recruitingProfiles={recruiting} />;
+}

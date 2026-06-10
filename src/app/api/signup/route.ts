@@ -1,29 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
+import { createAdminClient } from "@/lib/supabase/admin";
+import { slugify } from "@/lib/utils";
+import { MAX_PROJECTS_FREE } from "@/lib/constants";
+import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Anti-abus : max 5 créations de compte par heure et par IP.
+  const ip = getClientIp(request);
+  if (!(await checkRateLimit(`signup:${ip}`, 5, 3600))) {
+    return NextResponse.json(
+      { error: "Trop de tentatives. Réessaie dans une heure." },
+      { status: 429 }
+    );
+  }
+
   const body = await request.json();
-  const { email, password, full_name, roles, location, bio, avatar_url, project } = body;
+  const {
+    email,
+    password,
+    full_name,
+    roles,
+    location,
+    bio,
+    avatar_url,
+    account_type,
+    project,
+    credit_request,
+    recruiter_company,
+    recruiter_role,
+    recruiter_website,
+    is_looking_for,
+  } = body;
+  // SÉCURITÉ : recruiter_status n'est JAMAIS lu depuis le body — un client pourrait
+  // s'auto-attribuer "approved". Toujours forcé à "pending" (validation manuelle admin).
 
   if (!email || !password || !full_name) {
     return NextResponse.json({ error: "Email, mot de passe et nom requis." }, { status: 400 });
   }
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: "Email invalide." }, { status: 400 });
+  }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
-  // 1. Create auth user
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // 1. Create auth user (admin API — no email confirmation needed)
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email,
     password,
+    email_confirm: true,
   });
 
   if (authError || !authData.user) {
@@ -36,7 +60,7 @@ export async function POST(request: NextRequest) {
   const userId = authData.user.id;
   const profileSlug = slugify(full_name) + "-" + userId.slice(0, 6);
 
-  // 2. Create profile
+  // 2. Create profile (admin client bypasses RLS)
   const { error: profileError } = await supabase.from("profiles").insert({
     id: userId,
     full_name,
@@ -45,7 +69,15 @@ export async function POST(request: NextRequest) {
     avatar_url: avatar_url || null,
     location: location || null,
     is_available: false,
-    status: "pending",
+    status: "approved",
+    account_type: account_type || "talent",
+    ...(account_type === "recruiter" ? {
+      recruiter_company: recruiter_company || null,
+      recruiter_role: recruiter_role || null,
+      recruiter_website: recruiter_website || null,
+      recruiter_status: "pending",
+      is_looking_for: is_looking_for || null,
+    } : {}),
   });
 
   if (profileError) {
@@ -64,49 +96,72 @@ export async function POST(request: NextRequest) {
     await supabase.from("profile_roles").insert(roleInserts);
   }
 
-  // 4. Create first project if provided
-  if (project && project.title && project.video_url && project.category) {
-    const projectSlug = slugify(project.title) + "-" + Date.now().toString(36);
-
-    const { data: projectData, error: projectError } = await supabase
+  // 4. Create first project if provided (creator only)
+  if (
+    account_type === "creator" &&
+    project &&
+    project.title &&
+    project.video_url &&
+    project.category
+  ) {
+    const { count } = await supabase
       .from("projects")
-      .insert({
-        profile_id: userId,
-        title: project.title,
-        slug: projectSlug,
-        description: project.description || null,
-        category: project.category,
-        year: project.year || new Date().getFullYear(),
-        video_url: project.video_url,
-      })
-      .select("id")
-      .single();
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", userId);
 
-    if (!projectError && projectData) {
-      // Add credits
-      const credits = project.credits as
-        | { name: string; role: string }[]
-        | undefined;
-      if (credits && credits.length > 0) {
-        const creditInserts = credits.map(
-          (c: { name: string; role: string }) => ({
+    if ((count ?? 0) < MAX_PROJECTS_FREE) {
+      const projectSlug = slugify(project.title) + "-" + Date.now().toString(36);
+
+      const { data: projectData, error: projectError } = await supabase
+        .from("projects")
+        .insert({
+          profile_id: userId,
+          title: project.title,
+          slug: projectSlug,
+          description: project.description || null,
+          category: project.category,
+          year: project.year || new Date().getFullYear(),
+          video_url: project.video_url,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+
+      if (!projectError && projectData) {
+        const credits = project.credits as { name: string; role: string }[] | undefined;
+        if (credits && credits.length > 0) {
+          const creditInserts = credits.map((c: { name: string; role: string }) => ({
             project_id: projectData.id,
             ghost_name: c.name,
             role_on_project: c.role,
-          })
-        );
-        await supabase.from("project_credits").insert(creditInserts);
-      }
+          }));
+          await supabase.from("project_credits").insert(creditInserts);
+        }
 
-      // Also add the owner as a credit
-      if (project.owner_role) {
-        await supabase.from("project_credits").insert({
-          project_id: projectData.id,
-          profile_id: userId,
-          role_on_project: project.owner_role,
-        });
+        if (project.owner_role) {
+          await supabase.from("project_credits").insert({
+            project_id: projectData.id,
+            profile_id: userId,
+            role_on_project: project.owner_role,
+          });
+        }
       }
     }
+  }
+
+  // 5. Create credit request if provided (talent/member)
+  if (
+    (account_type === "member" || account_type === "talent") &&
+    credit_request &&
+    credit_request.project_id &&
+    credit_request.role
+  ) {
+    await supabase.from("credit_requests").insert({
+      project_id: credit_request.project_id,
+      requester_id: userId,
+      role: credit_request.role,
+      status: "pending",
+    });
   }
 
   return NextResponse.json({ success: true, slug: profileSlug });

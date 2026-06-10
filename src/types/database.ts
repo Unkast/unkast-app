@@ -16,6 +16,22 @@ export type ContactSubject =
 
 export type ContactStatus = "pending" | "accepted" | "declined";
 
+export type AccountType = "creator" | "member" | "talent" | "recruiter";
+
+export type Plan = "free" | "pro";
+
+export type CreditRequestStatus = "pending" | "accepted" | "refused";
+
+export interface CreditRequest {
+  id: string;
+  project_id: string;
+  requester_id: string;
+  role: string;
+  message?: string;
+  status: CreditRequestStatus;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string;
@@ -35,6 +51,8 @@ export interface ProfileRole {
   role_name: string;
 }
 
+export type ProjectStatus = "pending" | "approved" | "refused";
+
 export interface Project {
   id: string;
   profile_id: string;
@@ -44,6 +62,9 @@ export interface Project {
   category: ProjectCategory;
   year: number;
   video_url: string;
+  poster_url: string | null;
+  preview_url: string | null;
+  status: ProjectStatus;
   created_at: string;
 }
 

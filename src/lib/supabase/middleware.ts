@@ -29,7 +29,40 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { pathname } = request.nextUrl;
+
+  // Protect /dashboard and /moi routes
+  if ((pathname.startsWith("/dashboard") || pathname.startsWith("/moi")) && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/connexion";
+    return NextResponse.redirect(url);
+  }
+
+  // Protect /admin — must be authenticated + is_admin
+  if (pathname.startsWith("/admin")) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/connexion";
+      return NextResponse.redirect(url);
+    }
+    const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
+    if (!profile?.is_admin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/feed";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Check suspended accounts — block all pages except /suspended
+  if (user && !pathname.startsWith("/suspended") && !pathname.startsWith("/api") && pathname !== "/") {
+    const { data: profile } = await supabase.from("profiles").select("is_suspended").eq("id", user.id).single();
+    if (profile?.is_suspended) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/suspended";
+      return NextResponse.redirect(url);
+    }
+  }
 
   return supabaseResponse;
 }

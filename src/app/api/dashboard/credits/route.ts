@@ -1,0 +1,97 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+// GET: fetch credit data for dashboard
+// Returns:
+// - received: credit requests received on user's projects (for creators)
+// - my_credits: projects where user is credited (for members)
+// - my_requests: credit requests sent by user (for members)
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  }
+
+  // 1. Credit requests received on user's projects
+  const { data: userProjects } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("profile_id", user.id);
+
+  const projectIds = (userProjects ?? []).map((p) => p.id);
+
+  let received: Record<string, unknown>[] = [];
+  if (projectIds.length > 0) {
+    const { data: reqs } = await supabase
+      .from("credit_requests")
+      .select("*")
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+
+    // Enrich with requester name
+    received = await Promise.all(
+      (reqs ?? []).map(async (req) => {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", req.requester_id)
+          .single();
+        return {
+          ...req,
+          requester_name: profile?.full_name || null,
+        };
+      })
+    );
+  }
+
+  // 2. My credits (projects where I'm in project_credits)
+  const { data: rawCredits } = await supabase
+    .from("project_credits")
+    .select("*")
+    .eq("profile_id", user.id);
+
+  const myCredits = await Promise.all(
+    (rawCredits ?? []).map(async (credit) => {
+      const { data: project } = await supabase
+        .from("projects")
+        .select("title, slug")
+        .eq("id", credit.project_id)
+        .single();
+      return {
+        ...credit,
+        project_title: project?.title || null,
+        project_slug: project?.slug || null,
+      };
+    })
+  );
+
+  // 3. My credit requests sent
+  const { data: rawRequests } = await supabase
+    .from("credit_requests")
+    .select("*")
+    .eq("requester_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const myRequests = await Promise.all(
+    (rawRequests ?? []).map(async (req) => {
+      const { data: project } = await supabase
+        .from("projects")
+        .select("title, slug")
+        .eq("id", req.project_id)
+        .single();
+      return {
+        ...req,
+        project_title: project?.title || null,
+        project_slug: project?.slug || null,
+      };
+    })
+  );
+
+  return NextResponse.json({
+    received,
+    my_credits: myCredits,
+    my_requests: myRequests,
+  });
+}

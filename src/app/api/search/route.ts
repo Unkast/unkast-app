@@ -15,11 +15,15 @@ export async function GET(request: NextRequest) {
   let talents: Record<string, unknown>[] = [];
   let projects: Record<string, unknown>[] = [];
 
-  // --- Talents ---
+  // --- Talents (single query with joins) ---
   if (type === "all" || type === "talents") {
     let query = supabase
       .from("profiles")
-      .select("id, full_name, slug, avatar_url, location, is_available, bio, created_at")
+      .select(`
+        id, full_name, slug, avatar_url, location, is_available, bio, created_at,
+        profile_roles ( role_name ),
+        projects ( id )
+      `)
       .eq("status", "approved");
 
     if (q) {
@@ -39,26 +43,22 @@ export async function GET(request: NextRequest) {
     const { data } = await query;
 
     if (data) {
-      // Enrich with roles and project count
-      talents = await Promise.all(
-        data.map(async (profile) => {
-          const { data: roles } = await supabase
-            .from("profile_roles")
-            .select("role_name")
-            .eq("profile_id", profile.id);
-
-          const { count } = await supabase
-            .from("projects")
-            .select("*", { count: "exact", head: true })
-            .eq("profile_id", profile.id);
-
-          return {
-            ...profile,
-            roles: (roles ?? []).map((r) => r.role_name),
-            project_count: count ?? 0,
-          };
-        })
-      );
+      talents = data.map((profile: Record<string, unknown>) => {
+        const roles = profile.profile_roles as { role_name: string }[] | null;
+        const profileProjects = profile.projects as { id: string }[] | null;
+        return {
+          id: profile.id,
+          full_name: profile.full_name,
+          slug: profile.slug,
+          avatar_url: profile.avatar_url,
+          location: profile.location,
+          is_available: profile.is_available,
+          bio: profile.bio,
+          created_at: profile.created_at,
+          roles: (roles ?? []).map((r) => r.role_name),
+          project_count: profileProjects?.length ?? 0,
+        };
+      });
 
       // Filter by role if specified
       if (role) {
@@ -79,11 +79,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // --- Projects ---
+  // --- Projects (single query with join) ---
   if (type === "all" || type === "projets") {
     let query = supabase
       .from("projects")
-      .select("id, title, slug, description, category, year, video_url, profile_id, created_at");
+      .select(`
+        id, title, slug, description, category, year, video_url, profile_id, created_at,
+        profiles!projects_profile_id_fkey ( full_name, slug )
+      `)
+      .eq("status", "approved");
 
     if (q) {
       query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
@@ -102,22 +106,22 @@ export async function GET(request: NextRequest) {
     const { data } = await query;
 
     if (data) {
-      // Enrich with owner name
-      projects = await Promise.all(
-        data.map(async (project) => {
-          const { data: owner } = await supabase
-            .from("profiles")
-            .select("full_name, slug")
-            .eq("id", project.profile_id)
-            .single();
-
-          return {
-            ...project,
-            owner_name: owner?.full_name ?? "",
-            owner_slug: owner?.slug ?? "",
-          };
-        })
-      );
+      projects = data.map((project: Record<string, unknown>) => {
+        const owner = project.profiles as { full_name: string; slug: string } | null;
+        return {
+          id: project.id,
+          title: project.title,
+          slug: project.slug,
+          description: project.description,
+          category: project.category,
+          year: project.year,
+          video_url: project.video_url,
+          profile_id: project.profile_id,
+          created_at: project.created_at,
+          owner_name: owner?.full_name ?? "",
+          owner_slug: owner?.slug ?? "",
+        };
+      });
     }
   }
 

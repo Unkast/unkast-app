@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Next.js build output and cache
+.next/
+
+# Android / Capacitor build
+android/
+
+# Lock files (large, auto-generated)
+package-lock.json
+
+# Public assets (images, thumbnails)
+public/thumbnails/
+public/welcome-bg.png
+public/icon.svg
+public/icon-192.png
+public/apple-touch-icon.png
+public/manifest.json
+
+# Git internals
+.git/
+
+# Environment files (secrets)
+.env
+.env.local
+.env.production
+.env*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# TypeScript build info
+*.tsbuildinfo

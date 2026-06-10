@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "973330151358",
+    "project_id": "unkast-94a50",
+    "storage_bucket": "unkast-94a50.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:973330151358:android:70968a813dc2766979ebef",
+        "android_client_info": {
+          "package_name": "com.unkast.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1WakosqD6ZLlizlGztFpeksB1JuBEabw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
+import { slugify } from "@/lib/utils";
 
 // GET: fetch user's projects with credits
 export async function GET() {
@@ -80,6 +72,7 @@ export async function POST(request: NextRequest) {
       category,
       year: year || new Date().getFullYear(),
       video_url,
+      status: "pending",
     })
     .select("id")
     .single();

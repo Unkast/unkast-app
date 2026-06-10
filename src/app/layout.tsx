@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import AppShell from "@/components/AppShell";
-import SplashScreen from "@/components/SplashScreen";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -25,9 +23,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Unkast — Decouvre l'oeuvre. Trouve le talent.",
+  title: "Unkast — Découvre l'œuvre. Trouve le talent.",
   description:
-    "La plateforme ou les professionnels du cinema et de l'audiovisuel francais se font decouvrir a travers leurs realisations.",
+    "La plateforme où les professionnels du cinéma et de l'audiovisuel français se font découvrir à travers leurs réalisations.",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon-192.png",
@@ -38,10 +36,13 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Unkast",
   },
+  other: {
+    "theme-color": "#0d0d0d",
+  },
   openGraph: {
-    title: "Unkast — Decouvre l'oeuvre. Trouve le talent.",
+    title: "Unkast — Découvre l'œuvre. Trouve le talent.",
     description:
-      "La plateforme ou les professionnels du cinema et de l'audiovisuel francais se font decouvrir a travers leurs realisations.",
+      "La plateforme où les professionnels du cinéma et de l'audiovisuel français se font découvrir à travers leurs réalisations.",
     type: "website",
     locale: "fr_FR",
   },
@@ -55,12 +56,11 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
+      suppressHydrationWarning
       className={`${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full font-sans">
-        <SplashScreen>
-          <AppShell>{children}</AppShell>
-        </SplashScreen>
+        {children}
       </body>
     </html>
   );
