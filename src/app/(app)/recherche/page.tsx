@@ -36,6 +36,9 @@ async function getRecruitingProfiles() {
     .eq("status", "approved")
     .eq("is_recruiting", true)
     .order("updated_at", { ascending: false })
+    // Coup de pouce Pro : departage secondaire a date egale (quasi no-op car
+    // is_recruiting implique deja Pro ; robustesse pour d'eventuelles donnees legacy).
+    .order("plan", { ascending: false, nullsFirst: false })
     .limit(10);
 
   return (data ?? []).map((p: Record<string, unknown>) => {

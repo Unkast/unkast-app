@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveUser } from "@/lib/auth-guard";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+  const user = guard.user;
 
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  // Anti-spam de signalements : 10 / heure / utilisateur (fail-open).
+  if (!(await checkRateLimit(`report:${user.id}`, 10, 3600))) {
+    return NextResponse.json({ error: "Trop de signalements. Réessaie plus tard." }, { status: 429 });
   }
 
   const body = await request.json();

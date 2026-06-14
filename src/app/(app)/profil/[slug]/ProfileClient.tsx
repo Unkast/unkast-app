@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { FadeInView, cardHover, staggerContainer, fadeUp } from "@/components/motion";
 import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoFacade from "@/components/VideoFacade";
-import ContactModal from "@/components/ContactModal";
+import Avatar from "@/components/Avatar";
 import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
@@ -42,7 +42,7 @@ export default function ProfileClient({
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<ProjectCategory | "all">("all");
   const [expandedCredits, setExpandedCredits] = useState<Set<string>>(new Set());
-  const [contactOpen, setContactOpen] = useState(false);
+  const [contacting, setContacting] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
@@ -53,6 +53,9 @@ export default function ProfileClient({
   const [inviteMessage, setInviteMessage] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
   const [viewerIsCreator, setViewerIsCreator] = useState(false);
+  // Recrutement — signaux "Disponible" du visiteur vers ce recruteur (chantier 2).
+  const [availSignals, setAvailSignals] = useState<{ role: string; expires_at: string }[]>([]);
+  const [availBusy, setAvailBusy] = useState<string | null>(null);
   const userStatus = useUserStatus();
 
   useEffect(() => {
@@ -89,6 +92,31 @@ export default function ProfileClient({
     navigator.clipboard.writeText(window.location.href);
     setShareTooltip(true);
     setTimeout(() => setShareTooltip(false), 2000);
+  }
+
+  // Contact unifie : un Pro ouvre directement une conversation (messagerie),
+  // sans re-saisir nom/email. Plus d'ancien formulaire contact_requests.
+  async function openConversation() {
+    setContacting(true);
+    try {
+      const res = await fetch("/api/messages/conversation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient_id: profile.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.conversation_id) {
+        router.push(`/messages/${data.conversation_id}`);
+      } else if (res.status === 403 || data.redirect) {
+        router.push(data.redirect || "/pro");
+      } else {
+        alert(data.error || "Erreur");
+        setContacting(false);
+      }
+    } catch {
+      alert("Erreur réseau");
+      setContacting(false);
+    }
   }
 
   async function openInviteModal() {
@@ -128,26 +156,91 @@ export default function ProfileClient({
     finally { setInviteSending(false); }
   }
 
+  // --- Recrutement : disponibilité (côté talent) ---
+  const isRecruiting = Boolean((profile as Profile).is_recruiting);
+  const recruitingRoles = ((profile as Profile).recruiting_roles ?? []) as string[];
+
+  // Hydrate l'état des signaux pour un visiteur connecté non-Pro (les Pro ne
+  // voient pas le bloc : Pro ↔ Pro = contact direct).
+  useEffect(() => {
+    if (userStatus !== "free" || isOwnProfile || !isRecruiting) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/availability?recruiter=${profile.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setAvailSignals(data.signals || []);
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [userStatus, isOwnProfile, isRecruiting, profile.id]);
+
+  async function signalAvailable(role: string) {
+    setAvailBusy(role);
+    try {
+      const res = await fetch("/api/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recruiter_id: profile.id, role }),
+      });
+      const data = await res.json();
+      if (res.ok && data.signal) {
+        setAvailSignals((prev) => [...prev.filter((s) => s.role !== role), data.signal]);
+      } else {
+        alert(data.error || "Erreur");
+      }
+    } catch { alert("Erreur réseau"); }
+    finally { setAvailBusy(null); }
+  }
+
+  async function extendAvailable(role: string) {
+    setAvailBusy(role);
+    try {
+      const res = await fetch("/api/availability", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recruiter_id: profile.id, role }),
+      });
+      const data = await res.json();
+      if (res.ok && data.signal) {
+        setAvailSignals((prev) => prev.map((s) => (s.role === role ? data.signal : s)));
+      } else {
+        alert(data.error || "Erreur");
+      }
+    } catch { alert("Erreur réseau"); }
+    finally { setAvailBusy(null); }
+  }
+
+  async function withdrawAvailable(role: string) {
+    setAvailBusy(role);
+    try {
+      const res = await fetch("/api/availability", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recruiter_id: profile.id, role }),
+      });
+      if (res.ok) {
+        setAvailSignals((prev) => prev.filter((s) => s.role !== role));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erreur");
+      }
+    } catch { alert("Erreur réseau"); }
+    finally { setAvailBusy(null); }
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-16 lg:pb-0">
       <style>{`@keyframes recruiting-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }`}</style>
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
+      <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-4 sm:py-6 lg:py-10">
         <div className="flex flex-col lg:flex-row lg:gap-12 lg:items-start">
         {/* Left column — profile info */}
         <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="lg:w-80 lg:flex-shrink-0 lg:sticky lg:top-6 mb-8 lg:mb-0">
           {/* Avatar */}
-          <div className="w-[88px] h-[88px] rounded-full bg-white/[0.03] border-2 border-[rgba(200,255,0,0.2)] overflow-hidden flex-shrink-0 mb-5">
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.full_name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[28px] font-semibold text-[#C8FF00]">
-                {profile.full_name.charAt(0)}
-              </div>
-            )}
+          <div className="mb-5">
+            <Avatar url={profile.avatar_url} name={profile.full_name} size={88} style={{ background: "rgba(255,255,255,0.03)", border: "2px solid rgba(200,255,0,0.2)" }} />
           </div>
 
           <div>
@@ -175,6 +268,14 @@ export default function ProfileClient({
               ))}
             </div>
 
+            {/* Badge "recruteur vérifié" — accordé par l'admin (chantier 2). */}
+            {(profile as Profile).recruiter_verified && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)", borderRadius: 20, padding: "5px 12px", marginBottom: 10 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8" }}>Recruteur vérifié</span>
+              </div>
+            )}
+
             {/* Recruiting badge */}
             {(profile as any).is_recruiting && (profile as any).recruiting_roles?.length > 0 && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 20, padding: "6px 14px", marginTop: 2, marginBottom: 8 }}>
@@ -189,6 +290,59 @@ export default function ProfileClient({
                     return `${roles[0]} · ${roles[1]} +${roles.length - 2}`;
                   })()}
                 </span>
+              </div>
+            )}
+
+            {/* Disponibilité — signal côté talent (chantier 2). Masqué : sur son
+                propre profil, pour les Pro (contact direct), et si pas de recrutement. */}
+            {!isOwnProfile && isRecruiting && recruitingRoles.length > 0 && userStatus !== "pro" && userStatus !== null && (
+              <div style={{ marginTop: 4, marginBottom: 14, padding: 14, background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.15)", borderRadius: 12, maxWidth: 280 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Te signaler disponible</p>
+                {userStatus === "anonymous" ? (
+                  <>
+                    <p style={{ fontSize: 12, color: "#777", margin: 0, marginBottom: 12, lineHeight: 1.5 }}>
+                      Connecte-toi pour indiquer à {profile.full_name.split(" ")[0]} que tu es disponible pour un poste.
+                    </p>
+                    <button onClick={() => router.push("/rejoindre")} style={{ width: "100%", background: "#C8FF00", color: "#0d0d0d", fontSize: 13, fontWeight: 600, borderRadius: 10, padding: 11, border: "none", cursor: "pointer" }}>
+                      Rejoindre Unkast
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, color: "#777", margin: 0, marginBottom: 12, lineHeight: 1.5 }}>
+                      Sur quel poste es-tu disponible ?
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {recruitingRoles.map((role) => {
+                        const signal = availSignals.find((s) => s.role === role);
+                        const busy = availBusy === role;
+                        if (signal) {
+                          return (
+                            <div key={role} style={{ padding: "10px 12px", background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.22)", borderRadius: 10 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                                <span style={{ fontSize: 12.5, fontWeight: 600, color: "#22c55e" }}>Disponible — {role}</span>
+                              </div>
+                              <p style={{ fontSize: 11, color: "#777", margin: 0, marginBottom: 8 }}>
+                                Expire le {new Date(signal.expires_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                              </p>
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button onClick={() => extendAvailable(role)} disabled={busy} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f0f0f0", fontSize: 12, fontWeight: 500, borderRadius: 8, padding: "7px 0", cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>Prolonger</button>
+                                <button onClick={() => withdrawAvailable(role)} disabled={busy} style={{ flex: 1, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#888", fontSize: 12, fontWeight: 500, borderRadius: 8, padding: "7px 0", cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>Retirer</button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <button key={role} onClick={() => signalAvailable(role)} disabled={busy} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", background: "rgba(200,255,0,0.08)", border: "1px solid rgba(200,255,0,0.25)", color: "#C8FF00", fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "10px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, textAlign: "left" }}>
+                            <span>Disponible — {role}</span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -233,10 +387,11 @@ export default function ProfileClient({
               {/* Pro: full contact */}
               {userStatus === "pro" && (
                 <button
-                  onClick={() => setContactOpen(true)}
-                  className="px-6 py-3 max-w-[240px] bg-lime text-[#0d0d0d] font-bold text-sm rounded-[10px] hover:brightness-110 transition"
+                  onClick={openConversation}
+                  disabled={contacting}
+                  className="px-6 py-3 max-w-[240px] bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl hover:brightness-110 transition disabled:opacity-50"
                 >
-                  Contacter {profile.full_name.split(" ")[0]}
+                  {contacting ? "…" : `Contacter ${profile.full_name.split(" ")[0]}`}
                 </button>
               )}
               <div className="relative">
@@ -328,7 +483,7 @@ export default function ProfileClient({
                 <p className="text-[13px] text-[#444]">Aucun projet pour le moment</p>
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 {filteredProjects.map((project) => {
                   const ownerCredit = project.credits.find(
                     (c) => c.profile_id === profile.id
@@ -339,7 +494,7 @@ export default function ProfileClient({
                     <motion.article
                       key={project.id}
                       {...cardHover}
-                      className="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition"
+                      className="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 hover:shadow-2xl hover:shadow-black/40 transition"
                     >
                       {/* Façade vidéo : poster + play, lecteur monté au clic seulement */}
                       <VideoFacade
@@ -420,23 +575,13 @@ export default function ProfileClient({
                                     className="flex items-center gap-3 p-2.5 rounded-lg bg-background border border-white/5"
                                   >
                                     {/* Avatar */}
-                                    <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/5 overflow-hidden flex-shrink-0 ring-1 ring-white/10">
-                                      {credit.profile?.avatar_url ? (
-                                        <img
-                                          src={credit.profile.avatar_url}
-                                          alt=""
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-text-tertiary">
-                                          {(
-                                            credit.profile?.full_name ??
-                                            credit.ghost_name ??
-                                            "?"
-                                          ).charAt(0)}
-                                        </div>
-                                      )}
-                                    </div>
+                                    <Avatar
+                                      url={credit.profile?.avatar_url}
+                                      name={credit.profile?.full_name ?? credit.ghost_name ?? "?"}
+                                      size={32}
+                                      shape="rounded"
+                                      style={{ borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)" }}
+                                    />
 
                                     <div className="min-w-0">
                                       {credit.profile ? (
@@ -479,14 +624,6 @@ export default function ProfileClient({
           <ReportButton onClick={() => setReportOpen(true)} />
         </div>
       )}
-
-      {/* Contact Modal */}
-      <ContactModal
-        open={contactOpen}
-        onClose={() => setContactOpen(false)}
-        profileId={profile.id}
-        profileName={profile.full_name}
-      />
 
       {/* Report Modal */}
       <ReportModal

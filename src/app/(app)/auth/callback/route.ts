@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
           location: null,
           is_available: false,
           status: "approved",
-          account_type: "member",
+          account_type: "talent",
         });
 
         // Redirect to rejoindre step 3 to complete profile

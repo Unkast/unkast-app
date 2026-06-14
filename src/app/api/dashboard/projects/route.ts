@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_PROJECTS_FREE } from "@/lib/constants";
-import { slugify } from "@/lib/utils";
+import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { slugify, extractVideoKey } from "@/lib/utils";
 
 // GET: fetch user's projects with credits
 export async function GET() {
@@ -40,15 +40,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  // Check project limit
+  // Plafond plan-aware : 2 films (free) / 30 films (pro). Plan lu cote serveur.
+  const { data: planRow } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("id", user.id)
+    .single();
+  const projectLimit = planRow?.plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
+
   const { count } = await supabase
     .from("projects")
     .select("*", { count: "exact", head: true })
     .eq("profile_id", user.id);
 
-  if ((count ?? 0) >= MAX_PROJECTS_FREE) {
+  if ((count ?? 0) >= projectLimit) {
     return NextResponse.json(
-      { error: `Maximum ${MAX_PROJECTS_FREE} projets en version gratuite.` },
+      { error: `Maximum ${projectLimit} films pour ton offre actuelle.` },
       { status: 400 }
     );
   }
@@ -58,6 +65,26 @@ export async function POST(request: NextRequest) {
 
   if (!title || !category || !video_url) {
     return NextResponse.json({ error: "Titre, categorie et URL video requis." }, { status: 400 });
+  }
+
+  // Anti-vol d'œuvre (chantier 9) : une même vidéo ne peut être revendiquée que
+  // par un seul projet. On compare un identifiant canonique (youtube:<id> /
+  // vimeo:<id>), pas l'URL brute. Si la plateforme n'est pas reconnue
+  // (video_key null), aucune unicité n'est appliquée.
+  const video_key = extractVideoKey(video_url);
+  if (video_key) {
+    const { data: dup } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("video_key", video_key)
+      .limit(1)
+      .maybeSingle();
+    if (dup) {
+      return NextResponse.json(
+        { error: "Cette vidéo est déjà référencée sur Unkast." },
+        { status: 409 }
+      );
+    }
   }
 
   const projectSlug = slugify(title) + "-" + Date.now().toString(36);
@@ -72,12 +99,21 @@ export async function POST(request: NextRequest) {
       category,
       year: year || new Date().getFullYear(),
       video_url,
+      video_key,
       status: "pending",
     })
     .select("id")
     .single();
 
   if (error || !project) {
+    // Filet de sécurité : si la vérif applicative a été contournée (course),
+    // l'index unique partiel (code 23505) tranche → message propre.
+    if (error?.code === "23505") {
+      return NextResponse.json(
+        { error: "Cette vidéo est déjà référencée sur Unkast." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: error?.message ?? "Erreur creation projet." }, { status: 500 });
   }
 

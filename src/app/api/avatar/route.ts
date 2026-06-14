@@ -21,8 +21,11 @@ export async function POST(request: NextRequest) {
   // SÉCURITÉ : valider le type et la taille AVANT de charger le fichier en mémoire.
   // Sans ça : un appel direct à l'API peut envoyer un fichier de plusieurs Go
   // (DoS mémoire via arrayBuffer) ou un contenu non-image servi en image/jpeg.
+  // L'image arrive déjà compressée en WebP (canvas client, 512px). Le plafond
+  // serveur est le VRAI rempart anti-saturation : il bloque tout contournement
+  // de la compression navigateur. Marge large vs un WebP 512px (~30–60 Ko).
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-  const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
+  const MAX_SIZE = 3 * 1024 * 1024; // 3 Mo
 
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
@@ -38,19 +41,23 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const fileName = `${user.id}/avatar.jpg`;
+  const fileName = `${user.id}/avatar.webp`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error: uploadError } = await admin.storage
     .from("avatars")
     .upload(fileName, buffer, {
-      contentType: "image/jpeg",
+      contentType: "image/webp",
       upsert: true,
     });
 
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
+
+  // Ménage : on retire l'ancien avatar JPEG (format précédent) pour ne pas
+  // laisser d'orphelin dans le bucket. Best-effort, sans bloquer la réponse.
+  await admin.storage.from("avatars").remove([`${user.id}/avatar.jpg`]).catch(() => {});
 
   const { data: urlData } = admin.storage.from("avatars").getPublicUrl(fileName);
   const url = urlData.publicUrl + "?t=" + Date.now();
@@ -71,7 +78,8 @@ export async function DELETE() {
   }
 
   const admin = createAdminClient();
-  await admin.storage.from("avatars").remove([`${user.id}/avatar.jpg`]);
+  // Retire le format courant (.webp) ET l'éventuel ancien .jpg (legacy).
+  await admin.storage.from("avatars").remove([`${user.id}/avatar.webp`, `${user.id}/avatar.jpg`]);
   await admin.from("profiles").update({ avatar_url: null }).eq("id", user.id);
 
   return NextResponse.json({ success: true });

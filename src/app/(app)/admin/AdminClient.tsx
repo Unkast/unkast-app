@@ -5,8 +5,9 @@ import Link from "next/link";
 
 type Tab = "recruiters" | "reports" | "users" | "films";
 
-interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; is_suspended?: boolean; created_at: string; }
-interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; reason: string; description: string | null; total_reports: number; created_at: string; }
+interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; recruiter_verified?: boolean; is_suspended?: boolean; created_at: string; }
+interface RecruiterEdit { id: string; full_name: string; slug: string; bio: string | null; bio_pending: string | null; recruiter_verified: boolean; recruiter_company: string | null; created_at: string; }
+interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; }
 interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; }
 interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; }
 
@@ -23,6 +24,7 @@ export default function AdminClient() {
   // Data
   const [pendingRecruiters, setPendingRecruiters] = useState<Recruiter[]>([]);
   const [approvedRecruiters, setApprovedRecruiters] = useState<Recruiter[]>([]);
+  const [recruiterEdits, setRecruiterEdits] = useState<RecruiterEdit[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [userSearch, setUserSearch] = useState("");
@@ -35,7 +37,7 @@ export default function AdminClient() {
     const res = await fetch(`/api/admin?tab=${tab}&q=${userSearch}`);
     if (res.ok) {
       const data = await res.json();
-      if (tab === "recruiters") { setPendingRecruiters(data.pending || []); setApprovedRecruiters(data.approved || []); }
+      if (tab === "recruiters") { setPendingRecruiters(data.pending || []); setApprovedRecruiters(data.approved || []); setRecruiterEdits(data.edits || []); }
       if (tab === "reports") setReports(data.reports || []);
       if (tab === "users") setUsers(data.users || []);
       if (tab === "films") setFilms(data.films || []);
@@ -68,7 +70,7 @@ export default function AdminClient() {
     setModalAction(null);
   }
 
-  const totalPending = pendingRecruiters.length + reports.length + films.length;
+  const totalPending = pendingRecruiters.length + recruiterEdits.length + reports.length + films.length;
   const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
   const btnApprove = { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
@@ -91,7 +93,7 @@ export default function AdminClient() {
       {/* Tabs */}
       <div style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto" }}>
         {([
-          ["recruiters", "Recruteurs", pendingRecruiters.length],
+          ["recruiters", "Recruteurs", pendingRecruiters.length + recruiterEdits.length],
           ["reports", "Signalements", reports.length],
           ["users", "Utilisateurs", 0],
           ["films", "Films", films.length],
@@ -141,16 +143,63 @@ export default function AdminClient() {
             </div>
           ))}
 
+          {/* Modifications sensibles (description pro) en attente de re-validation */}
+          {recruiterEdits.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginTop: 32, marginBottom: 4 }}>Modifications en attente ({recruiterEdits.length})</h2>
+              <p style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Description professionnelle modifiée — le public voit encore la version actuelle.</p>
+              {recruiterEdits.map((e) => (
+                <div key={e.id} style={card}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Link href={`/profil/${e.slug}`} target="_blank" style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", textDecoration: "none" }}>{e.full_name}</Link>
+                        {e.recruiter_verified && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(56,189,248,0.12)", color: "#38bdf8", fontWeight: 600 }}>Vérifié</span>}
+                      </div>
+                      {e.recruiter_company && <p style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{e.recruiter_company}</p>}
+                    </div>
+                    <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace" }}>{new Date(e.created_at).toLocaleDateString("fr-FR")}</p>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 10 }}>
+                      <p style={{ fontSize: 10, color: "#555", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Actuelle (publique)</p>
+                      <p style={{ fontSize: 12.5, color: "#888", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio || <span style={{ color: "#444" }}>— vide —</span>}</p>
+                    </div>
+                    <div style={{ background: "rgba(200,255,0,0.03)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 8, padding: 10 }}>
+                      <p style={{ fontSize: 10, color: "#8aa800", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Proposée</p>
+                      <p style={{ fontSize: 12.5, color: "#e8e8e8", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio_pending || <span style={{ color: "#444" }}>— vide —</span>}</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => doAction("approve_recruiter_edit", e.id)} disabled={actionLoading === e.id} style={btnApprove}>Approuver la modif</button>
+                    <button onClick={() => confirmAction("reject_recruiter_edit", e.id, `Refuser la modification de ${e.full_name}`)} style={btnDanger}>Refuser</button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
           {approvedRecruiters.length > 0 && (
             <>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginTop: 32, marginBottom: 14 }}>Approuvés ({approvedRecruiters.length})</h2>
               {approvedRecruiters.map((r) => (
-                <div key={r.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.full_name}</p>
+                <div key={r.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.full_name}</p>
+                      {r.recruiter_verified && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(56,189,248,0.12)", color: "#38bdf8", fontWeight: 600 }}>Vérifié</span>}
+                    </div>
                     <p style={{ fontSize: 11, color: "#555" }}>{r.recruiter_company}</p>
                   </div>
-                  <button onClick={() => confirmAction("suspend_user", r.id, `Suspendre ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12 }}>Suspendre</button>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    {r.recruiter_verified
+                      ? <button onClick={() => confirmAction("revoke_recruiter_verified", r.id, `Retirer la vérification de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Retirer vérif.</button>
+                      : <button onClick={() => doAction("grant_recruiter_verified", r.id)} disabled={actionLoading === r.id} style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Vérifier</button>
+                    }
+                    <button onClick={() => confirmAction("suspend_user", r.id, `Suspendre ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12 }}>Suspendre</button>
+                  </div>
                 </div>
               ))}
             </>
@@ -163,10 +212,11 @@ export default function AdminClient() {
         <div>
           {reports.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun signalement en attente.</p>}
           {reports.map((r) => (
-            <div key={r.id} style={card}>
+            <div key={r.id} style={r.urgent ? { ...card, borderColor: "rgba(239,68,68,0.4)", borderLeft: "3px solid #ef4444" } : card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {r.urgent && <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", letterSpacing: "0.05em" }}>URGENT</span>}
                     <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#888", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{r.target_type}</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.target_name}</span>
                     {r.total_reports >= 3 && <span style={{ padding: "2px 6px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff" }}>{r.total_reports} signalements</span>}

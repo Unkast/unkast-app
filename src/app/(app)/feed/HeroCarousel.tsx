@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 
 interface CarouselProject {
@@ -83,9 +83,13 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
     return -1; // hidden
   }
 
+  const activeColor = CATEGORY_COLORS[active.category];
+
   return (
+    <>
+    {/* ============ MOBILE / TABLET — carrousel 3D en éventail (inchangé) ============ */}
     <div
-      className="w-full select-none"
+      className="w-full select-none lg:hidden"
       style={{ overflowX: "hidden", overflowY: "visible" }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -231,5 +235,122 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
         </motion.div>
       </AnimatePresence>
     </div>
+
+    {/* ============ DESKTOP — billboard façon Netflix ============ */}
+    <div className="hidden lg:block px-12 xl:px-16 pt-2">
+      <div className="relative w-full overflow-hidden rounded-2xl border border-white/5 bg-[#141414] h-[460px] xl:h-[540px]">
+        {/* Backdrop (crossfade sur le projet actif) */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active.id}
+            initial={{ opacity: 0, scale: 1.04 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+            className="absolute inset-0"
+          >
+            {active.preview_url || active.poster_url ? (
+              <Image
+                src={(active.preview_url || active.poster_url) as string}
+                alt={active.title}
+                fill
+                priority
+                sizes="(max-width: 1600px) 100vw, 1600px"
+                style={{ objectFit: "cover" }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg width="72" height="72" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.12 }}>
+                  <polygon points="16,10 40,24 16,38" fill="#C8FF00" />
+                </svg>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Scrims pour la lisibilité du texte */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0d]/85 via-[#0d0d0d]/10 to-transparent" />
+
+        {/* Bloc texte + actions (largeur intrinsèque, aligné à gauche) */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active.id + "-info"}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            className="absolute left-0 bottom-0 p-10 xl:p-12 max-w-[620px]"
+          >
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary mb-3">{active.year}</p>
+            <h2 className="text-4xl xl:text-5xl font-bold tracking-tight text-text-primary leading-[1.05] mb-4">
+              {active.title}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 mb-7">
+              <span
+                className="px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ backgroundColor: activeColor + "20", color: activeColor }}
+              >
+                {CATEGORY_LABELS[active.category]}
+              </span>
+              {active.team_size > 0 && (
+                <span className="px-3 py-1 rounded-full bg-white/[0.08] border border-white/10 text-xs text-text-secondary">
+                  {active.team_size} talent{active.team_size > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/projet/${active.slug}`}
+                className="inline-flex items-center gap-2 bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl px-6 py-3 hover:brightness-110 transition"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                Voir le film
+              </Link>
+              <Link
+                href={`/profil/${active.owner_slug}`}
+                className="inline-flex items-center max-w-[220px] truncate bg-white/[0.08] border border-white/10 text-text-primary text-sm rounded-xl px-5 py-3 backdrop-blur-sm hover:bg-white/[0.12] transition"
+              >
+                {active.owner_name}
+              </Link>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Rail de vignettes — sélecteur (remplace les dots sur desktop) */}
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-2.5">
+          {projects.slice(0, count).map((p, i) => {
+            const isActive = i === activeIndex;
+            return (
+              <motion.button
+                key={p.id}
+                onClick={() => goTo(i)}
+                aria-label={`Voir ${p.title}`}
+                animate={{ width: isActive ? 132 : 104, height: isActive ? 74 : 60 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="relative overflow-hidden rounded-lg flex-shrink-0"
+                style={{
+                  border: isActive ? "2px solid #C8FF00" : "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: isActive ? "0 12px 30px rgba(0,0,0,0.5)" : "none",
+                  cursor: isActive ? "default" : "pointer",
+                }}
+              >
+                {p.preview_url || p.poster_url ? (
+                  <Image src={(p.preview_url || p.poster_url) as string} alt={p.title} fill sizes="132px" style={{ objectFit: "cover" }} />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a]">
+                    <svg width="20" height="20" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.25 }}>
+                      <polygon points="16,10 40,24 16,38" fill="#C8FF00" />
+                    </svg>
+                  </div>
+                )}
+                {!isActive && <div className="absolute inset-0 bg-black/40 hover:bg-black/10 transition-colors" />}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+    </>
   );
 }

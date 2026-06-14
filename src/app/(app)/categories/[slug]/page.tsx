@@ -8,7 +8,7 @@ import type { ProjectCategory } from "@/types/database";
 export const revalidate = 300; // Cache 5 minutes (était absent → aucun cache)
 
 const VALID_CATEGORIES: ProjectCategory[] = [
-  "court-metrage", "publicite", "clip", "documentaire", "bande-demo", "scene-extrait",
+  "court-metrage", "moyen-metrage", "long-metrage", "publicite", "clip", "documentaire", "bande-demo", "scene-extrait",
 ];
 
 const PAGE_SIZE = 30;

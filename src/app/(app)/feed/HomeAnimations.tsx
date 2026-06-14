@@ -28,7 +28,7 @@ export function Section({ children, delay = 0 }: { children: ReactNode; delay?: 
 export function AnimatedCard({ children }: { children: ReactNode }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.02, y: -2 }}
+      whileHover={{ scale: 1.03, y: -4 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
     >

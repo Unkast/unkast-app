@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import { Section, AnimatedCard } from "./HomeAnimations";
+import Avatar from "@/components/Avatar";
 import HeroCarousel from "./HeroCarousel";
 import ConversionBanner from "./ConversionBanner";
 
@@ -49,14 +50,17 @@ async function getHomeData() {
     .from("projects")
     .select(`
       id, title, slug, category, year, description, video_url, poster_url, preview_url,
-      profiles!projects_profile_id_fkey ( full_name, slug ),
+      profiles!projects_profile_id_fkey ( full_name, slug, is_suspended ),
       project_credits ( id )
     `)
     .eq("status", "approved")
     .order("created_at", { ascending: false })
     .limit(12);
 
-  const recentAll: ProjectCard[] = (recentRaw ?? []).map((p: Record<string, unknown>) => {
+  const recentAll: ProjectCard[] = (recentRaw ?? [])
+    // Retire les films dont le proprietaire est suspendu (chantier 3).
+    .filter((p: Record<string, unknown>) => !((p.profiles as { is_suspended?: boolean } | null)?.is_suspended))
+    .map((p: Record<string, unknown>) => {
     const owner = p.profiles as { full_name: string; slug: string } | null;
     const credits = p.project_credits as { id: string }[] | null;
     return {
@@ -91,7 +95,7 @@ async function getHomeData() {
         .from("projects")
         .select(`
           id, title, slug, category, year, description, video_url, poster_url, preview_url,
-          profiles!projects_profile_id_fkey ( full_name, slug ),
+          profiles!projects_profile_id_fkey ( full_name, slug, is_suspended ),
           project_credits ( id )
         `)
         .eq("category", cat)
@@ -105,7 +109,9 @@ async function getHomeData() {
     const cat = categoriesToShow[i];
     const catRaw = categoryResults[i].data;
     if (catRaw && catRaw.length > 0) {
-      const items: ProjectCard[] = catRaw.map((p: Record<string, unknown>) => {
+      const items: ProjectCard[] = catRaw
+        .filter((p: Record<string, unknown>) => !((p.profiles as { is_suspended?: boolean } | null)?.is_suspended))
+        .map((p: Record<string, unknown>) => {
         const owner = p.profiles as { full_name: string; slug: string } | null;
         const credits = p.project_credits as { id: string }[] | null;
         return {
@@ -136,6 +142,7 @@ async function getHomeData() {
       projects ( id )
     `)
     .eq("status", "approved")
+    .not("is_suspended", "is", true) // chantier 3 : suspendus hors vue publique
     .order("created_at", { ascending: false })
     .limit(12);
 
@@ -162,13 +169,14 @@ export default async function Home() {
 
   return (
     <div className="pb-16 lg:pb-0">
+      <div className="mx-auto w-full max-w-[1600px]">
       {/* HERO CAROUSEL */}
       {recent.length > 0 && (
         <HeroCarousel projects={recent.slice(0, 5)} />
       )}
 
       {/* CONTENT ROWS */}
-      <div className="space-y-8 py-6">
+      <div className="space-y-8 lg:space-y-12 py-6 lg:py-10">
         {recent.length > 5 && (
           <Section delay={0}>
             <ProjectRow title="Projets récents" href="/recherche?type=projets" items={recent.slice(5)} />
@@ -183,30 +191,23 @@ export default async function Home() {
 
         {talents.length > 0 && (
           <Section delay={(categoryRows.length + 1) * 0.1}>
-            <section className="glow-lime px-5 sm:px-8">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[15px] font-bold text-text-primary">Talents à découvrir</h2>
-                <Link href="/recherche?type=talents" className="text-[11px] text-text-tertiary hover:text-lime transition-colors duration-300">
+            <section className="glow-lime px-5 sm:px-8 lg:px-12 xl:px-16">
+              <div className="flex items-end justify-between mb-3 lg:mb-4">
+                <h2 className="text-[15px] lg:text-xl font-bold text-text-primary tracking-tight">Talents à découvrir</h2>
+                <Link href="/recherche?type=talents" className="group/all inline-flex items-center gap-1 text-[11px] lg:text-xs text-text-tertiary hover:text-lime transition-colors duration-300">
                   Tout voir
+                  <span className="transition-transform duration-300 group-hover/all:translate-x-0.5">→</span>
                 </Link>
               </div>
-              <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 pb-1">
+              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pb-1">
                 {talents.map((talent) => (
                   <AnimatedCard key={talent.id}>
                     <Link
                       href={`/profil/${talent.slug}`}
-                      className="flex-shrink-0 w-48 bg-white/[0.03] border border-white/5 rounded-xl p-3.5 hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group block"
+                      className="flex-shrink-0 w-48 lg:w-56 bg-white/[0.03] border border-white/5 rounded-xl p-3.5 lg:p-4 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 group block"
                     >
                       <div className="flex items-center gap-2.5 mb-2.5">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden flex-shrink-0">
-                          {talent.avatar_url ? (
-                            <Image src={talent.avatar_url} alt={talent.full_name} width={40} height={40} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-text-tertiary">
-                              {talent.full_name.charAt(0)}
-                            </div>
-                          )}
-                        </div>
+                        <Avatar url={talent.avatar_url} name={talent.full_name} size={40} shape="rounded" style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors duration-300 truncate">
@@ -237,6 +238,7 @@ export default async function Home() {
           </Section>
         )}
       </div>
+      </div>
 
       <ConversionBanner />
     </div>
@@ -246,21 +248,22 @@ export default async function Home() {
 /* PROJECT ROW */
 function ProjectRow({ title, href, items }: ContentRow) {
   return (
-    <section className="px-5 sm:px-8">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[15px] font-bold text-text-primary">{title}</h2>
-        <Link href={href} className="text-[11px] text-text-tertiary hover:text-lime transition-colors duration-300">
+    <section className="px-5 sm:px-8 lg:px-12 xl:px-16">
+      <div className="flex items-end justify-between mb-3 lg:mb-4">
+        <h2 className="text-[15px] lg:text-xl font-bold text-text-primary tracking-tight">{title}</h2>
+        <Link href={href} className="group/all inline-flex items-center gap-1 text-[11px] lg:text-xs text-text-tertiary hover:text-lime transition-colors duration-300">
           Tout voir
+          <span className="transition-transform duration-300 group-hover/all:translate-x-0.5">→</span>
         </Link>
       </div>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 pb-1">
+      <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pb-1">
         {items.map((project) => {
           const catColor = CATEGORY_COLORS[project.category];
           return (
             <AnimatedCard key={project.id}>
-              <Link href={`/projet/${project.slug}`} className="flex-shrink-0 w-60 sm:w-72 group block">
+              <Link href={`/projet/${project.slug}`} className="flex-shrink-0 w-60 sm:w-72 lg:w-80 group block">
                 <div
-                  className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:bg-white/[0.05] transition-all duration-300"
+                  className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:bg-white/[0.05] group-hover:shadow-2xl group-hover:shadow-black/50 transition-all duration-300"
                   style={{ aspectRatio: "16/9" }}
                 >
                   {project.preview_url ? (

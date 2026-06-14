@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "optimize:images": "node scripts/optimize-category-images.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -25,7 +26,8 @@
     "react-dom": "19.2.4",
     "react-easy-crop": "^5.5.7",
     "react-player": "^3.4.0",
-    "resend": "^6.9.4"
+    "resend": "^6.9.4",
+    "stripe": "^22.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -34,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.0",
+    "sharp": "^0.35.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

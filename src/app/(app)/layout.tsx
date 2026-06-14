@@ -35,7 +35,7 @@ export default async function AppLayout({
       initialUser = {
         full_name: profile.full_name,
         slug: profile.slug,
-        account_type: profile.account_type || "member",
+        account_type: profile.account_type || "talent",
         avatar_url: profile.avatar_url,
         role_name: roles?.[0]?.role_name,
       };

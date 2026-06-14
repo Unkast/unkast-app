@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoEmbed from "@/components/VideoEmbed";
+import Avatar from "@/components/Avatar";
 import { ModalBackdrop } from "@/components/motion";
 import ReportModal from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
@@ -123,8 +124,8 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
           </div>
         )}
 
-        {/* ===== ZONE 1 — IMAGE HERO ===== */}
-        <div style={{ position: "relative", width: "100%", height: 260, background: "#1a1a1a", overflow: "hidden" }}>
+        {/* ===== ZONE 1 — IMAGE HERO (bannière) ===== */}
+        <div className="relative w-full overflow-hidden bg-[#1a1a1a] h-[260px] lg:h-[440px]">
           {project.preview_url ? (
             <Image src={project.preview_url} alt={project.title} fill priority sizes="100vw" style={{ objectFit: "cover" }} />
           ) : (
@@ -158,10 +159,26 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
           <button onClick={() => setShowVideo(true)} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 60, height: 60, borderRadius: "50%", background: "rgba(0,0,0,0.65)", border: "2px solid rgba(255,255,255,0.9)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d="M8 5v14l11-7z" /></svg>
           </button>
+
+          {/* Titre en surimpression — desktop uniquement */}
+          <div className="hidden lg:flex absolute inset-0 flex-col justify-end pointer-events-none">
+            <div className="mx-auto w-full max-w-[1280px] px-12 pb-10">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary mb-2">
+                {project.year} &middot; {categoryLabels[project.category].toUpperCase()}
+              </p>
+              <h1 className="text-4xl xl:text-5xl font-bold tracking-tight text-text-primary leading-[1.05]">{project.title}</h1>
+            </div>
+          </div>
         </div>
 
         {/* ===== ZONE 2 — CONTENT ===== */}
-        <div style={{ padding: "0 20px", marginTop: -2 }}>
+        <div className="mx-auto w-full max-w-[1280px] px-5 lg:px-12" style={{ marginTop: -2 }}>
+          <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 lg:items-start lg:pt-8">
+          {/* ========= COLONNE PRINCIPALE ========= */}
+          <div className="min-w-0">
+
+          {/* Date + Titre + Pills + Regarder — mobile (sur desktop : bannière + sidebar) */}
+          <div className="lg:hidden">
           {/* Date + category */}
           <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, letterSpacing: "0.1em", color: "#555", textTransform: "uppercase", marginTop: 16, marginBottom: 8 }}>
             {project.year} &middot; {categoryLabels[project.category].toUpperCase()}
@@ -185,6 +202,10 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
           {/* Separator */}
           <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 24 }} />
+          </div>
+
+          {/* Synopsis + Équipe + Du même réalisateur (partagés mobile/desktop) */}
+          <div className="lg:pt-2">
 
           {/* Synopsis */}
           {desc && (
@@ -253,19 +274,14 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
             </div>
           )}
 
+          <div className="lg:hidden">
           <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
 
           {/* Director */}
           <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 12 }}>Réalisé par</h2>
           <Link href={`/profil/${project.owner.slug}`} style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-                {project.owner.avatar_url ? (
-                  <img src={project.owner.avatar_url} alt={project.owner.full_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span style={{ fontSize: 16, fontWeight: 600, color: "#C8FF00" }}>{initials(project.owner.full_name)}</span>
-                )}
-              </div>
+              <Avatar url={project.owner.avatar_url} name={project.owner.full_name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", margin: 0 }}>{project.owner.full_name}</p>
                 <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{ownerRole}</p>
@@ -273,35 +289,52 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
             </div>
           </Link>
+          </div>
 
           {/* Related projects */}
           {relatedProjects.length > 0 && (
             <>
               <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
               <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 14 }}>Du même réalisateur</h2>
-              <div className="no-scrollbar" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
-                {relatedProjects.map((rp) => (
-                  <Link key={rp.id} href={`/projet/${rp.slug}`} style={{ textDecoration: "none", flexShrink: 0 }}>
-                    <div style={{ width: 120 }}>
-                      <div style={{ width: 120, height: 170, borderRadius: 10, background: "#1a1a1a", overflow: "hidden", position: "relative", border: "1px solid rgba(255,255,255,0.05)" }}>
-                        {rp.poster_url ? (
-                          <img src={rp.poster_url} alt={rp.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar pb-1">
+                {relatedProjects.map((rp) => {
+                  const rpColor = categoryColors[rp.category];
+                  return (
+                    <Link key={rp.id} href={`/projet/${rp.slug}`} className="flex-shrink-0 w-60 sm:w-72 group block">
+                      <div
+                        className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/50 transition-all duration-300"
+                        style={{ aspectRatio: "16/9" }}
+                      >
+                        {rp.preview_url || rp.poster_url ? (
+                          <img src={(rp.preview_url || rp.poster_url) as string} alt={rp.title} className="absolute inset-0 w-full h-full object-cover" />
                         ) : (
-                          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.15 }}><path d="M8 5v14l11-7z" /></svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.12 }}><path d="M8 5v14l11-7z" /></svg>
                           </div>
                         )}
+                        <span
+                          className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide"
+                          style={{ backgroundColor: rpColor + "20", color: rpColor }}
+                        >
+                          {categoryLabels[rp.category]}
+                        </span>
                       </div>
-                      <p style={{ fontSize: 12, fontWeight: 500, color: "#f0f0f0", margin: "8px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rp.title}</p>
-                      <p style={{ fontSize: 10, color: "#555", fontFamily: "JetBrains Mono, monospace", margin: "2px 0 0" }}>{rp.year}</p>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="mt-2.5 px-0.5">
+                        <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{rp.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[11px] text-text-tertiary truncate">{rp.owner_name}</span>
+                          <span className="text-[11px] text-text-tertiary/50 font-mono">{rp.year}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </>
           )}
 
-          {/* Credit request button */}
+          {/* Crédit + statut — mobile (desktop : sidebar) */}
+          <div className="lg:hidden">
           {showCreditButton && (
             <>
               <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
@@ -316,6 +349,56 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
               <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.2)", color: "#facc15", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>Demande en attente</span>
             </div>
           )}
+          </div>
+
+          </div>{/* fin wrapper partagé */}
+          </div>{/* fin colonne principale */}
+
+          {/* ========= SIDEBAR (desktop uniquement) ========= */}
+          <aside className="hidden lg:block lg:sticky lg:top-8 space-y-4">
+            {/* Fiche technique */}
+            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary mb-3">Fiche technique</p>
+              <dl className="space-y-2.5 text-sm">
+                <div className="flex items-center justify-between gap-3"><dt className="text-text-tertiary">Catégorie</dt><dd className="font-medium" style={{ color: catColor }}>{categoryLabels[project.category]}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-text-tertiary">Année</dt><dd className="font-medium font-mono text-text-primary">{project.year}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-text-tertiary">Talents</dt><dd className="font-medium text-text-primary">{project.credits.length}</dd></div>
+              </dl>
+            </div>
+
+            {/* Regarder */}
+            <button onClick={() => setShowVideo(true)} className="w-full inline-flex items-center justify-center gap-2 bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl px-6 py-3 hover:brightness-110 transition">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              Regarder
+            </button>
+
+            {/* Réalisé par */}
+            <Link href={`/profil/${project.owner.slug}`} className="block">
+              <div className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl p-4 hover:border-white/10 transition">
+                <Avatar url={project.owner.avatar_url} name={project.owner.full_name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-text-tertiary mb-0.5">Réalisé par</p>
+                  <p className="text-sm font-medium text-text-primary truncate">{project.owner.full_name}</p>
+                  <p className="text-xs text-text-tertiary truncate">{ownerRole}</p>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M9 5l7 7-7 7" /></svg>
+              </div>
+            </Link>
+
+            {/* Crédit + statut */}
+            {showCreditButton && (
+              <button onClick={() => setShowCreditModal(true)} className="w-full border border-dashed rounded-xl px-4 py-3 text-[13px] text-center transition" style={{ borderColor: "rgba(200,255,0,0.25)", color: "#C8FF00", background: "transparent", fontFamily: "JetBrains Mono, monospace" }}>
+                + J&apos;ai participé à ce projet
+              </button>
+            )}
+            {creditStatus.hasPendingRequest && (
+              <div className="text-center">
+                <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.2)", color: "#facc15", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>Demande en attente</span>
+              </div>
+            )}
+          </aside>
+
+          </div>{/* fin grille */}
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
+import Avatar from "@/components/Avatar";
 
 type Mode = "browse" | "search";
 type SearchFilter = "all" | "talents" | "projets";
@@ -42,6 +43,20 @@ const CATEGORIES: {
     label: "Court-métrage",
     gradient: "linear-gradient(135deg, #1a0d2e, #2d1b4e)",
     accent: "#a855f7",
+    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />,
+  },
+  {
+    key: "moyen-metrage",
+    label: "Moyen métrage",
+    gradient: "linear-gradient(135deg, #0d1f2e, #1b3a4e)",
+    accent: "#38BDF8",
+    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />,
+  },
+  {
+    key: "long-metrage",
+    label: "Long métrage",
+    gradient: "linear-gradient(135deg, #2e0d2a, #4e1b45)",
+    accent: "#E879F9",
     icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />,
   },
   {
@@ -86,6 +101,67 @@ const ROLES_PILLS = [
   "Producteur", "Scénariste", "Chef opérateur", "Costumier",
   "Compositeur", "Ingénieur son", "Motion designer",
 ];
+
+// Version des images de catégories. À incrémenter quand tu remplaces une image
+// (cache-bust navigateur/CDN sans changer le nom de fichier).
+const CATEGORY_IMG_VERSION = "2";
+
+// Nom de fichier image par catégorie. Par défaut = <id>.webp. On peut surcharger
+// si besoin de repartir sur un nom neuf (ex. publicite : ancien nom "empoisonné"
+// dans des caches navigateur/SW -> fichier renommé publicite-bg.webp).
+const CATEGORY_IMG_FILE: Record<string, string> = {
+  publicite: "publicite-bg",
+};
+
+// Fond image d'une carte de catégorie : public/categories/<id>.webp.
+// Fallback : si l'image manque (onError), on ne rend RIEN -> le dégradé de la
+// carte (background du <Link>) réapparaît, identique à l'existant. L'overlay
+// sombre n'apparaît qu'une fois l'image chargée, pour ne pas assombrir le
+// dégradé de fallback.
+function CategoryBg({ categoryKey }: { categoryKey: string }) {
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Garde-fou anti-race : si l'image est servie depuis le CACHE, l'événement
+  // `load` peut se déclencher AVANT que React n'attache onLoad -> l'image reste
+  // à opacity 0 (invisible). Au montage, on inspecte donc directement l'état réel
+  // de l'<img> (complete + naturalWidth) pour rattraper ce cas.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img || !img.complete) return;
+    if (img.naturalWidth === 0) setFailed(true);
+    else setLoaded(true);
+  }, []);
+
+  if (failed) return null;
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={imgRef}
+        src={`/categories/${CATEGORY_IMG_FILE[categoryKey] ?? categoryKey}.webp?v=${CATEGORY_IMG_VERSION}`}
+        alt=""
+        aria-hidden
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? 1 : 0 }}
+      />
+      {loaded && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            // Plus dense en bas/bas-gauche pour la lisibilité du titre + compteur.
+            background: "linear-gradient(to top right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 42%, rgba(0,0,0,0.08) 78%)",
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 interface Props {
   categoryCounts: Record<string, number>;
@@ -141,6 +217,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
 
   return (
     <div className="pb-16 lg:pb-0">
+      <div className="mx-auto w-full max-w-[1600px] lg:px-12 xl:px-16">
       {/* Header */}
       <div className="px-5 pt-5">
         <h1 className="text-[24px] font-semibold text-text-primary" style={{ letterSpacing: "-0.5px" }}>
@@ -181,13 +258,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                 <div className="no-scrollbar" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 4px" }}>
                   {recruitingProfiles.map((p: any) => (
                     <Link key={p.id} href={`/profil/${p.slug}`} style={{ flexShrink: 0, width: 140, background: "#141414", border: "1px solid rgba(34,197,94,0.15)", borderRadius: 12, padding: 14, textAlign: "center", textDecoration: "none" }}>
-                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", overflow: "hidden" }}>
-                        {p.avatar_url ? (
-                          <img src={p.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                          <span style={{ fontSize: 14, fontWeight: 600, color: "#C8FF00" }}>{p.full_name?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}</span>
-                        )}
-                      </div>
+                      <Avatar url={p.avatar_url} name={p.full_name || ""} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)", margin: "0 auto 8px" }} />
                       <p style={{ fontSize: 13, fontWeight: 500, color: "#f0f0f0", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.full_name}</p>
                       <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.main_role}</p>
                       {p.recruiting_roles?.length > 0 && (
@@ -199,7 +270,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2.5 px-4 pb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 lg:gap-4 px-4 lg:px-1 pb-6">
               {CATEGORIES.map((cat) => (
                 <Link
                   key={cat.key}
@@ -207,6 +278,8 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                   className="relative overflow-hidden block active:scale-[0.97] transition-transform duration-100"
                   style={{ height: 140, borderRadius: 12, background: cat.gradient, border: "1px solid rgba(255,255,255,0.06)" }}
                 >
+                  {/* Fond image (si présent) + overlay ; sinon le dégradé ci-dessus reste visible */}
+                  <CategoryBg categoryKey={cat.key} />
                   <svg className="absolute" style={{ top: -20, right: -20, opacity: 0.08 }} width="80" height="80" viewBox="0 0 80 80">
                     <circle cx="40" cy="40" r="38" stroke={cat.accent} strokeWidth="2" fill="none" />
                   </svg>
@@ -252,7 +325,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
             className="px-4"
           >
             <div
-              className="flex items-center gap-3 px-4 py-3.5 rounded-xl mb-3 transition-colors"
+              className="flex items-center gap-3 px-4 py-3.5 rounded-xl mb-3 transition-colors lg:max-w-2xl"
               style={{ background: "#1a1a1a", border: query ? "1px solid #C8FF00" : "1px solid rgba(255,255,255,0.1)" }}
             >
               <svg className="w-4 h-4 flex-shrink-0" style={{ color: "#555" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,7 +348,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
               )}
             </div>
 
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-4 lg:max-w-2xl">
               {([["all", "Tous"], ["talents", "Talents"], ["projets", "Films"]] as const).map(([key, label]) => (
                 <button
                   key={key}
@@ -325,12 +398,11 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
             {!searching && talents.length > 0 && (filter === "all" || filter === "talents") && (
               <div className="mb-6">
                 {filter === "all" && <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">Talents</p>}
-                <div className="space-y-1.5">
+                {/* Mobile : liste compacte */}
+                <div className="space-y-1.5 lg:hidden">
                   {talents.map((t) => (
                     <Link key={t.id} href={`/profil/${t.slug}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition group">
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#222] border-[1.5px] border-[rgba(200,255,0,0.3)] flex items-center justify-center text-xs font-semibold text-[#C8FF00] flex-shrink-0">
-                        {t.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
-                      </div>
+                      <Avatar url={t.avatar_url} name={t.full_name} size={44} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-text-primary group-hover:text-[#C8FF00] transition truncate">{t.full_name}</p>
                         <p className="text-xs text-[#555] truncate">{t.roles[0] || ""}{t.location && ` · ${t.location}`}</p>
@@ -342,6 +414,28 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                     </Link>
                   ))}
                 </div>
+                {/* Desktop : grille cartes talent (langage Feed) */}
+                <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {talents.map((t) => (
+                    <Link key={t.id} href={`/profil/${t.slug}`} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 group block">
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <Avatar url={t.avatar_url} name={t.full_name} size={40} shape="rounded" style={{ borderRadius: 12 }} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition truncate">{t.full_name}</span>
+                            {t.is_available && <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] flex-shrink-0" />}
+                          </div>
+                          {t.location && <p className="text-[10px] text-text-tertiary truncate">{t.location}</p>}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {t.roles.slice(0, 2).map((role) => (
+                          <span key={role} className="px-2 py-0.5 rounded-full bg-lime/8 text-lime text-[9px] font-semibold">{role}</span>
+                        ))}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -349,7 +443,8 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
             {!searching && projects.length > 0 && (filter === "all" || filter === "projets") && (
               <div className="mb-6">
                 {filter === "all" && <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">Films</p>}
-                <div className="space-y-1.5">
+                {/* Mobile : liste compacte */}
+                <div className="space-y-1.5 lg:hidden">
                   {projects.map((p) => {
                     const catColor = CATEGORY_COLORS[p.category];
                     return (
@@ -384,11 +479,41 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                     );
                   })}
                 </div>
+                {/* Desktop : grille cartes Feed (films) */}
+                <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {projects.map((p) => {
+                    const catColor = CATEGORY_COLORS[p.category];
+                    return (
+                      <Link key={p.id} href={`/projet/${p.slug}`} className="group block">
+                        <div className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/50 transition-all duration-300" style={{ aspectRatio: "16/9" }}>
+                          {(p.preview_url || p.poster_url) ? (
+                            <img src={(p.preview_url || p.poster_url) as string} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <svg width="32" height="32" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.12 }}><path d="M8 5v14l11-7z" /></svg>
+                            </div>
+                          )}
+                          <span className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide" style={{ backgroundColor: catColor + "20", color: catColor }}>
+                            {CATEGORY_LABELS[p.category]}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 px-0.5">
+                          <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[11px] text-text-tertiary truncate">{p.owner_name}</span>
+                            <span className="text-[11px] text-text-tertiary/50 font-mono">{p.year}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

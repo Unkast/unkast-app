@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { slugify } from "@/lib/utils";
+import { slugify, extractVideoKey } from "@/lib/utils";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
+import { sendPushToUser } from "@/lib/push";
 
 export async function POST(request: NextRequest) {
   // Anti-abus : max 5 créations de compte par heure et par IP.
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
     recruiter_role,
     recruiter_website,
     is_looking_for,
+    invitation_token,
   } = body;
   // SÉCURITÉ : recruiter_status n'est JAMAIS lu depuis le body — un client pourrait
   // s'auto-attribuer "approved". Toujours forcé à "pending" (validation manuelle admin).
@@ -97,6 +99,9 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Create first project if provided (creator only)
+  // Anti-vol d'œuvre (chantier 9) : si la vidéo est déjà référencée, on NE bloque
+  // PAS l'inscription — le compte est créé, mais le film est sauté et l'UI prévient.
+  let videoSkipped = false;
   if (
     account_type === "creator" &&
     project &&
@@ -109,7 +114,24 @@ export async function POST(request: NextRequest) {
       .select("id", { count: "exact", head: true })
       .eq("profile_id", userId);
 
-    if ((count ?? 0) < MAX_PROJECTS_FREE) {
+    // Doublon ? Identifiant canonique (youtube:<id> / vimeo:<id>), pas l'URL brute.
+    const video_key = extractVideoKey(project.video_url);
+    let isDuplicate = false;
+    if (video_key) {
+      const { data: dup } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("video_key", video_key)
+        .limit(1)
+        .maybeSingle();
+      isDuplicate = !!dup;
+    }
+
+    // Nouveau compte = toujours 'free' a l'inscription (le passage Pro se fait
+    // ensuite via l'admin) -> plafond gratuit. Un seul projet cree ici de toute facon.
+    if (isDuplicate) {
+      videoSkipped = true;
+    } else if ((count ?? 0) < MAX_PROJECTS_FREE) {
       const projectSlug = slugify(project.title) + "-" + Date.now().toString(36);
 
       const { data: projectData, error: projectError } = await supabase
@@ -122,10 +144,16 @@ export async function POST(request: NextRequest) {
           category: project.category,
           year: project.year || new Date().getFullYear(),
           video_url: project.video_url,
+          video_key,
           status: "pending",
         })
         .select("id")
         .single();
+
+      // Filet 23505 : course gagnée par l'index unique → on saute le film, compte gardé.
+      if (projectError?.code === "23505") {
+        videoSkipped = true;
+      }
 
       if (!projectError && projectData) {
         const credits = project.credits as { name: string; role: string }[] | undefined;
@@ -149,9 +177,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 5. Create credit request if provided (talent/member)
+  // 5. Create credit request if provided (talent)
   if (
-    (account_type === "member" || account_type === "talent") &&
+    account_type === "talent" &&
     credit_request &&
     credit_request.project_id &&
     credit_request.role
@@ -164,5 +192,47 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ success: true, slug: profileSlug });
+  // 6. Rattachement d'une invitation email (chantier 10).
+  // Le ghost credit devient un vrai crédit lié au nouveau compte — UNIQUEMENT si
+  // l'email du compte == l'email invité (anti-détournement : le token seul ne
+  // suffit pas). Jamais d'échec global de l'inscription si quoi que ce soit cloche.
+  if (invitation_token) {
+    try {
+      const { data: inv } = await supabase
+        .from("invitations")
+        .select("id, email, role, credit_id, project_id, inviter_id, status, expires_at")
+        .eq("token", invitation_token)
+        .maybeSingle();
+
+      const notExpired = inv?.expires_at ? new Date(inv.expires_at).getTime() >= Date.now() : true;
+      const emailMatches =
+        inv?.email && email && inv.email.trim().toLowerCase() === email.trim().toLowerCase();
+
+      if (inv && inv.status === "pending" && notExpired && emailMatches) {
+        // Convertir le ghost credit en crédit réel lié au profil.
+        if (inv.credit_id) {
+          await supabase
+            .from("project_credits")
+            .update({ profile_id: userId, ghost_name: null })
+            .eq("id", inv.credit_id);
+        }
+        await supabase.from("invitations").update({ status: "accepted" }).eq("id", inv.id);
+
+        // Notifier l'inviteur (best-effort).
+        if (inv.inviter_id) {
+          const { data: proj } = await supabase
+            .from("projects").select("title").eq("id", inv.project_id).single();
+          sendPushToUser(inv.inviter_id, {
+            title: "Invitation acceptée !",
+            body: `${full_name} a rejoint l'équipe de "${proj?.title ?? "ton film"}"`,
+            url: "/moi",
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // Rattachement best-effort : on n'interrompt jamais l'inscription.
+    }
+  }
+
+  return NextResponse.json({ success: true, slug: profileSlug, video_skipped: videoSkipped });
 }

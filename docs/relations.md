@@ -1,12 +1,17 @@
 # Unkast — Relations
 
+> Mis a jour 2026-06-13 (audit). Les relations du MVP ci-dessous restent valides, MAIS la couverture
+> est partielle : les modules **messages, credits, invitations, admin, pro, moi, suspended, notifications**
+> ne figuraient pas et sont ajoutes en fin de fichier. Correction : `AppShell` est utilise par le
+> **layout du groupe** `(app)/layout.tsx`, pas par le `layout.tsx` racine.
+
 ## Table des relations
 
 | Source | Type de relation | Destination |
 |--------|-----------------|-------------|
-| `layout.tsx` | [utilise] | `AppShell` |
-| `layout.tsx` | [utilise] | `SplashScreen` |
-| `layout.tsx` | [utilise] | `globals.css` |
+| `(app)/layout.tsx` | [utilise] | `AppShell` |
+| `layout.tsx` (racine) | [utilise] | `globals.css`, metadata, PWA manifest |
+| `AppShell` / `layout` | [utilise] | `SplashScreen` |
 | `AppShell` | [depend de] | `next/navigation` (usePathname) |
 | `AppShell` | [utilise] | `framer-motion` |
 | `SplashScreen` | [depend de] | `/public/splash.mp4` |
@@ -97,6 +102,44 @@
 | `ContactModal` | [declenche] | `POST /api/contact` |
 | `ContactModal` | [utilise] | `motion.tsx` (ModalBackdrop) |
 | `POST /api/contact` | [persiste dans] | `contact_requests` (ecriture) |
+
+## Modules ajoutes (audit 2026-06-13)
+
+Relations route → table code-verifiees (voir docs/api-routes.md pour le detail des methodes).
+
+| Source | Type de relation | Destination |
+|--------|-----------------|-------------|
+| **Messagerie** | | |
+| `(app)/messages/*` | [declenche] | `/api/messages*` |
+| `POST /api/messages` | [persiste dans] | `conversations`, `messages` (ecriture), `profiles` (lecture) |
+| `GET /api/messages/[conversationId]` | [persiste dans] | `messages` (lecture + is_read) |
+| **Credits** | | |
+| `ProjetClient` / dashboard | [declenche] | `/api/credits/request`, `/api/credits/[id]` |
+| `POST /api/credits/request` | [persiste dans] | `credit_requests` (ecriture) |
+| `PATCH /api/credits/[id]` | [persiste dans] | `credit_requests`, `project_credits` (ecriture) |
+| **Invitations** | | |
+| `POST /api/invitations/project` | [persiste dans] | `project_invitations` (ecriture) |
+| `PATCH /api/invitations/project/[id]` | [persiste dans] | `project_invitations`, `project_credits` (ecriture) |
+| **Reports / Moderation** | | |
+| `ReportModal` | [declenche] | `POST /api/reports` |
+| `POST /api/reports` | [persiste dans] | `reports`, `admin_logs` (ecriture) |
+| **Admin** | | |
+| `AdminClient` (`/admin`) | [declenche] | `GET/PATCH /api/admin` |
+| `/api/admin` | [persiste dans] | `profiles`, `projects`, `reports`, `admin_logs` (ecriture) |
+| `/api/admin` | [depend de] | `lib/supabase/admin.ts` (service role) + `profiles.is_admin` |
+| **Pro / statut** | | |
+| `pro/page.tsx`, `ConversionBanner` | [utilise] | `useUserStatus` (lit `profiles.plan`) |
+| **Avatar** | | |
+| `AvatarUpload` | [declenche] | `POST/DELETE /api/avatar` (Storage `avatars` + `profiles`) |
+| **Notifications push** | | |
+| `usePushNotifications` | [declenche] | `POST /api/notifications/register` |
+| `/api/notifications/register` | [persiste dans] | `push_tokens` (ecriture) |
+| `lib/push.ts` | [persiste dans] | `push_tokens` (lecture) |
+| **Inscription (maj)** | | |
+| `POST /api/signup` | [persiste dans] | `credit_requests` (ecriture, en plus des tables d'origine) |
+| `auth/callback/route.ts` | [utilise] | `lib/utils.ts` (slugify), `profiles`, `profile_roles` |
+| **Securite** | | |
+| `/api/signup`, `/api/waitlist` | [depend de] | `lib/rate-limit.ts` (RPC `check_rate_limit`) |
 
 ## Relations base de donnees
 

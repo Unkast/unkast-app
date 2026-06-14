@@ -20,11 +20,12 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("profiles")
       .select(`
-        id, full_name, slug, avatar_url, location, is_available, bio, created_at,
+        id, full_name, slug, avatar_url, location, is_available, bio, created_at, plan,
         profile_roles ( role_name ),
         projects ( id )
       `)
-      .eq("status", "approved");
+      .eq("status", "approved")
+      .not("is_suspended", "is", true); // chantier 3 : suspendus hors vue publique
 
     if (q) {
       query = query.or(`full_name.ilike.%${q}%,bio.ilike.%${q}%`);
@@ -38,6 +39,9 @@ export async function GET(request: NextRequest) {
     } else {
       query = query.order("full_name", { ascending: true });
     }
+    // Coup de pouce Pro : critere SECONDAIRE uniquement (departage a rang egal,
+    // jamais "Pro d'abord"). nullsFirst:false => plan null (legacy) en dernier.
+    query = query.order("plan", { ascending: false, nullsFirst: false });
 
     query = query.limit(50);
     const { data } = await query;
@@ -57,6 +61,7 @@ export async function GET(request: NextRequest) {
           created_at: profile.created_at,
           roles: (roles ?? []).map((r) => r.role_name),
           project_count: profileProjects?.length ?? 0,
+          plan: profile.plan, // interne au tri, retire de la reponse
         };
       });
 
@@ -70,12 +75,17 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Sort by project count if requested
+      // Sort by project count if requested (Pro en departage a count egal)
       if (sort === "projets") {
-        talents.sort(
-          (a, b) => (b.project_count as number) - (a.project_count as number)
-        );
+        talents.sort((a, b) => {
+          const byCount = (b.project_count as number) - (a.project_count as number);
+          if (byCount !== 0) return byCount;
+          return (b.plan === "pro" ? 1 : 0) - (a.plan === "pro" ? 1 : 0);
+        });
       }
+
+      // plan est interne au tri : on ne l'expose pas dans la reponse
+      talents.forEach((t) => { delete (t as { plan?: unknown }).plan; });
     }
   }
 
@@ -85,7 +95,7 @@ export async function GET(request: NextRequest) {
       .from("projects")
       .select(`
         id, title, slug, description, category, year, video_url, profile_id, created_at,
-        profiles!projects_profile_id_fkey ( full_name, slug )
+        profiles!projects_profile_id_fkey ( full_name, slug, is_suspended )
       `)
       .eq("status", "approved");
 
@@ -106,7 +116,13 @@ export async function GET(request: NextRequest) {
     const { data } = await query;
 
     if (data) {
-      projects = data.map((project: Record<string, unknown>) => {
+      projects = data
+        // Retire les films dont le proprietaire est suspendu (chantier 3).
+        .filter((project: Record<string, unknown>) => {
+          const owner = project.profiles as { is_suspended?: boolean } | null;
+          return !owner?.is_suspended;
+        })
+        .map((project: Record<string, unknown>) => {
         const owner = project.profiles as { full_name: string; slug: string } | null;
         return {
           id: project.id,

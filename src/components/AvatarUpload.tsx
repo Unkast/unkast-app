@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
+import { canvasToWebpBlob, MAX_INPUT_BYTES } from "@/lib/image-compress";
 
 interface Props {
   currentAvatarUrl: string | null;
@@ -54,6 +55,12 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Plafond dur EN ENTRÉE : on bloque l'absurde avant tout traitement.
+    if (file.size > MAX_INPUT_BYTES) {
+      showToast("Image trop lourde (10 Mo maximum).");
+      e.target.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
@@ -86,25 +93,23 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
         image.src = imageToCrop;
       });
 
-      canvas.width = 400;
-      canvas.height = 400;
+      // Sortie optimisée : 512×512 WebP q0.8 (≈ 30–60 Ko). Le recadrage produit
+      // déjà un carré, on ré-encode juste en WebP via l'util partagé.
+      canvas.width = 512;
+      canvas.height = 512;
 
       ctx.drawImage(
         image,
         croppedAreaPixels.x, croppedAreaPixels.y,
         croppedAreaPixels.width, croppedAreaPixels.height,
-        0, 0, 400, 400
+        0, 0, 512, 512
       );
 
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85);
-      });
-
-      if (!blob) throw new Error("Failed to create blob");
+      const blob = await canvasToWebpBlob(canvas, 0.8);
 
       // Upload via API route (bypasses RLS issues on mobile)
       const formData = new FormData();
-      formData.append("file", blob, "avatar.jpg");
+      formData.append("file", blob, "avatar.webp");
 
       const res = await fetch("/api/avatar", { method: "POST", body: formData });
       const data = await res.json();

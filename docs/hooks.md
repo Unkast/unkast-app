@@ -1,23 +1,37 @@
 # Unkast — Hooks
 
+> Mis a jour 2026-06-13. L'ancienne note « aucun hook custom » est obsolete : `src/hooks/` existe
+> et contient 2 hooks.
+
 ## Hooks custom
 
-Aucun hook custom n'existe dans le projet. Il n'y a pas de repertoire `src/hooks/`.
+### `useUserStatus()` — `src/hooks/useUserStatus.ts`
 
-Tout le state est gere en local via `useState` dans chaque Client Component.
+Retourne le statut du visiteur : `"anonymous" | "free" | "pro" | null` (`null` = en cours de chargement).
+Cree un client navigateur `@supabase/ssr` (import dynamique), lit `auth.getUser()` puis `profiles.plan`.
+Renvoie `"pro"` si `plan === "pro"`, sinon `"free"` ; `"anonymous"` si non connecte ou erreur.
+Sert au gating freemium cote client.
 
-## Hooks utilises (built-in / frameworks)
+### `usePushNotifications(isLoggedIn)` — `src/hooks/usePushNotifications.ts`
 
-| Hook | Fichier | Usage |
-|---|---|---|
-| `useState` | Tous les Client Components | State local (filtres, modales, formulaires) |
-| `useEffect` | `AppShell`, `SplashScreen`, `HeroPlayer`, `VideoEmbed`, `FadeInView` | Side effects (mount detection, observers, indicateur position) |
-| `useRef` | `AppShell`, `FadeInView` | Refs DOM (nav, intersection observer) |
-| `usePathname` | `AppShell` | Detection de la route active pour navigation |
-| `useRouter` | `DashboardClient` | Redirect programmatique vers /rejoindre |
+Enregistre les notifications push **uniquement en natif (Capacitor/Android)**. Import dynamique de
+`@capacitor/push-notifications` ; en web le `try/catch` ignore silencieusement. Demande la permission,
+`register()` FCM, et au `registration` envoie le token a `POST /api/notifications/register`
+(`{ token, platform: "android" }`). Gere aussi le tap de notification (redirige vers `data.url`).
+Garde anti-double-enregistrement via `useRef`.
+
+## Hooks built-in / frameworks utilises
+
+| Hook | Usage |
+|---|---|
+| `useState` | State local dans tous les Client Components |
+| `useEffect` | Side effects (mount guard SSR, observers, polling) |
+| `useRef` | Refs DOM, guards (`AppShell`, `FadeInView`, `usePushNotifications`) |
+| `usePathname` | Route active (`AppShell`) |
+| `useRouter` | Redirections programmatiques (`DashboardClient`, ...) |
 
 ## Observations
 
-- Le pattern recurrent est `useState(false)` + `useEffect(() => setMounted(true), [])` pour le guard SSR (dans `HeroPlayer`, `VideoEmbed`)
-- `DashboardClient` concentre le plus de state local (~15 variables useState)
-- Aucun state management global (pas de Zustand, Redux, Context)
+- Pattern recurrent : `useState(false)` + `useEffect(() => setMounted(true), [])` pour le guard SSR.
+- Les deux hooks custom font de l'**import dynamique** pour ne charger le SDK Supabase/Capacitor que cote client/natif.
+- Toujours **aucun state management global** (pas de Zustand/Redux/Context).

@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 // GET: fetch credit data for dashboard
 // Returns:
 // - received: credit requests received on user's projects (for creators)
-// - my_credits: projects where user is credited (for members)
-// - my_requests: credit requests sent by user (for members)
+// - my_credits: projects where user is credited (for talents)
+// - my_requests: credit requests sent by user (for talents)
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { use } from "react";
+import ReportModal from "@/components/ReportModal";
+import Avatar from "@/components/Avatar";
 
 interface Message {
   id: string;
@@ -34,6 +36,8 @@ export default function ConversationPage({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [confirmFirst, setConfirmFirst] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -124,6 +128,9 @@ export default function ConversationPage({
     }
   }, [error]);
 
+  /* ── Premier message d'une conversation (encore vide) ── */
+  const isFirstMessage = !loading && messages.length === 0;
+
   /* ── Derived: is input blocked ── */
   const inputBlocked =
     error === "pro_required" ||
@@ -182,6 +189,16 @@ export default function ConversationPage({
     setSending(false);
   }
 
+  /* ── Intercepte l'envoi : confirmation au tout premier message ── */
+  function handleSendClick() {
+    if (!input.trim() || sending || inputBlocked) return;
+    if (isFirstMessage) {
+      setConfirmFirst(true);
+      return;
+    }
+    handleSend();
+  }
+
   if (loading) {
     return <div style={{ padding: 20, color: "#555" }}>Chargement...</div>;
   }
@@ -238,44 +255,12 @@ export default function ConversationPage({
                 flex: 1,
               }}
             >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "rgba(200,255,0,0.08)",
-                  border: "1.5px solid rgba(200,255,0,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                }}
-              >
-                {other.avatar_url ? (
-                  <img
-                    src={other.avatar_url}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      borderRadius: "50%",
-                    }}
-                  />
-                ) : (
-                  <span
-                    style={{ fontSize: 12, fontWeight: 600, color: "#C8FF00" }}
-                  >
-                    {other.full_name
-                      .split(" ")
-                      .map((w) => w[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                )}
-              </div>
+              <Avatar
+                url={other.avatar_url}
+                name={other.full_name}
+                size={36}
+                style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }}
+              />
               <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0" }}>
                 {other.full_name}
               </p>
@@ -299,9 +284,30 @@ export default function ConversationPage({
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
             </Link>
+            {/* Signaler l'interlocuteur (chantier 3) */}
+            <button
+              onClick={() => setReportOpen(true)}
+              title="Signaler"
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                <line x1="4" y1="22" x2="4" y2="15" />
+              </svg>
+            </button>
           </>
         )}
       </div>
+
+      {/* Modal de signalement — cible le profil de l'interlocuteur (actionnable admin) */}
+      {other && (
+        <ReportModal
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          targetType="profile"
+          targetId={other.id}
+        />
+      )}
 
       {/* ── Messages ── */}
       <div
@@ -338,6 +344,7 @@ export default function ConversationPage({
                     fontSize: 14,
                     lineHeight: 1.5,
                     wordBreak: "break-word",
+                    whiteSpace: "pre-wrap", // préserve les sauts de ligne + espaces, wrap si trop long
                   }}
                 >
                   {m.content}
@@ -452,6 +459,23 @@ export default function ConversationPage({
           </div>
         )}
 
+      {/* ── Avertissement — uniquement avant le tout premier message ── */}
+      {error !== "pro_required" && isFirstMessage && (
+        <div
+          style={{
+            margin: "0 16px 8px",
+            padding: "10px 12px",
+            background: "rgba(200,255,0,0.05)",
+            border: "1px solid rgba(200,255,0,0.2)",
+            borderRadius: 10,
+          }}
+        >
+          <p style={{ fontSize: 12, color: "#C8FF00", margin: 0, lineHeight: 1.5 }}>
+            Tu ne peux envoyer qu&apos;un seul message tant que la personne n&apos;a pas répondu. Écris ton message complet avant d&apos;envoyer.
+          </p>
+        </div>
+      )}
+
       {/* ── Input — hidden for pro_required, disabled for other blocks ── */}
       {error !== "pro_required" && (
         <div
@@ -471,9 +495,11 @@ export default function ConversationPage({
               adjustTextarea();
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              // Entrée = saut de ligne (jamais d'envoi). Envoi uniquement via le
+              // bouton, ou raccourci Ctrl/Cmd+Entrée sur desktop.
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                handleSend();
+                handleSendClick();
               }
             }}
             placeholder="Écris un message..."
@@ -497,7 +523,7 @@ export default function ConversationPage({
             }}
           />
           <button
-            onClick={handleSend}
+            onClick={handleSendClick}
             disabled={!input.trim() || sending || inputBlocked}
             style={{
               width: 40,
@@ -522,6 +548,38 @@ export default function ConversationPage({
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* ── Confirmation au tout premier message ── */}
+      {confirmFirst && (
+        <div
+          onClick={() => setConfirmFirst(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}
+          >
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", margin: 0, marginBottom: 10 }}>Confirmer l&apos;envoi</h3>
+            <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, margin: 0, marginBottom: 20 }}>
+              Ton message va être envoyé. Tu devras attendre la réponse avant de pouvoir en envoyer un autre. Es-tu sûr de ton message, ou veux-tu le modifier ?
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setConfirmFirst(false)}
+                style={{ flex: 1, padding: "11px 16px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f0f0f0", fontSize: 14, fontWeight: 500, borderRadius: 10, cursor: "pointer" }}
+              >
+                Modifier
+              </button>
+              <button
+                onClick={() => { setConfirmFirst(false); handleSend(); }}
+                style={{ flex: 1, padding: "11px 16px", background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 10, border: "none", cursor: "pointer" }}
+              >
+                Envoyer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

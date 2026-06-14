@@ -1,5 +1,9 @@
 # Unkast — Architecture
 
+> Mis a jour 2026-06-13 (audit doc vs code). Le code a depasse le MVP : ajout de l'admin,
+> la messagerie, les credits, les invitations, les comptes Pro/recruteur, la suspension,
+> les notifications push. Toutes les routes ci-dessous sont sous le groupe `src/app/(app)/`.
+
 ## Stack technique
 
 - **Framework** : Next.js 16.2.0 (App Router) + React 19 + TypeScript 5
@@ -8,7 +12,8 @@
 - **Styling** : Tailwind CSS 4
 - **Animations** : framer-motion 12
 - **Video** : react-player 3 (embeds Vimeo/YouTube)
-- **Email** : resend 6 (dependance installee, pas encore connectee)
+- **Mobile natif** : Capacitor (Android) — notifications push via `@capacitor/push-notifications` + FCM
+- **Email** : resend 6 (dependance installee, **toujours pas connectee**)
 
 ## Legende
 
@@ -18,181 +23,140 @@ FEATURE  = Fonctionnalite metier (page principale)
 SUB      = Sous-fonctionnalite d'une FEATURE
 HOOK     = Hook React custom
 UTILITY  = Helper / utilitaire
-STORE    = Store de state management
-PLUGIN   = Plugin natif
 
 RELATIONS :
   [utilise]       = Importe et utilise directement
   [declenche]     = Provoque une action dans
   [depend de]     = Ne fonctionne pas sans
-  [persiste dans] = Ecrit/lit dans cette table/store
+  [persiste dans] = Ecrit/lit dans cette table
 ```
 
-## Arbre fonctionnel
+## Coeur (CORE)
 
 ```
-CORE  Layout (src/app/layout.tsx)
-  [utilise] AppShell (src/components/AppShell.tsx)
-  [utilise] SplashScreen (src/components/SplashScreen.tsx)
-  [utilise] globals.css (src/app/globals.css)
+CORE  Layout racine (src/app/layout.tsx)
+  HTML wrapper, metadata, fonts, PWA manifest. NE contient PAS AppShell.
+
+CORE  Layout app (src/app/(app)/layout.tsx)
+  [utilise] AppShell (enveloppe toutes les pages du groupe (app))
 
 CORE  AppShell (src/components/AppShell.tsx)
-  Navigation desktop : sidebar fixe w-56 avec indicateur anime (framer-motion layoutId)
-  Navigation mobile : bottom tab bar fixe avec indicateur
-  Header : logo mobile + section name desktop + icone recherche
-  [utilise] framer-motion (motion, AnimatePresence)
-  [depend de] next/navigation (usePathname)
+  Sidebar desktop + bottom tab mobile + header. Indicateur anime (framer-motion layoutId).
+  [utilise] framer-motion ; [depend de] next/navigation (usePathname)
 
 CORE  SplashScreen (src/components/SplashScreen.tsx)
-  Video splash /public/splash.mp4, une fois par session (sessionStorage)
-  CSS-driven fade-out, fallback auto-dismiss 5.5s
-  Bouton "Passer" pour skip
+  Video /public/splash.mp4, une fois par session (sessionStorage).
 
 CORE  Middleware (src/middleware.ts)
-  Rafraichit le token de session Supabase sur chaque requete
-  Ne bloque PAS les utilisateurs non authentifies
+  Rafraichit la session Supabase + applique les redirections de garde.
   [utilise] src/lib/supabase/middleware.ts
+  Logique : lit profiles.is_admin et profiles.is_suspended (ex. redirige vers /suspended).
+  NB : Next 16 deprecie "middleware" au profit de "proxy".
 
-CORE  Supabase Server Client (src/lib/supabase/server.ts)
-  Factory async pour client Supabase cote serveur (cookies via next/headers)
-  Utilise par tous les Server Components et API Routes
-
-CORE  Supabase Browser Client (src/lib/supabase/client.ts)
-  Factory pour client Supabase cote navigateur
-  NON UTILISE actuellement (tout passe par les API Routes)
+CORE  Supabase Server Client (src/lib/supabase/server.ts)   — SSR/API (cookies)
+CORE  Supabase Browser Client (src/lib/supabase/client.ts)  — navigateur
+CORE  Supabase Admin Client (src/lib/supabase/admin.ts)     — service role (bypass RLS, usage admin)
 
 CORE  Constants (src/lib/constants.ts)
-  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 3)
+  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 2),
+  ACCOUNT_TYPES, ROLES_BY_CATEGORY, ALL_ROLES, ROLE_CATEGORIES, POPULAR_ROLES
 
-CORE  Types (src/types/database.ts)
-  Types TypeScript : Profile, ProfileRole, Project, ProjectCredit, ContactRequest
-  Schema Supabase type : Database
-  Enums : ProfileStatus, ProjectCategory, ContactSubject, ContactStatus
+CORE  Types (src/types/database.ts) — SOURCE DE VERITE du schema (introspecte 13/06/2026)
+  15 interfaces de tables : Profile (35 col.), ProfileRole, Project (12 col.), ProjectCredit,
+    ContactRequest, Conversation, Message, CreditRequest, Invitation, ProjectInvitation,
+    AdminLog, PushToken, RateLimit, Report, Waitlist
+  4 vrais enums Postgres : ProfileStatus, ProjectCategory, ContactSubject, ContactStatus
+  Contraints par CHECK : AccountType (talent/creator/recruiter), Plan (free/pro)
+  Pseudo-enums (colonnes TEXT libres, NON contraintes en base) : RecruiterStatus,
+    DisplayNamePreference, VisibilityAudience, ProjectStatus, CreditRequestStatus,
+    InvitationStatus, ReportStatus, WaitlistStatus
+  NB : pas de type `Database` (clients Supabase non generiques). Voir docs/database.md.
+  ⚠️ supabase/schema.sql est en retard (5 tables) — a regenerer.
 
 CORE  Motion Primitives (src/components/motion.tsx)
-  Variants : staggerContainer, fadeUp, fadeIn, scaleIn
-  Preset : cardHover (whileHover scale 1.02)
-  Composants : FadeInView (IntersectionObserver), ModalBackdrop (overlay + scale-in)
+  Variants staggerContainer/fadeUp/fadeIn/scaleIn, cardHover, FadeInView, ModalBackdrop
 
----
+UTILITY  lib/utils.ts        — slugify() PARTAGE (utilise par signup, dashboard/projects, auth/callback)
+UTILITY  lib/rate-limit.ts   — checkRateLimit() (RPC check_rate_limit, fail-open)
+UTILITY  lib/push.ts         — envoi de notifications push (lit push_tokens)
+UTILITY  lib/firebase-admin.ts — init FCM cote serveur
+UTILITY  lib/profile.ts      — helpers profil
 
-FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
-  Hero : carousel 3D fan-style (5 projets) avec auto-avance et swipe
-  Rangees horizontales scrollables par categorie
-  Section "Talents a decouvrir"
-  [utilise] HeroCarousel (src/app/(app)/feed/HeroCarousel.tsx)
-  [utilise] HomeAnimations (src/app/(app)/feed/HomeAnimations.tsx) — Section, AnimatedCard
-  [utilise] Supabase Server Client
-  [utilise] Constants (CATEGORY_LABELS, CATEGORY_COLORS)
-  [persiste dans] profiles, projects, profile_roles, project_credits (lecture)
-
-  SUB  HeroCarousel (src/app/(app)/feed/HeroCarousel.tsx) [Client Component]
-    Carousel fan 3D — 5 cartes en eventail (framer-motion)
-    Auto-avance 4s, swipe tactile, dots de navigation
-    Info animee (titre, categorie, annee, boutons)
-    [utilise] framer-motion (motion, AnimatePresence)
-    [utilise] Constants (CATEGORY_LABELS)
-
-  SUB  HomeAnimations (src/app/(app)/feed/HomeAnimations.tsx) [Client Component]
-    Section : wrapper FadeInView pour sections scroll-reveal
-    AnimatedCard : hover scale + tap feedback
-
-  SUB  ConversionBanner (src/app/(app)/feed/ConversionBanner.tsx) [Client Component]
-    Banniere flottante de conversion pour visiteurs non authentifies
-    Apparait apres 300px de scroll, disparait si session dismissed ou si connecte
-    [utilise] framer-motion (motion, AnimatePresence)
-    [utilise] @supabase/ssr (createBrowserClient, getUser)
-    [depend de] sessionStorage (cle : unkast_banner_dismissed)
-
----
-
-FEATURE  Profil public — /profil/[slug] (src/app/profil/[slug]/page.tsx) [Server Component]
-  Fetch profil complet (approved uniquement) + roles + projets + credits enrichis
-  Metadata OpenGraph dynamique
-  [utilise] ProfileClient (src/app/profil/[slug]/ProfileClient.tsx)
-  [utilise] Supabase Server Client
-  [persiste dans] profiles, profile_roles, projects, project_credits (lecture)
-
-  SUB  ProfileClient (src/app/profil/[slug]/ProfileClient.tsx) [Client Component]
-    Avatar, nom, badge disponible, roles pills, localisation, bio
-    Bouton contact (ouvre modale) + partage profil
-    Liste projets filtrable par categorie avec video embed
-    Credits croises depliables, cliquables
-    [utilise] VideoEmbed, ContactModal, motion (FadeInView, cardHover)
-
----
-
-FEATURE  Page projet — /projet/[slug] (src/app/projet/[slug]/page.tsx) [Server Component]
-  Fetch projet complet + owner + credits enrichis + projets lies (par collaborateurs communs)
-  Metadata OpenGraph dynamique
-  [utilise] ProjetClient (src/app/projet/[slug]/ProjetClient.tsx)
-  [utilise] Supabase Server Client
-  [persiste dans] profiles, profile_roles, projects, project_credits (lecture)
-
-  SUB  ProjetClient (src/app/projet/[slug]/ProjetClient.tsx) [Client Component]
-    Video embed plein ecran, titre + categorie + annee
-    Onglets Equipe / Projets lies
-    Sidebar desktop : fiche technique + carte createur
-    [utilise] VideoEmbed, motion (FadeInView)
-
----
-
-FEATURE  Recherche — /recherche (src/app/recherche/page.tsx)
-  [utilise] RechercheClient (src/app/recherche/RechercheClient.tsx)
-
-  SUB  RechercheClient [Client Component]
-    Recherche debounced, onglets Tout/Talents/Projets
-    Filtres : role, categorie, localisation
-    Toggle grille/liste, tri par pertinence/date/projets
-    [declenche] GET /api/search
-    [utilise] Constants (CATEGORY_LABELS, CATEGORY_COLORS)
-
----
-
-FEATURE  Inscription — /rejoindre (src/app/rejoindre/page.tsx)
-  [utilise] RejoindreClient (src/app/rejoindre/RejoindreClient.tsx)
-
-  SUB  RejoindreClient [Client Component]
-    Wizard 4 etapes : compte, profil pro, premier projet, confirmation
-    Progress bar animee
-    [declenche] POST /api/signup
-    [utilise] Constants (CATEGORY_LABELS)
-
----
-
-FEATURE  Dashboard — /dashboard, /dashboard/projets, /dashboard/contacts
-  3 routes thin-shell qui rendent DashboardClient avec initialSection differente
-
-  SUB  DashboardClient (src/app/dashboard/DashboardClient.tsx) [Client Component]
-    Sections : profil (view/edit), projets (CRUD, max 3), contacts (accept/decline)
-    Redirect vers /rejoindre si 401
-    [declenche] GET/PATCH /api/dashboard/profile
-    [declenche] GET/POST/DELETE /api/dashboard/projects
-    [declenche] GET/PATCH /api/dashboard/contacts
-    [utilise] Constants (CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE)
-
----
-
-UTILITY  VideoEmbed (src/components/VideoEmbed.tsx) [Client Component]
-  Wrapper SSR-safe de react-player pour Vimeo/YouTube
-  Placeholder div pre-hydratation, aspect ratio 16/9
-  [utilise] react-player
-
-UTILITY  ContactModal (src/components/ContactModal.tsx) [Client Component]
-  Modale de contact : nom, email, sujet, message
-  Lock body scroll, animation scale-in
-  [declenche] POST /api/contact
-  [utilise] motion (ModalBackdrop)
-
-ORPHELIN  Navbar (src/components/Navbar.tsx)
-  Composant legacy, N'EST IMPORTE NULLE PART — remplace par AppShell
+HOOK  useUserStatus (src/hooks/useUserStatus.ts)        — "anonymous" | "free" | "pro"
+HOOK  usePushNotifications (src/hooks/usePushNotifications.ts) — enregistrement push natif (Capacitor)
 ```
 
-## Notes importantes
+## Fonctionnalites (FEATURE)
 
-1. **Pas de hooks custom** — aucun repertoire `src/hooks/`
-2. **Pas de state management global** — tout est en `useState` local
-3. **`slugify()` dupliquee** — presente dans `api/signup/route.ts` ET `api/dashboard/projects/route.ts`, pas de utils partage
-4. **Resend non connecte** — dependance installee mais aucun email n'est envoye
-5. **Pas d'admin API** — l'approbation des profils (pending → approved) se fait via le Supabase Dashboard
-6. **Pas d'edit projet** — un projet cree ne peut pas etre modifie, seulement supprime
+```
+FEATURE  Welcome / racine — / (src/app/page.tsx + WelcomeClient.tsx)
+
+FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
+  Hero carousel 3D + rangees par categorie + talents a decouvrir.
+  [utilise] HeroCarousel, HeroPlayer, HomeAnimations, ConversionBanner
+  [persiste dans] profiles, projects, profile_roles, project_credits (lecture)
+
+FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server + ProfileClient]
+  Fetch profil approuve + roles + projets + credits. Bouton contact + partage.
+  [utilise] ProfileClient, VideoEmbed, ContactModal, ReportModal
+
+FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server + ProjetClient]
+  Video plein ecran, equipe, projets lies. [utilise] VideoEmbed
+
+FEATURE  Recherche — /recherche (src/app/(app)/recherche/) [+ RechercheClient]
+  Recherche debounced, filtres role/categorie/localisation. [declenche] GET /api/search
+
+FEATURE  Categories — /categories/[slug] (src/app/(app)/categories/[slug]/)
+  Listing par categorie.
+
+FEATURE  Inscription — /rejoindre (src/app/(app)/rejoindre/ + RejoindreClient)
+  Wizard multi-etapes. [declenche] POST /api/signup
+
+FEATURE  Connexion — /connexion (src/app/(app)/connexion/ + ConnexionClient)
+  Login. Callback OAuth/magic-link : src/app/(app)/auth/callback/route.ts
+
+FEATURE  Dashboard — /dashboard, /dashboard/projets, /dashboard/contacts (+ DashboardClient)
+  Profil (view/edit), projets (CRUD, max 2 gratuit), contacts, credits.
+  [declenche] /api/dashboard/{profile,projects,contacts,credits}, /api/avatar
+
+FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient)
+
+FEATURE  Messagerie — /messages, /messages/[id] (src/app/(app)/messages/)
+  Conversations + messages. Quotas (5 conv/j, anti-coordonnees, relance 48h).
+  [declenche] /api/messages*  [persiste dans] conversations, messages
+
+FEATURE  Pro / Freemium — /pro (src/app/(app)/pro/)
+  Page offre Pro. NB : aucun paiement (Stripe absent), prix 9,99€ non present en code.
+  [utilise] useUserStatus
+
+FEATURE  Suspendu — /suspended (src/app/(app)/suspended/)
+  Ecran pour comptes is_suspended (lit suspended_reason).
+
+FEATURE  Admin — /admin (src/app/(app)/admin/ + AdminClient)
+  Back-office : recruteurs, reports, users, films. [declenche] GET/PATCH /api/admin
+  Onglets : approbation recruteur, moderation reports, suspension, set_pro, approbation films.
+```
+
+## Composants transverses (UTILITY / partages)
+
+```
+UTILITY  VideoEmbed (src/components/VideoEmbed.tsx)  — wrapper SSR-safe react-player
+         + VideoFacade.tsx (facade clic-pour-charger)
+UTILITY  ContactModal (src/components/ContactModal.tsx)   [declenche] POST /api/contact
+UTILITY  ReportModal (src/components/ReportModal.tsx)     [declenche] POST /api/reports
+UTILITY  AvatarUpload (src/components/AvatarUpload.tsx)   [declenche] /api/avatar
+UTILITY  RoleSelector (src/components/RoleSelector.tsx) + icons/RoleIcons.tsx
+UTILITY  skeletons/ (Feed, Profile, Project, Search)
+```
+
+## Notes importantes (corrigees — etat reel du code)
+
+1. **Des hooks custom existent** — `src/hooks/` contient `useUserStatus` et `usePushNotifications`. *(ancienne note « pas de hooks custom » : fausse)*
+2. **Pas de state management global** — toujours `useState` local + 2 hooks. *(confirme)*
+3. **`slugify()` est factorisee** dans `src/lib/utils.ts`, importee par 3 routes. *(ancienne note « dupliquee » : fausse)*
+4. **Resend non connecte** — dependance installee, aucun email envoye. *(confirme)*
+5. **L'admin API existe** — `/api/admin` (GET/PATCH) + back-office `/admin`, autorisation `profiles.is_admin`. *(ancienne note « pas d'admin API » : fausse)*
+6. **Pas d'edit projet** — un projet se cree (POST) et se supprime (DELETE), pas d'UPDATE expose. *(confirme)*
+7. **`Navbar.tsx` n'existe plus** — le fichier a ete supprime (remplace par AppShell). *(ancienne entree ORPHELIN : obsolete)*
+8. **`database.ts` est desormais la source de verite** (15 tables, profiles 35 col., projects 12 col., introspecte). En revanche **`supabase/schema.sql` reste en retard** (5 tables seulement) et doit etre regenere — voir docs/database.md.
+9. **`account_type` (ROLE) et `plan` contraints par CHECK** — `account_type` ∈ {talent, creator, recruiter} (defaut talent, `member` supprime), `plan` ∈ {free, pro}. Regle `recruiter ⇒ pro` cote code. Restent NON contraints : `projects.status`, `recruiter_status`, `display_name_preference`, `show_*_to`, statuts invitations/credits/reports/waitlist (dette technique).

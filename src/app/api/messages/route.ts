@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveUser } from "@/lib/auth-guard";
 import { sendPushToUser } from "@/lib/push";
 
 // RÈGLE 1 : Seuls les Pro peuvent initier une conversation
@@ -14,11 +15,13 @@ const CONTACT_REGEX = /(\b06|\b07|\+33|@\w+\.\w+|https?:\/\/|www\.)/i;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) return NextResponse.json({ error: guard.error }, { status: guard.status });
+  const user = guard.user;
+  const profile = guard.profile; // { plan, full_name, ... } — mutualise la lecture
 
   const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("plan, full_name").eq("id", user.id).single();
 
   const body = await request.json();
   const { conversation_id, recipient_id, content } = body;

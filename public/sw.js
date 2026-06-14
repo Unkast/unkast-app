@@ -1,4 +1,6 @@
-const CACHE_NAME = "unkast-v1";
+// Bump ce nom à chaque correctif de stratégie de cache : l'ancien cache (et ses
+// éventuelles réponses "empoisonnées") est supprimé dans l'event `activate`.
+const CACHE_NAME = "unkast-v2";
 const STATIC_ASSETS = ["/", "/feed", "/recherche", "/offline.html"];
 
 self.addEventListener("install", (e) => {
@@ -24,23 +26,26 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const { request } = e;
 
-  // Cache images (cache-first)
+  // Images : cache-first, MAIS on ne met JAMAIS en cache une réponse en échec.
+  // (Mettre en cache un 404/erreur "empoisonne" l'image définitivement : le SW
+  // resert l'échec à chaque requête, même une fois le fichier en place.)
   if (request.destination === "image") {
     e.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((response) => {
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response && response.ok && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-            return response;
-          })
-      )
+          }
+          return response;
+        });
+      })
     );
     return;
   }
 
-  // Network-first for pages, fallback to cache or offline
+  // Network-first pour les pages, fallback cache puis offline.
   if (request.mode === "navigate") {
     e.respondWith(
       fetch(request).catch(() =>
@@ -52,7 +57,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Default: network with cache fallback
+  // Defaut : reseau avec fallback cache.
   e.respondWith(
     fetch(request).catch(() => caches.match(request))
   );

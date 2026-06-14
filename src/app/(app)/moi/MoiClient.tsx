@@ -3,11 +3,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE } from "@/lib/constants";
-import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory, ContactRequest, CreditRequest } from "@/types/database";
+import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory, CreditRequest } from "@/types/database";
 import AvatarUpload from "@/components/AvatarUpload";
+import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram } from "@/lib/profile";
 import RoleSelector from "@/components/RoleSelector";
+import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
 
 /* ---------- types ---------- */
@@ -80,8 +82,12 @@ export default function MoiClient() {
   const [newDescription, setNewDescription] = useState("");
   const [newOwnerRole, setNewOwnerRole] = useState("");
 
-  /* --- contacts --- */
-  const [contacts, setContacts] = useState<ContactRequest[]>([]);
+  /* --- invitation email d'un collaborateur absent (chantier 10) --- */
+  const [inviteForProject, setInviteForProject] = useState<string | null>(null);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
 
   /* --- credits --- */
   const [creditRequests, setCreditRequests] = useState<CreditRequestWithProject[]>([]);
@@ -96,7 +102,7 @@ export default function MoiClient() {
   const [showProModal, setShowProModal] = useState(false);
 
   /* --- tabs --- */
-  type MoiTab = "profil" | "content" | "activity" | "compte";
+  type MoiTab = "profil" | "content" | "activity" | "recrutement" | "compte";
   const [activeTab, setActiveTab] = useState<MoiTab>("profil");
 
   /* ---------- helpers ---------- */
@@ -107,7 +113,11 @@ export default function MoiClient() {
   }
 
   const isCreator = profile?.account_type === "creator";
+  const isRecruiter = profile?.account_type === "recruiter";
   const plan = (profile as any)?.plan || "free";
+  const projectLimit = plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
+  const isCreatorOrRecruiter = profile?.account_type === "creator" || profile?.account_type === "recruiter";
+  const canRecruit = plan === "pro" && isCreatorOrRecruiter;
 
   function getDisplayName(): string {
     if (!profile) return "Utilisateur";
@@ -147,14 +157,6 @@ export default function MoiClient() {
     }
   }, []);
 
-  const fetchContacts = useCallback(async () => {
-    const res = await fetch("/api/dashboard/contacts");
-    if (res.ok) {
-      const data = await res.json();
-      setContacts(data.contacts);
-    }
-  }, []);
-
   const fetchCreditRequests = useCallback(async () => {
     const res = await fetch("/api/dashboard/credits");
     if (res.ok) {
@@ -175,10 +177,10 @@ export default function MoiClient() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchProfile(), fetchProjects(), fetchContacts(), fetchCreditRequests(), fetchInvitations()]).finally(() =>
+    Promise.all([fetchProfile(), fetchProjects(), fetchCreditRequests(), fetchInvitations()]).finally(() =>
       setLoading(false)
     );
-  }, [fetchProfile, fetchProjects, fetchContacts, fetchCreditRequests, fetchInvitations]);
+  }, [fetchProfile, fetchProjects, fetchCreditRequests, fetchInvitations]);
 
   /* ---------- edit helpers ---------- */
 
@@ -190,7 +192,7 @@ export default function MoiClient() {
     setEditDisplayPref((profile as any).display_name_preference || "real_name");
     setEditBio(profile.bio ?? "");
     setEditLocation(profile.location ?? "");
-    setEditAvailable(profile.is_available);
+    setEditAvailable(profile.is_available ?? false);
     setEditRoles(roles.map((r) => r.role_name));
     setEditContactEmail((profile as any).contact_email || "");
     const rawPhone = (profile as any).contact_phone || "";
@@ -214,7 +216,7 @@ export default function MoiClient() {
 
   async function saveProfile() {
     setSaving(true);
-    await fetch("/api/dashboard/profile", {
+    const res = await fetch("/api/dashboard/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -237,10 +239,28 @@ export default function MoiClient() {
         recruiting_roles: editRecruitingRoles,
       }),
     });
+    const data = await res.json().catch(() => ({}));
     await fetchProfile();
     setIsEditing(false);
     setSaving(false);
-    showToast("Profil mis à jour");
+    // Recruteur : une modif de description part en validation admin.
+    showToast(data?.pendingReview ? "Description envoyée pour validation" : "Profil mis à jour");
+  }
+
+  // Bascule de role talent <-> creator (le serveur refuse tout autre changement).
+  async function switchAccountType(next: "talent" | "creator") {
+    if (next === profile?.account_type) return;
+    const res = await fetch("/api/dashboard/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ account_type: next }),
+    });
+    if (!res.ok) {
+      showToast("Changement de rôle impossible");
+      return;
+    }
+    await fetchProfile();
+    showToast(next === "creator" ? "Tu es maintenant créateur" : "Tu es maintenant talent");
   }
 
   /* ---------- project actions ---------- */
@@ -248,7 +268,7 @@ export default function MoiClient() {
   async function addProject() {
     if (!newTitle || !newVideoUrl) return;
     setSaving(true);
-    await fetch("/api/dashboard/projects", {
+    const res = await fetch("/api/dashboard/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -260,6 +280,14 @@ export default function MoiClient() {
         owner_role: newOwnerRole || null,
       }),
     });
+    if (!res.ok) {
+      // Doublon vidéo (409) ou autre erreur : on garde le formulaire et les champs
+      // pour permettre la correction (ex. coller une autre vidéo).
+      const data = await res.json().catch(() => ({}));
+      showToast(data.error || "Erreur lors de l'ajout du film");
+      setSaving(false);
+      return;
+    }
     await fetchProjects();
     setAddingProject(false);
     setNewTitle("");
@@ -273,6 +301,25 @@ export default function MoiClient() {
     if (!confirm("Supprimer ce projet ?")) return;
     await fetch(`/api/dashboard/projects?id=${id}`, { method: "DELETE" });
     await fetchProjects();
+  }
+
+  async function sendEmailInvitation(projectId: string) {
+    if (!inviteEmail || !inviteRole) return;
+    setInviteSending(true);
+    const res = await fetch("/api/invitations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId, email: inviteEmail, role: inviteRole, name: inviteName || null }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setInviteSending(false);
+    if (res.ok) {
+      showToast(data.email_sent ? "Invitation envoyée par email" : "Invitation enregistrée (email non envoyé en dev)");
+      setInviteName(""); setInviteEmail(""); setInviteRole(""); setInviteForProject(null);
+      await fetchProjects();
+    } else {
+      showToast(data.error || "Erreur");
+    }
   }
 
   /* ---------- credit actions ---------- */
@@ -436,7 +483,7 @@ export default function MoiClient() {
           </div>
           <div style={{ marginTop: 12 }}>
             <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>
-              Bio <span style={{ color: "#555" }}>({editBio.length}/280)</span>
+              {isRecruiter ? "Description professionnelle" : "Bio"} <span style={{ color: "#555" }}>({editBio.length}/280)</span>
             </label>
             <textarea
               rows={4}
@@ -444,8 +491,13 @@ export default function MoiClient() {
               onChange={(e) => { if (e.target.value.length <= 280) setEditBio(e.target.value); }}
               className={inputCls}
               style={{ resize: "none" }}
-              placeholder="Décris ton parcours, tes spécialités..."
+              placeholder={isRecruiter ? "Ton parcours, les films faits, les postes occupés..." : "Décris ton parcours, tes spécialités..."}
             />
+            {isRecruiter && (
+              <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#8aa800", marginTop: 6, lineHeight: 1.5 }}>
+                Toute modification de ta description est vérifiée par l&apos;équipe avant publication. Le public continue de voir ta version actuelle en attendant.
+              </p>
+            )}
           </div>
 
           {/* DISPONIBILITE */}
@@ -458,30 +510,39 @@ export default function MoiClient() {
             <span style={{ fontSize: 14, color: "#888" }}>Disponible pour des projets</span>
           </div>
 
-          {/* RECRUTEMENT */}
-          {((profile as any).account_type === "creator" || (profile as any).account_type === "recruiter") && (
+          {/* RECRUTEMENT — reserve aux comptes Pro createur/recruteur */}
+          {isCreatorOrRecruiter && (
             <>
               <p style={{ ...sectionHeader }}>Recrutement</p>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <span style={{ fontSize: 14, color: "#f0f0f0" }}>Je recrute activement</span>
-                <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, cursor: "pointer" }}>
-                  <input type="checkbox" checked={editIsRecruiting} onChange={(e) => { setEditIsRecruiting(e.target.checked); if (!e.target.checked) setEditRecruitingRoles([]); }} style={{ display: "none" }} />
-                  <div style={{ width: 44, height: 24, borderRadius: 12, background: editIsRecruiting ? "#22c55e" : "#333", transition: "background 200ms", position: "relative" }}>
-                    <div style={{ position: "absolute", top: 2, left: editIsRecruiting ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 200ms" }} />
-                  </div>
-                </label>
-              </div>
-              {editIsRecruiting && (
+              {canRecruit ? (
                 <>
-                  <p style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>Quel(s) métier(s) recherches-tu ?</p>
-                  <RoleSelector
-                    selectedRoles={editRecruitingRoles}
-                    onChange={setEditRecruitingRoles}
-                    maxSelection={5}
-                    placeholder="Quel métier recherches-tu ?"
-                  />
-                  <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#444", marginTop: 8 }}>Ce badge sera visible sur ton profil public et dans les résultats de recherche.</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <span style={{ fontSize: 14, color: "#f0f0f0" }}>Je recrute activement</span>
+                    <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, cursor: "pointer" }}>
+                      <input type="checkbox" checked={editIsRecruiting} onChange={(e) => { setEditIsRecruiting(e.target.checked); if (!e.target.checked) setEditRecruitingRoles([]); }} style={{ display: "none" }} />
+                      <div style={{ width: 44, height: 24, borderRadius: 12, background: editIsRecruiting ? "#22c55e" : "#333", transition: "background 200ms", position: "relative" }}>
+                        <div style={{ position: "absolute", top: 2, left: editIsRecruiting ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 200ms" }} />
+                      </div>
+                    </label>
+                  </div>
+                  {editIsRecruiting && (
+                    <>
+                      <p style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>Quel(s) métier(s) recherches-tu ?</p>
+                      <RoleSelector
+                        selectedRoles={editRecruitingRoles}
+                        onChange={setEditRecruitingRoles}
+                        maxSelection={5}
+                        placeholder="Quel métier recherches-tu ?"
+                      />
+                      <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#444", marginTop: 8 }}>Ce badge sera visible sur ton profil public et dans les résultats de recherche.</p>
+                    </>
+                  )}
                 </>
+              ) : (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span style={{ fontSize: 13, color: "#666" }}>Le badge « Je recrute » est réservé aux comptes Pro.</span>
+                  <a href="/pro" style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: "#C8FF00", textDecoration: "none" }}>Passer à Pro →</a>
+                </div>
               )}
             </>
           )}
@@ -489,23 +550,13 @@ export default function MoiClient() {
           {/* CONTACT & VISIBILITE */}
           <p style={sectionHeader}>Contact &amp; visibilité</p>
           <div style={{ padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.02)", borderLeft: "2px solid #C8FF00", paddingLeft: 16, marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: "#888", lineHeight: 1.5 }}>Ces informations ne sont visibles que selon tes préférences. Elles permettent aux recruteurs de te contacter directement.</p>
+            <p style={{ fontSize: 12, color: "#888", lineHeight: 1.5 }}>Ces informations permettent aux recruteurs de te contacter via Unkast. Elles ne sont pas affichées publiquement sur ton profil.</p>
           </div>
 
           {/* contact_email */}
           <div>
             <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Email de contact</label>
             <input type="email" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)} className={inputCls} placeholder="contact@exemple.com" />
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-              {(["nobody", "pro_users", "everyone"] as const).map((opt) => (
-                <button key={opt} onClick={() => setEditShowEmail(opt)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, background: "none", border: "none", cursor: "pointer", color: editShowEmail === opt ? "#C8FF00" : "#555", textAlign: "left" }}>
-                  <span style={{ flexShrink: 0, width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${editShowEmail === opt ? "#C8FF00" : "#333"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {editShowEmail === opt && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#C8FF00" }} />}
-                  </span>
-                  {opt === "nobody" ? "Personne" : opt === "pro_users" ? "Professionnels uniquement" : "Tout le monde"}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* contact_phone */}
@@ -540,16 +591,6 @@ export default function MoiClient() {
                 placeholder="6 12 34 56 78"
               />
             </div>
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-              {(["nobody", "pro_users", "everyone"] as const).map((opt) => (
-                <button key={opt} onClick={() => setEditShowPhone(opt)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, background: "none", border: "none", cursor: "pointer", color: editShowPhone === opt ? "#C8FF00" : "#555", textAlign: "left" }}>
-                  <span style={{ flexShrink: 0, width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${editShowPhone === opt ? "#C8FF00" : "#333"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {editShowPhone === opt && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#C8FF00" }} />}
-                  </span>
-                  {opt === "nobody" ? "Personne" : opt === "pro_users" ? "Professionnels uniquement" : "Tout le monde"}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* instagram */}
@@ -564,22 +605,6 @@ export default function MoiClient() {
             <input type="url" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} className={inputCls} placeholder="https://tonsite.com" />
           </div>
 
-          {/* show_real_name_to — only if stage_name is set */}
-          {editStageName && (
-            <div style={{ marginTop: 16 }}>
-              <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 8 }}>Qui peut voir ton vrai nom ?</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {(["nobody", "pro_users", "everyone"] as const).map((opt) => (
-                  <button key={opt} onClick={() => setEditShowRealName(opt)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, background: "none", border: "none", cursor: "pointer", color: editShowRealName === opt ? "#C8FF00" : "#555", textAlign: "left" }}>
-                    <span style={{ flexShrink: 0, width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${editShowRealName === opt ? "#C8FF00" : "#333"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {editShowRealName === opt && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#C8FF00" }} />}
-                    </span>
-                    {opt === "nobody" ? "Personne" : opt === "pro_users" ? "Professionnels uniquement" : "Tout le monde"}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     );
@@ -605,13 +630,17 @@ export default function MoiClient() {
 
       <div style={{ paddingBottom: 120 }}>
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }} className="no-scrollbar">
-          {([
+        <div style={{ display: "flex", gap: 0, padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }} className="no-scrollbar mx-auto w-full max-w-2xl">
+          {(([
             { key: "profil", label: "Profil" },
             { key: "content", label: isCreator ? "Mes films" : "Mes participations" },
             { key: "activity", label: "Activité" },
+            // Espace pré-casting : visible des qu'on est Pro createur/recruteur
+            // (independamment du badge "Je recrute", qui ne gere que la visibilite
+            // cote talent). canRecruit = plan pro + role creator/recruteur.
+            ...(canRecruit ? [{ key: "recrutement", label: "Recrutement" }] : []),
             { key: "compte", label: "Compte" },
-          ] as const).map(({ key, label }) => (
+          ] as { key: MoiTab; label: string }[])).map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -633,7 +662,7 @@ export default function MoiClient() {
           ))}
         </div>
 
-        <div style={{ padding: "0 16px" }}>
+        <div className="mx-auto w-full max-w-2xl lg:pt-2" style={{ padding: "0 16px" }}>
           {/* TAB: Profil */}
           {activeTab === "profil" && (
             <div style={{ marginTop: 16, padding: "0 4px" }}>
@@ -649,15 +678,25 @@ export default function MoiClient() {
                 <span style={{ fontSize: 13, fontWeight: 500, color: "#C8FF00" }}>Modifier mon profil</span>
               </button>
 
+              {/* Recruteur : modification de description en attente de validation */}
+              {isRecruiter && (profile as any).recruiter_review_status === "pending" && (
+                <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.2)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#C8FF00", margin: 0, marginBottom: 6 }}>Modification en attente de validation</p>
+                  <p style={{ fontSize: 12, color: "#888", margin: 0, lineHeight: 1.5 }}>
+                    Ta nouvelle description est en cours de vérification. Le public voit encore ta version actuelle en attendant.
+                  </p>
+                  {(profile as any).bio_pending && (
+                    <p style={{ fontSize: 12, color: "#aaa", fontStyle: "italic", margin: "10px 0 0", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.6 }}>
+                      « {(profile as any).bio_pending} »
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Rendu profil public */}
               {/* Avatar */}
-              <div style={{ width: 88, height: 88, borderRadius: "50%", overflow: "hidden", border: "2px solid rgba(200,255,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}
-                   className={profile.avatar_url ? "" : "bg-gradient-to-br from-[#1a1a1a] to-[#222]"}>
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span style={{ fontSize: 28, fontWeight: 600, color: "#C8FF00" }}>{getInitials()}</span>
-                )}
+              <div style={{ marginBottom: 16 }}>
+                <Avatar url={profile.avatar_url} name={getDisplayName()} size={88} style={{ border: "2px solid rgba(200,255,0,0.2)" }} />
               </div>
 
               {/* Nom + badge dispo */}
@@ -740,12 +779,12 @@ export default function MoiClient() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0 }}>Mes films</h3>
-                    <span style={{ fontSize: 12, color: "#555" }}>{projects.length}/{MAX_PROJECTS_FREE}</span>
+                    <span style={{ fontSize: 12, color: "#555" }}>{projects.length}/{projectLimit}</span>
                   </div>
 
                   {/* Progress bar */}
                   <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
-                    <div style={{ height: "100%", borderRadius: 2, background: projects.length >= MAX_PROJECTS_FREE ? "#f97316" : "#C8FF00", width: `${(projects.length / MAX_PROJECTS_FREE) * 100}%`, transition: "width 300ms" }} />
+                    <div style={{ height: "100%", borderRadius: 2, background: projects.length >= projectLimit ? "#f97316" : "#C8FF00", width: `${Math.min(100, (projects.length / projectLimit) * 100)}%`, transition: "width 300ms" }} />
                   </div>
 
                   {/* Project list */}
@@ -753,36 +792,58 @@ export default function MoiClient() {
                     const statusColor = project.status === "approved" ? "#22c55e" : project.status === "pending" ? "#f97316" : "#ef4444";
                     const statusLabel = project.status === "approved" ? "Publié" : project.status === "pending" ? "En attente" : "Refusé";
 
+                    const inviteOpen = inviteForProject === project.id;
                     return (
-                      <div key={project.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
-                        {/* Thumbnail */}
-                        <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {project.poster_url ? (
-                            <img src={project.poster_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          ) : (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth={1.5}><path d="M15 12l-4 2.5v-5l4 2.5z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                          )}
+                      <div key={project.id} style={{ marginBottom: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {/* Thumbnail */}
+                          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {project.poster_url ? (
+                              <img src={project.poster_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth={1.5}><path d="M15 12l-4 2.5v-5l4 2.5z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            )}
+                          </div>
+                          {/* Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.title}</p>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, color: statusColor, marginTop: 4 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
+                              {statusLabel}
+                            </span>
+                          </div>
+                          {/* Inviter */}
+                          <button onClick={() => { setInviteForProject(inviteOpen ? null : project.id); setInviteName(""); setInviteEmail(""); setInviteRole(""); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 11, fontWeight: 600, color: inviteOpen ? "#C8FF00" : "#aaa" }}>
+                            Créditer
+                          </button>
+                          {/* Delete */}
+                          <button onClick={() => deleteProject(project.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                            </svg>
+                          </button>
                         </div>
-                        {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.title}</p>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, color: statusColor, marginTop: 4 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
-                            {statusLabel}
-                          </span>
-                        </div>
-                        {/* Delete */}
-                        <button onClick={() => deleteProject(project.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                          </svg>
-                        </button>
+                        {inviteOpen && (
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                            <p style={{ fontSize: 11, color: "#888", margin: "0 0 8px" }}>
+                              Crédite un collaborateur absent d&apos;Unkast : il reçoit un email pour rejoindre et revendiquer son crédit. Pour un membre déjà inscrit, passe par son profil.
+                            </p>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom" className={inputCls} style={{ flex: "1 1 100px" }} />
+                              <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" className={inputCls} style={{ flex: "2 1 160px" }} />
+                              <input type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Rôle" className={inputCls} style={{ flex: "1 1 100px" }} />
+                              <button onClick={() => sendEmailInvitation(project.id)} disabled={!inviteEmail || !inviteRole || inviteSending} style={{ padding: "10px 16px", background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 13, borderRadius: 10, border: "none", cursor: "pointer", opacity: !inviteEmail || !inviteRole || inviteSending ? 0.5 : 1 }}>
+                                Inviter
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
 
                   {/* Add button */}
-                  {!addingProject && projects.length < MAX_PROJECTS_FREE && (
+                  {!addingProject && projects.length < projectLimit && (
                     <button
                       onClick={() => setAddingProject(true)}
                       style={{ width: "100%", padding: 12, borderRadius: 10, background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", marginTop: 8 }}
@@ -791,7 +852,7 @@ export default function MoiClient() {
                     </button>
                   )}
 
-                  {!addingProject && projects.length >= MAX_PROJECTS_FREE && (
+                  {!addingProject && plan !== "pro" && projects.length >= projectLimit && (
                     <button
                       onClick={() => setShowProModal(true)}
                       style={{ width: "100%", padding: 12, borderRadius: 10, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.3)", color: "#f97316", fontWeight: 600, fontSize: 13, cursor: "pointer", marginTop: 8 }}
@@ -830,7 +891,7 @@ export default function MoiClient() {
                   )}
                 </div>
               ) : (
-                /* ----- Talent/member: Mes credits ----- */
+                /* ----- Talent: Mes credits ----- */
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Mes participations</h3>
                   <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Les films dans lesquels tu apparais.</p>
@@ -895,7 +956,7 @@ export default function MoiClient() {
           {activeTab === "activity" && (
             <div style={{ marginTop: 16 }}>
               {!isCreator ? (
-                /* ----- Talent/member activity ----- */
+                /* ----- Talent activity ----- */
                 <>
                   {/* Mes demandes de participation */}
                   <div>
@@ -1046,15 +1107,7 @@ export default function MoiClient() {
                             <div key={inv.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                 {/* Invited person avatar */}
-                                <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  {inv.invitee_avatar_url ? (
-                                    <img src={inv.invitee_avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                  ) : (
-                                    <span style={{ fontSize: 13, fontWeight: 700, color: "#C8FF00" }}>
-                                      {(inv.invitee_name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
-                                    </span>
-                                  )}
-                                </div>
+                                <Avatar url={inv.invitee_avatar_url} name={inv.invitee_name || "?"} size={36} style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)" }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0 }}>{inv.invitee_name || "Membre"}</p>
                                   <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.project_title || "Projet"}</p>
@@ -1070,6 +1123,11 @@ export default function MoiClient() {
                 </>
               )}
             </div>
+          )}
+
+          {/* TAB: Recrutement (espace pré-casting — Pro createur/recruteur) */}
+          {activeTab === "recrutement" && canRecruit && (
+            <RecruitmentSpace showToast={showToast} />
           )}
 
           {/* TAB: Compte */}
@@ -1089,8 +1147,27 @@ export default function MoiClient() {
                 </div>
 
                 <p style={{ fontSize: 13, color: "#555", marginBottom: 4 }}>
-                  Type de compte : {profile.account_type === "creator" ? "Créateur" : profile.account_type === "talent" ? "Talent" : profile.account_type === "recruiter" ? "Recruteur" : "Membre"}
+                  Type de compte : {profile.account_type === "creator" ? "Créateur" : profile.account_type === "recruiter" ? "Recruteur" : "Talent"}
                 </p>
+
+                {/* Bascule de role : uniquement talent <-> creator (recruteur masque) */}
+                {(profile.account_type === "talent" || profile.account_type === "creator") && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    {(["talent", "creator"] as const).map((r) => {
+                      const active = profile.account_type === r;
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => switchAccountType(r)}
+                          disabled={active}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: active ? "default" : "pointer", background: active ? "rgba(200,255,0,0.1)" : "rgba(255,255,255,0.03)", color: active ? "#C8FF00" : "#888", border: active ? "1px solid rgba(200,255,0,0.3)" : "1px solid rgba(255,255,255,0.08)" }}
+                        >
+                          {r === "creator" ? "Je publie des œuvres (Créateur)" : "J'ai participé à un projet (Talent)"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {plan === "free" && (
                   <p style={{ fontSize: 12, color: "#444", lineHeight: 1.5, marginTop: 8 }}>
@@ -1110,12 +1187,12 @@ export default function MoiClient() {
                     </div>
                     <div>
                       <p style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>Passe a Unkast Pro</p>
-                      <p style={{ fontSize: 12, color: "#666" }}>A partir de 9€/mois</p>
+                      <p style={{ fontSize: 12, color: "#666" }}>A partir de 9,99 €/mois</p>
                     </div>
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                    {["Publication de films illimitée", "Messagerie directe", "Contacter les talents", "Badge Pro vérifié", "Priorité dans les résultats"].map((f) => (
+                    {["Jusqu'à 30 films", "Messagerie directe", "Contacter les talents", "Badge Pro vérifié", "Priorité dans les résultats"].map((f) => (
                       <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
                         <span style={{ fontSize: 13, color: "#ccc" }}>{f}</span>

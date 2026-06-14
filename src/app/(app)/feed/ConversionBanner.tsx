@@ -54,18 +54,14 @@ export default function ConversionBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ duration: 0.4 }}
+          className="fixed z-40 left-4 right-4 bottom-16 lg:left-auto lg:right-6 lg:bottom-6 lg:w-[380px]"
           style={{
-            position: "fixed",
-            bottom: 64,
-            left: 16,
-            right: 16,
             background: "rgba(13,13,13,0.95)",
             border: "1px solid rgba(200,255,0,0.2)",
             borderRadius: 14,
             padding: "14px 16px",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
-            zIndex: 40,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",

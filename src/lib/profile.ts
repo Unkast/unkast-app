@@ -1,5 +1,3 @@
-import type { UserStatus } from "@/hooks/useUserStatus";
-
 interface ProfileLike {
   full_name: string;
   first_name?: string | null;
@@ -83,34 +81,7 @@ export function formatInstagram(handle: string | null | undefined): { display: s
   return { display: "@" + clean, href: `https://instagram.com/${clean}` };
 }
 
-export function getVisibleContactInfo(
-  profile: ProfileLike,
-  viewerStatus: UserStatus | null
-) {
-  const isPro = viewerStatus === "pro";
-  const isFree = viewerStatus === "free";
-  const isLogged = isPro || isFree;
-
-  function check(setting: string | null | undefined): boolean {
-    if (setting === "everyone") return true;
-    if (setting === "pro_users" && isPro) return true;
-    return false;
-  }
-
-  const phone = check(profile.show_phone_to) ? formatPhone(profile.contact_phone) : null;
-  const instagram = formatInstagram(profile.instagram_url);
-  const website = normalizeUrl(profile.website_url);
-
-  return {
-    email: check(profile.show_contact_email_to) ? profile.contact_email : null,
-    phone,
-    realName: check(profile.show_real_name_to)
-      ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || null
-      : null,
-    instagram,
-    website,
-    // For "locked" indicators
-    emailLocked: isLogged && !check(profile.show_contact_email_to) && profile.show_contact_email_to === "pro_users",
-    phoneLocked: isLogged && !check(profile.show_phone_to) && profile.show_phone_to === "pro_users",
-  };
-}
+// NOTE (chantier 3) : l'ancien helper getVisibleContactInfo a ete supprime.
+// Les coordonnees ne sont PAS affichees sur les profils publics (philosophie
+// anti-fuite : le contact passe uniquement par la messagerie Pro). Les
+// reglages show_*_to restent en base mais ne sont plus exposes dans l'UI.

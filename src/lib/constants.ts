@@ -2,6 +2,8 @@ import type { ProjectCategory } from "@/types/database";
 
 export const CATEGORY_COLORS: Record<ProjectCategory, string> = {
   "court-metrage": "#C8FF00",
+  "moyen-metrage": "#38BDF8",
+  "long-metrage": "#E879F9",
   publicite: "#00D4AA",
   clip: "#AA88FF",
   documentaire: "#FF8844",
@@ -11,6 +13,8 @@ export const CATEGORY_COLORS: Record<ProjectCategory, string> = {
 
 export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
   "court-metrage": "Court-métrage",
+  "moyen-metrage": "Moyen métrage",
+  "long-metrage": "Long métrage",
   publicite: "Publicité",
   clip: "Clip",
   documentaire: "Documentaire",
@@ -19,10 +23,12 @@ export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
 };
 
 export const MAX_PROJECTS_FREE = 2;
+export const MAX_PROJECTS_PRO = 30;
 
 export const ACCOUNT_TYPES = {
+  talent: "J'ai participé à un projet",
   creator: "Je publie des œuvres",
-  member: "J'ai participé à un projet",
+  recruiter: "Je cherche des talents",
 };
 
 export const ROLES_BY_CATEGORY: Record<string, string[]> = {

@@ -21,7 +21,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
 
   // Colonnes PUBLIQUES uniquement. On n'expose JAMAIS contact_email, contact_phone,
   // instagram_url, website_url, show_*_to, is_admin, is_suspended, recruiter_*, plan, etc.
-  // (la page profil ne les affiche pas — le contact passe par /api/contact).
+  // (la page profil ne les affiche pas — le contact passe par la messagerie Pro).
   // Les projets imbriqués sont filtrés sur status=approved pour ne pas exposer
   // publiquement les projets pending/refused.
   const { data: profile } = await supabase
@@ -29,7 +29,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     .select(`
       id, full_name, slug, avatar_url, location, is_available, bio,
       first_name, last_name, stage_name, display_name_preference,
-      is_recruiting, recruiting_roles, status, created_at, updated_at,
+      is_recruiting, recruiting_roles, recruiter_verified, status, created_at, updated_at,
       profile_roles ( * ),
       projects (
         id, profile_id, title, slug, description, category, year,
@@ -42,6 +42,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     `)
     .eq("slug", slug)
     .eq("status", "approved")
+    .not("is_suspended", "is", true) // suspendu => retire de la vue publique (chantier 3)
     .eq("projects.status", "approved")
     .single();
 

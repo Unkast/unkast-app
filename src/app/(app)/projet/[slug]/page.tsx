@@ -46,7 +46,7 @@ async function getProject(slug: string): Promise<{
     .select(`
       *,
       profiles!projects_profile_id_fkey (
-        id, full_name, slug, avatar_url, location, is_available,
+        id, full_name, slug, avatar_url, location, is_available, is_suspended,
         profile_roles ( * )
       ),
       project_credits (
@@ -69,11 +69,15 @@ async function getProject(slug: string): Promise<{
 
   const ownerData = project.profiles as unknown as {
     id: string; full_name: string; slug: string; avatar_url: string | null;
-    location: string | null; is_available: boolean;
+    location: string | null; is_available: boolean; is_suspended: boolean | null;
     profile_roles: ProfileRole[];
   };
 
   if (!ownerData) return null;
+
+  // Proprietaire suspendu => film retire de la vue publique (chantier 3).
+  // (Le proprietaire lui-meme est de toute facon redirige par le middleware.)
+  if (ownerData.is_suspended) return null;
 
   const owner = {
     id: ownerData.id,

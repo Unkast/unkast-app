@@ -4,20 +4,20 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AvatarUpload from "@/components/AvatarUpload";
+import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram } from "@/lib/profile";
 import { motion, AnimatePresence } from "framer-motion";
-import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE } from "@/lib/constants";
+import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
 import type {
   Profile,
   ProfileRole,
   Project,
   ProjectCredit,
   ProjectCategory,
-  ContactRequest,
   CreditRequest,
 } from "@/types/database";
 
-type DashSection = "profil" | "projets" | "contacts" | "credits";
+type DashSection = "profil" | "projets" | "credits";
 
 interface ProjectWithCredits extends Project {
   credits: ProjectCredit[];
@@ -70,17 +70,15 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   const [newDescription, setNewDescription] = useState("");
   const [newOwnerRole, setNewOwnerRole] = useState("");
 
-  // Contacts state
-  const [contacts, setContacts] = useState<ContactRequest[]>([]);
-
   // Team management state
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [creditRequests, setCreditRequests] = useState<CreditRequestWithProject[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
+  const [inviteName, setInviteName] = useState("");
   const [toast, setToast] = useState("");
 
-  // Member credits state
+  // Talent credits state
   const [myCredits, setMyCredits] = useState<(ProjectCredit & { project_title?: string; project_slug?: string })[]>([]);
   const [myCreditRequests, setMyCreditRequests] = useState<CreditRequestWithProject[]>([]);
 
@@ -93,6 +91,8 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   }
 
   const isCreator = profile?.account_type === "creator";
+  const plan = profile?.plan || "free";
+  const projectLimit = plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
 
   const fetchProfile = useCallback(async () => {
     const res = await fetch("/api/dashboard/profile");
@@ -115,14 +115,6 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
     }
   }, []);
 
-  const fetchContacts = useCallback(async () => {
-    const res = await fetch("/api/dashboard/contacts");
-    if (res.ok) {
-      const data = await res.json();
-      setContacts(data.contacts);
-    }
-  }, []);
-
   const fetchCreditRequests = useCallback(async () => {
     const res = await fetch("/api/dashboard/credits");
     if (res.ok) {
@@ -134,10 +126,10 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchProfile(), fetchProjects(), fetchContacts(), fetchCreditRequests()]).finally(() =>
+    Promise.all([fetchProfile(), fetchProjects(), fetchCreditRequests()]).finally(() =>
       setLoading(false)
     );
-  }, [fetchProfile, fetchProjects, fetchContacts, fetchCreditRequests]);
+  }, [fetchProfile, fetchProjects, fetchCreditRequests]);
 
   function startEditProfile() {
     if (!profile) return;
@@ -148,7 +140,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
     setEditDisplayPref((profile as any).display_name_preference || "real_name");
     setEditBio(profile.bio ?? "");
     setEditLocation(profile.location ?? "");
-    setEditAvailable(profile.is_available);
+    setEditAvailable(profile.is_available ?? false);
     setEditRoles(roles.map((r) => r.role_name));
     setEditContactEmail((profile as any).contact_email || "");
     const rawPhone = (profile as any).contact_phone || "";
@@ -208,7 +200,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   async function addProject() {
     if (!newTitle || !newVideoUrl) return;
     setSaving(true);
-    await fetch("/api/dashboard/projects", {
+    const res = await fetch("/api/dashboard/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -220,6 +212,14 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
         owner_role: newOwnerRole || null,
       }),
     });
+    if (!res.ok) {
+      // Doublon vidéo (409) ou autre erreur : on garde le formulaire et les champs
+      // pour permettre la correction (ex. coller une autre vidéo).
+      const data = await res.json().catch(() => ({}));
+      showToast(data.error || "Erreur lors de l'ajout du film");
+      setSaving(false);
+      return;
+    }
     await fetchProjects();
     setAddingProject(false);
     setNewTitle("");
@@ -233,15 +233,6 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
     if (!confirm("Supprimer ce projet ?")) return;
     await fetch(`/api/dashboard/projects?id=${id}`, { method: "DELETE" });
     await fetchProjects();
-  }
-
-  async function updateContactStatus(id: string, status: "accepted" | "declined") {
-    await fetch("/api/dashboard/contacts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    await fetchContacts();
   }
 
   async function handleCreditAction(id: string, status: "accepted" | "refused") {
@@ -265,31 +256,26 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
     const res = await fetch("/api/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, email: inviteEmail, role: inviteRole }),
+      body: JSON.stringify({ project_id: projectId, email: inviteEmail, role: inviteRole, name: inviteName || null }),
     });
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      showToast("Invitation enregistree — les emails seront actives prochainement");
+      // L'email peut etre saute en dev (Resend non configure) : on le signale.
+      showToast(data.email_sent ? "Invitation envoyee par email" : "Invitation enregistree (email non envoye en dev)");
       setInviteEmail("");
       setInviteRole("");
+      setInviteName("");
+      await fetchProjects();
     } else {
-      const data = await res.json();
       showToast(data.error || "Erreur");
     }
   }
 
-  function copyInviteLink(slug: string) {
-    navigator.clipboard.writeText(`https://app.unkast.com/rejoindre?projet=${slug}`);
-    showToast("Lien copie !");
-  }
-
-  const pendingContacts = contacts.filter((c) => c.status === "pending");
-  const otherContacts = contacts.filter((c) => c.status !== "pending");
 
   // Tabs config
   const tabs: { key: DashSection; href: string; label: string }[] = [
     { key: "profil", href: "/dashboard", label: "Mon profil" },
     { key: "projets", href: "/dashboard/projets", label: isCreator ? `Mes films (${projects.length})` : `Projets (${projects.length})` },
-    { key: "contacts", href: "/dashboard/contacts", label: `Contacts (${pendingContacts.length})` },
   ];
   if (!isCreator) {
     tabs.splice(1, 0, { key: "credits", href: "/dashboard", label: `Mes credits (${myCredits.length})` });
@@ -323,7 +309,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
     <div className="pb-16 lg:pb-0">
-      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
+      <main className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 lg:py-8">
         {/* Toast */}
         <AnimatePresence>
           {toast && (
@@ -341,7 +327,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h1 className="text-[22px] font-medium text-text-primary" style={{ letterSpacing: "-0.5px" }}>Bonjour, {profile.full_name.split(" ")[0]}</h1>
-          <StatusBadge status={profile.status} />
+          <StatusBadge status={profile.status ?? "pending"} />
         </div>
 
         {/* Section tabs */}
@@ -460,23 +446,13 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 {/* CONTACT & VISIBILITE */}
                 <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Contact &amp; visibilite</p>
                 <div className="p-3 rounded-lg bg-white/[0.02] border-l-2 border-[#C8FF00] pl-4 mb-4" style={{ borderLeft: "2px solid #C8FF00" }}>
-                  <p className="text-xs text-text-secondary leading-relaxed">Ces informations ne sont visibles que selon tes preferences. Elles permettent aux recruteurs de te contacter directement.</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">Ces informations permettent aux recruteurs de te contacter via Unkast. Elles ne sont pas affichees publiquement sur ton profil.</p>
                 </div>
 
                 {/* contact_email */}
                 <div className="mt-2">
                   <label className="block text-xs text-text-secondary mb-1.5">Email de contact</label>
                   <input type="email" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)} className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition" placeholder="contact@exemple.com" />
-                  <div className="mt-2 space-y-1.5">
-                    {(["nobody", "pro_users", "everyone"] as const).map((opt) => (
-                      <button key={opt} onClick={() => setEditShowEmail(opt)} className="flex items-center gap-2 text-xs w-full text-left" style={{ color: editShowEmail === opt ? "#C8FF00" : "#555" }}>
-                        <span className="flex-shrink-0 w-3.5 h-3.5 rounded-full border flex items-center justify-center" style={{ borderColor: editShowEmail === opt ? "#C8FF00" : "#333" }}>
-                          {editShowEmail === opt && <span className="w-2 h-2 rounded-full bg-[#C8FF00]" />}
-                        </span>
-                        {opt === "nobody" ? "Personne" : opt === "pro_users" ? "Professionnels uniquement" : "Tout le monde"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* contact_phone */}
@@ -506,16 +482,6 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     </select>
                     <input type="tel" inputMode="tel" autoComplete="tel" value={editContactPhone} onChange={(e) => setEditContactPhone(e.target.value)} style={{ flex: 1, padding: "12px 14px", background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, color: "#f0f0f0", fontSize: 16, outline: "none" }} placeholder="6 12 34 56 78" />
                   </div>
-                  <div className="mt-2 space-y-1.5">
-                    {(["nobody", "pro_users", "everyone"] as const).map((opt) => (
-                      <button key={opt} onClick={() => setEditShowPhone(opt)} className="flex items-center gap-2 text-xs w-full text-left" style={{ color: editShowPhone === opt ? "#C8FF00" : "#555" }}>
-                        <span className="flex-shrink-0 w-3.5 h-3.5 rounded-full border flex items-center justify-center" style={{ borderColor: editShowPhone === opt ? "#C8FF00" : "#333" }}>
-                          {editShowPhone === opt && <span className="w-2 h-2 rounded-full bg-[#C8FF00]" />}
-                        </span>
-                        {opt === "nobody" ? "Personne" : opt === "pro_users" ? "Professionnels uniquement" : "Tout le monde"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* instagram */}
@@ -530,25 +496,8 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   <input type="url" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition" placeholder="https://tonsite.com" />
                 </div>
 
-                {/* show_real_name_to — only if stage_name is set */}
-                {editStageName && (
-                  <div className="mt-4">
-                    <label className="block text-xs text-text-secondary mb-2">Qui peut voir ton vrai nom ?</label>
-                    <div className="space-y-1.5">
-                      {(["nobody", "pro_users", "everyone"] as const).map((opt) => (
-                        <button key={opt} onClick={() => setEditShowRealName(opt)} className="flex items-center gap-2 text-xs w-full text-left" style={{ color: editShowRealName === opt ? "#C8FF00" : "#555" }}>
-                          <span className="flex-shrink-0 w-3.5 h-3.5 rounded-full border flex items-center justify-center" style={{ borderColor: editShowRealName === opt ? "#C8FF00" : "#333" }}>
-                            {editShowRealName === opt && <span className="w-2 h-2 rounded-full bg-[#C8FF00]" />}
-                          </span>
-                          {opt === "nobody" ? "Personne" : opt === "pro_users" ? "Professionnels uniquement" : "Tout le monde"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex gap-3 pt-6">
-                  <button onClick={saveProfile} disabled={saving} className="px-6 py-3 bg-lime text-[#0d0d0d] font-bold text-sm rounded-lg hover:brightness-110 transition disabled:opacity-50">
+                  <button onClick={saveProfile} disabled={saving} className="px-6 py-3 bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl hover:brightness-110 transition disabled:opacity-50">
                     {saving ? "Sauvegarde..." : "Sauvegarder"}
                   </button>
                   <button onClick={() => setEditingProfile(false)} className="px-6 py-3 border border-white/15 text-text-secondary text-sm rounded-lg hover:text-text-primary transition">
@@ -562,18 +511,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col items-center">
                       {/* Static avatar in view mode */}
-                      <div
-                        className="rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
-                        style={{ width: 72, height: 72, background: "linear-gradient(135deg, #1a1a1a, #222)", border: "2px solid rgba(200,255,0,0.2)" }}
-                      >
-                        {profile.avatar_url ? (
-                          <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xl font-bold text-[#C8FF00]">
-                            {profile.full_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
+                      <Avatar url={profile.avatar_url} name={profile.full_name} size={72} style={{ border: "2px solid rgba(200,255,0,0.2)" }} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -653,8 +591,8 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
             {isCreator && (
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs text-text-secondary">{projects.length} / {MAX_PROJECTS_FREE} films utilises</p>
-                  {projects.length >= MAX_PROJECTS_FREE && (
+                  <p className="text-xs text-text-secondary">{projects.length} / {projectLimit} films utilises</p>
+                  {plan !== "pro" && projects.length >= projectLimit && (
                     <button onClick={() => setShowProModal(true)} className="text-xs text-orange-400 hover:text-orange-300 transition font-medium">
                       Passer a Unkast Pro →
                     </button>
@@ -662,8 +600,8 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 </div>
                 <div className="h-1 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-300 ${projects.length >= MAX_PROJECTS_FREE ? "bg-orange-500" : "bg-lime"}`}
-                    style={{ width: `${(projects.length / MAX_PROJECTS_FREE) * 100}%` }}
+                    className={`h-full rounded-full transition-all duration-300 ${projects.length >= projectLimit ? "bg-orange-500" : "bg-lime"}`}
+                    style={{ width: `${Math.min(100, (projects.length / projectLimit) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -673,7 +611,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
               <p className="text-sm text-text-tertiary">
                 {projects.length} projet{projects.length > 1 ? "s" : ""}
               </p>
-              {isCreator && projects.length < MAX_PROJECTS_FREE && !addingProject && (
+              {isCreator && projects.length < projectLimit && !addingProject && (
                 <button onClick={() => setAddingProject(true)} className="px-4 py-2 bg-lime text-[#0d0d0d] font-bold text-sm rounded-lg hover:brightness-110 transition">
                   + Ajouter un film
                 </button>
@@ -701,7 +639,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={addProject} disabled={!newTitle || !newVideoUrl || saving} className="px-6 py-3 bg-lime text-[#0d0d0d] font-bold text-sm rounded-lg hover:brightness-110 transition disabled:opacity-50">
+                  <button onClick={addProject} disabled={!newTitle || !newVideoUrl || saving} className="px-6 py-3 bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl hover:brightness-110 transition disabled:opacity-50">
                     {saving ? "Ajout..." : "Ajouter"}
                   </button>
                   <button onClick={() => setAddingProject(false)} className="px-6 py-3 border border-white/15 text-text-secondary text-sm rounded-lg hover:text-text-primary transition">
@@ -801,9 +739,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                                   <div className="space-y-2">
                                     {project.credits.map((credit) => (
                                       <div key={credit.id} className="flex items-center gap-3 py-1.5">
-                                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#222] border-[1.5px] border-[rgba(200,255,0,0.3)] flex items-center justify-center text-[10px] font-bold text-[#C8FF00] flex-shrink-0">
-                                          {(credit.ghost_name || "?").charAt(0).toUpperCase()}
-                                        </div>
+                                        <Avatar url={null} name={credit.ghost_name || "?"} size={28} />
                                         <div className="min-w-0 flex-1">
                                           <p className="text-xs font-medium text-text-primary truncate">
                                             {credit.profile_id ? (
@@ -849,19 +785,18 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                                 </div>
                               )}
 
-                              {/* Invite a member */}
+                              {/* Invite a member par email (collaborateur absent d'Unkast) */}
                               <div>
-                                <h4 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Inviter un membre</h4>
+                                <h4 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Créditer un collaborateur absent</h4>
+                                <p className="text-[10px] text-text-tertiary mb-2">Il reçoit un email pour rejoindre Unkast et revendiquer son crédit. Pour créditer un membre déjà inscrit, passe par son profil.</p>
                                 <div className="flex gap-2">
+                                  <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom" className="w-28 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
                                   <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
-                                  <input type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Role" className="w-32 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
+                                  <input type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Rôle" className="w-28 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
                                   <button onClick={() => sendInvitation(project.id)} disabled={!inviteEmail || !inviteRole} className="px-3 py-2 bg-lime text-[#0d0d0d] font-bold text-xs rounded-lg hover:brightness-110 transition disabled:opacity-40">
-                                    Envoyer
+                                    Inviter
                                   </button>
                                 </div>
-                                <button onClick={() => copyInviteLink(project.slug)} className="mt-2 text-[10px] text-text-tertiary hover:text-lime transition">
-                                  Copier le lien d&apos;invitation
-                                </button>
                               </div>
                             </div>
                           </motion.div>
@@ -875,7 +810,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
           </div>
         )}
 
-        {/* CREDITS SECTION (member) */}
+        {/* CREDITS SECTION (talent) */}
         {section === "credits" && !isCreator && (
           <div className="space-y-6">
             {/* Confirmed credits */}
@@ -926,40 +861,6 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* CONTACTS SECTION */}
-        {section === "contacts" && (
-          <div>
-            {contacts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-text-tertiary text-sm">Aucune demande de contact pour le moment.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {pendingContacts.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-3">En attente ({pendingContacts.length})</h3>
-                    <div className="space-y-3">
-                      {pendingContacts.map((contact) => (
-                        <ContactCard key={contact.id} contact={contact} onAccept={() => updateContactStatus(contact.id, "accepted")} onDecline={() => updateContactStatus(contact.id, "declined")} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {otherContacts.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-3">Traitees ({otherContacts.length})</h3>
-                    <div className="space-y-3">
-                      {otherContacts.map((contact) => (
-                        <ContactCard key={contact.id} contact={contact} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
 
@@ -1034,35 +935,3 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ContactCard({ contact, onAccept, onDecline }: { contact: ContactRequest; onAccept?: () => void; onDecline?: () => void }) {
-  const subjectLabels: Record<string, string> = { collaboration: "Collaboration", project: "Projet", question: "Question", other: "Autre" };
-  const date = new Date(contact.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-
-  return (
-    <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-text-primary">{contact.from_name}</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-text-tertiary">
-              {subjectLabels[contact.subject] ?? contact.subject}
-            </span>
-          </div>
-          <p className="text-xs text-text-tertiary">{contact.from_email} — {date}</p>
-        </div>
-        {contact.status !== "pending" && (
-          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${contact.status === "accepted" ? "bg-teal/10 text-teal border border-teal/30" : "bg-red-500/10 text-red-400 border border-red-500/30"}`}>
-            {contact.status === "accepted" ? "Acceptee" : "Refusee"}
-          </span>
-        )}
-      </div>
-      <p className="text-sm text-text-secondary leading-relaxed">{contact.message}</p>
-      {contact.status === "pending" && onAccept && onDecline && (
-        <div className="flex gap-2 mt-4">
-          <button onClick={onAccept} className="px-4 py-2 bg-lime text-[#0d0d0d] font-bold text-xs rounded-lg hover:brightness-110 transition">Accepter</button>
-          <button onClick={onDecline} className="px-4 py-2 border border-white/15 text-text-secondary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition">Refuser</button>
-        </div>
-      )}
-    </div>
-  );
-}

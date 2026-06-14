@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUserStatus } from "@/hooks/useUserStatus";
+import Avatar from "@/components/Avatar";
 
 interface Conversation {
   id: string;
@@ -370,42 +371,12 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}
             >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  background: "rgba(200,255,0,0.08)",
-                  border: "1.5px solid rgba(200,255,0,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                }}
-              >
-                {c.other_avatar ? (
-                  <img
-                    src={c.other_avatar}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      borderRadius: "50%",
-                    }}
-                  />
-                ) : (
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#C8FF00" }}>
-                    {c.other_name
-                      .split(" ")
-                      .map((w) => w[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                )}
-              </div>
+              <Avatar
+                url={c.other_avatar}
+                name={c.other_name}
+                size={48}
+                style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }}
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{

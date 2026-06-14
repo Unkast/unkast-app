@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useEffect, useState, useCallback, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import Avatar from "@/components/Avatar";
 
 // Icons
 const IconExplore = () => (
@@ -123,7 +124,7 @@ export default function AppShell({
           setUser({
             full_name: data.profile.full_name,
             slug: data.profile.slug,
-            account_type: data.profile.account_type || "member",
+            account_type: data.profile.account_type || "talent",
             avatar_url: data.profile.avatar_url,
             role_name: data.roles?.[0]?.role_name,
           });
@@ -206,10 +207,22 @@ export default function AppShell({
     return () => { cleanup?.(); };
   }, []);
 
-  // Register service worker for offline support
+  // Service worker : uniquement en PRODUCTION.
+  // En développement, le SW garde des caches périmés (images "empoisonnées" par
+  // un 404 mémorisé, bundles JS obsolètes…) -> on le désenregistre activement et
+  // on vide ses caches pour repartir propre à chaque session locale.
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
+    if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
+    } else {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => regs.forEach((r) => r.unregister()))
+        .catch(() => {});
+      if (typeof caches !== "undefined") {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+      }
     }
   }, []);
 
@@ -293,10 +306,6 @@ export default function AppShell({
     }
   }, [activeIndex, user]);
 
-  const initials = user?.full_name
-    ? user.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
-    : "";
-
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar — desktop */}
@@ -362,9 +371,7 @@ export default function AppShell({
               onClick={() => setMenuOpen(!menuOpen)}
               className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#222] border-[1.5px] border-[rgba(200,255,0,0.3)] flex items-center justify-center text-[11px] font-bold text-lime flex-shrink-0">
-                {initials}
-              </div>
+              <Avatar url={user.avatar_url} name={user.full_name} size={32} />
               <div className="min-w-0 text-left">
                 <p className="text-[12px] font-semibold text-text-primary truncate">{user.full_name}</p>
                 {user.role_name && (
@@ -507,19 +514,12 @@ export default function AppShell({
                   />
                 )}
                 {isMoiTab ? (
-                  <div
-                    className="w-[28px] h-[28px] rounded-full overflow-hidden flex items-center justify-center"
-                    style={{
-                      border: active ? "2px solid #C8FF00" : "1.5px solid rgba(255,255,255,0.15)",
-                      background: user.avatar_url ? "transparent" : "linear-gradient(135deg, #1a1a1a, #222)",
-                    }}
-                  >
-                    {user.avatar_url ? (
-                      <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[10px] font-bold text-lime">{initials}</span>
-                    )}
-                  </div>
+                  <Avatar
+                    url={user.avatar_url}
+                    name={user.full_name}
+                    size={28}
+                    style={{ border: active ? "2px solid #C8FF00" : "1.5px solid rgba(255,255,255,0.15)" }}
+                  />
                 ) : (
                   <>
                     {item.icon}

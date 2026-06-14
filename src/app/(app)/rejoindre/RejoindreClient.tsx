@@ -48,6 +48,7 @@ export default function RejoindreClient() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [videoSkipped, setVideoSkipped] = useState(false);
 
   // Step 1
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -69,7 +70,7 @@ export default function RejoindreClient() {
   const [projectYear, setProjectYear] = useState(String(new Date().getFullYear()));
   const [projectCategory, setProjectCategory] = useState<ProjectCategory>("court-metrage");
 
-  // Step 4B (member/talent)
+  // Step 4B (talent)
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchProject[]>([]);
   const [searching, setSearching] = useState(false);
@@ -84,9 +85,33 @@ export default function RejoindreClient() {
   const [recruiterWebsite, setRecruiterWebsite] = useState("");
   const [isLookingFor, setIsLookingFor] = useState("");
 
+  // Invitation email (chantier 10) : ?invitation=<token> -> pré-remplit et
+  // VERROUILLE l'email (le rattachement n'a lieu que si email du compte == email invité).
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
+  const [invitationContext, setInvitationContext] = useState<{ role: string; projectTitle: string | null } | null>(null);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Search projects for member flow
+  // Lecture du token d'invitation au montage (claim ne révèle rien si invalide).
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("invitation");
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/invitations/claim?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (data.valid) {
+          setInvitationToken(token);
+          setEmail(data.email);
+          setInvitationContext({ role: data.role, projectTitle: data.project_title });
+        }
+      } catch {
+        // token invalide/expiré : on ignore silencieusement (inscription normale).
+      }
+    })();
+  }, []);
+
+  // Search projects for talent flow
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
@@ -181,6 +206,7 @@ export default function RejoindreClient() {
         bio: bio || null,
         avatar_url: null,
         account_type: accountType,
+        ...(invitationToken ? { invitation_token: invitationToken } : {}),
       };
 
       // Creator: include project if filled
@@ -196,8 +222,8 @@ export default function RejoindreClient() {
         };
       }
 
-      // Talent/Member: include credit request if filled
-      if ((accountType === "member" || accountType === "talent") && claimProjectId && claimRole) {
+      // Talent: include credit request if filled
+      if (accountType === "talent" && claimProjectId && claimRole) {
         payload.credit_request = {
           project_id: claimProjectId,
           role: claimRole,
@@ -223,6 +249,12 @@ export default function RejoindreClient() {
 
       if (!res.ok) {
         throw new Error(data.error || "Erreur lors de l'inscription");
+      }
+
+      // Anti-vol d'œuvre : le compte est créé, mais la vidéo était déjà référencée
+      // → le film a été sauté, on prévient sur l'écran de confirmation.
+      if (data.video_skipped) {
+        setVideoSkipped(true);
       }
 
       goTo(5);
@@ -496,7 +528,16 @@ export default function RejoindreClient() {
                         onChange={(e) => setEmail(e.target.value)}
                         className={inputClass}
                         placeholder="lucas@example.com"
+                        readOnly={!!invitationToken}
+                        style={invitationToken ? { opacity: 0.7, cursor: "not-allowed" } : undefined}
                       />
+                      {invitationContext && (
+                        <p className="text-xs mt-1.5" style={{ color: "#C8FF00" }}>
+                          Tu as été crédité·e comme {invitationContext.role}
+                          {invitationContext.projectTitle ? ` sur « ${invitationContext.projectTitle} »` : ""}.
+                          Cet email est lié à ton invitation.
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -644,8 +685,8 @@ export default function RejoindreClient() {
                 </div>
               )}
 
-              {/* ===== STEP 4B — Member: claim credit ===== */}
-              {step === 4 && (accountType === "member" || accountType === "talent") && (
+              {/* ===== STEP 4B — Talent: claim credit ===== */}
+              {step === 4 && accountType === "talent" && (
                 <div>
                   <h1 className="text-2xl font-extrabold tracking-tight text-text-primary mb-1">
                     Tu as travaille sur un film ?
@@ -796,6 +837,13 @@ export default function RejoindreClient() {
                   <p style={{ fontSize: 14, color: "#666", maxWidth: 320, margin: "0 auto 32px", lineHeight: 1.6 }}>
                     Ton compte est actif. Tu peux dès maintenant explorer les projets et gérer ton profil.
                   </p>
+                  {videoSkipped && (
+                    <div style={{ background: "rgba(255,180,0,0.08)", border: "1px solid rgba(255,180,0,0.3)", borderRadius: 12, padding: "14px 18px", maxWidth: 360, margin: "0 auto 28px", textAlign: "left" }}>
+                      <p style={{ fontSize: 13, color: "#e0b020", lineHeight: 1.6, margin: 0 }}>
+                        Ton compte est créé, mais cette vidéo est déjà référencée sur Unkast — ton film n'a pas été ajouté. Ajoutes-en une autre depuis ton dashboard.
+                      </p>
+                    </div>
+                  )}
                   <button onClick={() => router.replace("/dashboard")} style={{ background: "#C8FF00", color: "#0d0d0d", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "14px 32px", border: "none", cursor: "pointer" }}>
                     Accéder à mon dashboard
                   </button>
