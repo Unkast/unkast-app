@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST: register or refresh a push token for the authenticated user
 export async function POST(request: NextRequest) {
@@ -10,7 +11,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { token, platform } = body;
 
   if (!token) {

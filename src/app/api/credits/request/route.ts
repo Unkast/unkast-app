@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToUser } from "@/lib/push";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST /api/credits/request
 // Body: { project_id, role, message? }
@@ -12,7 +13,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { project_id, role, message } = body;
 
   if (!project_id || !role) {

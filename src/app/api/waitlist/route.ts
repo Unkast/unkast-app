@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 export async function POST(request: NextRequest) {
   // Anti-spam : max 5 inscriptions waitlist par heure et par IP.
@@ -12,7 +13,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { email, type, name, company, message } = body;
 
   if (!email || !type) {

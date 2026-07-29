@@ -77,7 +77,9 @@ CORE  Motion Primitives (src/components/motion.tsx)
   Variants staggerContainer/fadeUp/fadeIn/scaleIn, cardHover, FadeInView, ModalBackdrop
 
 UTILITY  lib/utils.ts        — slugify() PARTAGE (utilise par signup, dashboard/projects, auth/callback)
-UTILITY  lib/rate-limit.ts   — checkRateLimit() (RPC check_rate_limit, fail-open)
+UTILITY  lib/rate-limit.ts   — checkRateLimit() (RPC check_rate_limit, FAIL-CLOSED ; RPC absente toleree hors prod)
+UTILITY  lib/messaging.ts    — quota conversations/jour PARTAGE (DAILY_CONVERSATION_LIMIT, countConversationsInitiatedToday)
+UTILITY  lib/api.ts          — readJsonBody()/invalidBodyResponse() : body JSON defensif, 400 uniforme (toutes les routes a body)
 UTILITY  lib/push.ts         — envoi de notifications push (lit push_tokens)
 UTILITY  lib/firebase-admin.ts — init FCM cote serveur
 UTILITY  lib/profile.ts      — helpers profil

@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ALL_ROLES } from "@/lib/constants";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+
+// recruiting_roles arrive librement du client : on ne garde que des roles
+// connus (ALL_ROLES), dedoublonnes, plafonnes a 20 entrees.
+function sanitizeRecruitingRoles(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const valid = input.filter((r) => typeof r === "string" && ALL_ROLES.includes(r));
+  return [...new Set(valid)].slice(0, 20);
+}
 
 // GET: fetch current user's profile with roles
 export async function GET() {
@@ -37,7 +48,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { account_type, full_name, first_name, last_name, stage_name, display_name_preference, bio, location, is_available, avatar_url, roles, contact_email, contact_phone, instagram_url, website_url, show_contact_email_to, show_phone_to, show_real_name_to, is_recruiting, recruiting_roles } = body;
 
   // Plan + role + bio courants (verif serveur).
@@ -65,8 +77,13 @@ export async function PATCH(request: NextRequest) {
     me?.plan === "pro" &&
     (effectiveAccountType === "creator" || effectiveAccountType === "recruiter");
 
-  // Update profile fields
+  // Deux updates separes : `updates` = colonnes editables par l'utilisateur,
+  // ecrites via le client utilisateur (RLS). `systemUpdates` = colonnes systeme
+  // (account_type, is_recruiting, recruiting_roles, bio_pending,
+  // recruiter_review_status), ecrites via le client de confiance (service role)
+  // car la regle base a venir en refusera l'ecriture au client utilisateur.
   const updates: Record<string, unknown> = {};
+  const systemUpdates: Record<string, unknown> = {};
   if (full_name !== undefined) updates.full_name = full_name;
   if (first_name !== undefined) updates.first_name = first_name;
   if (last_name !== undefined) updates.last_name = last_name;
@@ -79,8 +96,8 @@ export async function PATCH(request: NextRequest) {
   if (bio !== undefined) {
     const isRecruiter = effectiveAccountType === "recruiter";
     if (isRecruiter && (bio ?? null) !== (me?.bio ?? null)) {
-      updates.bio_pending = bio;
-      updates.recruiter_review_status = "pending";
+      systemUpdates.bio_pending = bio;
+      systemUpdates.recruiter_review_status = "pending";
       pendingReview = true;
     } else {
       updates.bio = bio;
@@ -101,22 +118,22 @@ export async function PATCH(request: NextRequest) {
   // (ex. un createur Pro retrograde en free ne doit plus apparaitre "Je recrute").
   if (is_recruiting !== undefined) {
     if (canRecruit) {
-      updates.is_recruiting = is_recruiting;
-      updates.recruiting_roles = is_recruiting ? (recruiting_roles || []) : [];
+      systemUpdates.is_recruiting = is_recruiting;
+      systemUpdates.recruiting_roles = is_recruiting ? sanitizeRecruitingRoles(recruiting_roles) : [];
     } else {
-      updates.is_recruiting = false;
-      updates.recruiting_roles = [];
+      systemUpdates.is_recruiting = false;
+      systemUpdates.recruiting_roles = [];
     }
   }
 
   // Bascule de role (deja validee talent<->creator plus haut).
   if (account_type !== undefined && account_type !== me?.account_type) {
-    updates.account_type = account_type;
+    systemUpdates.account_type = account_type;
     // Si le nouveau role rend le compte ineligible (ex. creator -> talent),
     // on nettoie le badge "Je recrute" meme si is_recruiting n'est pas envoye.
     if (!canRecruit) {
-      updates.is_recruiting = false;
-      updates.recruiting_roles = [];
+      systemUpdates.is_recruiting = false;
+      systemUpdates.recruiting_roles = [];
     }
   }
 
@@ -138,13 +155,48 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
+  // Colonnes systeme : client de confiance, uniquement si quelque chose change.
+  if (Object.keys(systemUpdates).length > 0) {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("profiles")
+      .update(systemUpdates)
+      .eq("id", user.id);
+
+    if (error) {
+      // Les champs utilisateur ont pu etre enregistres juste avant : erreur
+      // explicite plutot qu'un succes partiel silencieux.
+      return NextResponse.json(
+        { error: `Echec de la mise a jour du statut du compte : ${error.message}` },
+        { status: 500 }
+      );
+    }
+  }
+
   // Update roles if provided
   if (roles && Array.isArray(roles)) {
-    await supabase.from("profile_roles").delete().eq("profile_id", user.id);
+    const { error: deleteError } = await supabase
+      .from("profile_roles")
+      .delete()
+      .eq("profile_id", user.id);
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
     if (roles.length > 0) {
-      await supabase.from("profile_roles").insert(
+      const { error: insertError } = await supabase.from("profile_roles").insert(
         roles.map((role_name: string) => ({ profile_id: user.id, role_name }))
       );
+
+      if (insertError) {
+        // Le delete a deja vide les roles : l'utilisateur doit le savoir
+        // pour pouvoir re-soumettre.
+        return NextResponse.json(
+          { error: "Vos roles ont ete supprimes mais leur re-enregistrement a echoue. Merci de re-enregistrer vos roles." },
+          { status: 500 }
+        );
+      }
     }
   }
 

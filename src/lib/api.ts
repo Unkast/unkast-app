@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+
+// Lecture defensive du body JSON des routes API : request.json() sans
+// try/catch plante en 500 brut sur un body malforme. Ici : null si le body
+// est absent, non-JSON ou n'est pas un objet -> la route repond un 400 uniforme
+// via invalidBodyResponse().
+//
+// Retour type Record<string, any> (et pas unknown) : les champs destructures
+// gardent le meme typage souple que l'ancien await request.json().
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function readJsonBody(request: Request): Promise<Record<string, any> | null> {
+  try {
+    const body = await request.json();
+    return body && typeof body === "object" ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Reponse uniforme pour un body JSON manquant ou malforme. */
+export function invalidBodyResponse() {
+  return NextResponse.json({ error: "Corps de requête invalide." }, { status: 400 });
+}

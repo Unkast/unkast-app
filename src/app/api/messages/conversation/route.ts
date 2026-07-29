@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveUser } from "@/lib/auth-guard";
+import {
+  countConversationsInitiatedToday,
+  DAILY_CONVERSATION_LIMIT,
+  DAILY_LIMIT_MESSAGE,
+} from "@/lib/messaging";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST: start or get a conversation with someone
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus — memes gardes
+  // que api/messages POST (cette route creait une conversation sans eux).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) return NextResponse.json({ error: guard.error }, { status: guard.status });
+  const user = guard.user;
 
   const admin = createAdminClient();
 
-  // Check plan
-  const { data: profile } = await admin.from("profiles").select("plan").eq("id", user.id).single();
-  if (profile?.plan !== "pro") {
+  // Check plan (mutualise via le garde — plus de lecture separee)
+  if (guard.profile.plan !== "pro") {
     return NextResponse.json({ error: "Pro requis.", redirect: "/pro" }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { recipient_id } = body;
   if (!recipient_id) return NextResponse.json({ error: "recipient_id requis." }, { status: 400 });
 
@@ -28,6 +38,12 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     return NextResponse.json({ conversation_id: existing.id });
+  }
+
+  // Meme quota journalier que api/messages POST (helper partage).
+  const dailyConvs = await countConversationsInitiatedToday(admin, user.id);
+  if (dailyConvs >= DAILY_CONVERSATION_LIMIT) {
+    return NextResponse.json({ error: DAILY_LIMIT_MESSAGE }, { status: 429 });
   }
 
   // Create new conversation

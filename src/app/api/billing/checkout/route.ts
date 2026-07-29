@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, priceIdForInterval, siteUrl } from "@/lib/stripe";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST { interval: 'monthly' | 'yearly' } : crée une session Stripe Checkout
 // (mode abonnement) et renvoie son URL. N'ACCORDE PAS le Pro — c'est le webhook
@@ -13,7 +14,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
-  const { interval } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { interval } = body;
   if (interval !== "monthly" && interval !== "yearly") {
     return NextResponse.json({ error: "interval invalide (monthly|yearly)." }, { status: 400 });
   }

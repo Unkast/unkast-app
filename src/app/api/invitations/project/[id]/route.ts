@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // PATCH: accept or refuse an invitation (invited talent only)
 export async function PATCH(
@@ -13,7 +14,8 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { status } = body;
 
   if (!status || !["accepted", "refused"].includes(status)) {

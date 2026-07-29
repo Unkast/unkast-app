@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProUser, getProWriter } from "../guard";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // Dossiers-films prives du recruteur. RLS : recruiter_id = auth.uid() uniquement.
 
@@ -45,7 +46,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
 
-  const { name } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { name } = body;
   const clean = (name ?? "").toString().trim();
   if (!clean) {
     return NextResponse.json({ error: "Nom requis." }, { status: 400 });
@@ -71,7 +74,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
 
-  const { id, name } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { id, name } = body;
   const clean = (name ?? "").toString().trim();
   if (!id || !clean) {
     return NextResponse.json({ error: "id et name requis." }, { status: 400 });

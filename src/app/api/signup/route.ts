@@ -3,7 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify, extractVideoKey } from "@/lib/utils";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
+import { sendConfirmationEmail } from "@/lib/email";
+import { siteUrl } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
   // Anti-abus : max 5 créations de compte par heure et par IP.
@@ -15,7 +18,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const {
     email,
     password,
@@ -45,22 +49,51 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // 1. Create auth user (admin API — no email confirmation needed)
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  // 1. Créer l'utilisateur NON confirmé ET récupérer le lien de confirmation,
+  //    SANS qu'aucun email Supabase ne parte : on envoie nous-mêmes l'email au
+  //    branding Unkast via Resend (Option A). La confirmation email doit être
+  //    activée côté Supabase ("Confirm email" ON) pour bloquer le login tant que
+  //    l'adresse n'est pas confirmée.
+  const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
+    type: "signup",
     email,
     password,
-    email_confirm: true,
+    options: { redirectTo: `${siteUrl()}/auth/confirm` },
   });
 
-  if (authError || !authData.user) {
+  if (authError || !linkData.user) {
+    // Anti-énumération : ne JAMAIS renvoyer le message brut de Supabase Auth
+    // ("already registered" révèle qu'un compte existe). Message générique
+    // pour toutes les erreurs Auth, erreur réelle loguée côté serveur.
+    console.error("[signup] generateLink error:", authError);
     return NextResponse.json(
-      { error: authError?.message ?? "Erreur lors de la creation du compte." },
+      { error: "Impossible de créer le compte. Vérifie tes informations, ou connecte-toi si tu as déjà un compte." },
       { status: 400 }
     );
   }
 
-  const userId = authData.user.id;
+  const userId = linkData.user.id;
+  const hashedToken = linkData.properties?.hashed_token;
   const profileSlug = slugify(full_name) + "-" + userId.slice(0, 6);
+
+  // Compensation anti-orphelin : si la creation du profil echoue ci-dessous,
+  // l'utilisateur Auth resterait orphelin (email definitivement bloque). On ne
+  // supprimera QUE l'utilisateur ne dans CETTE requete — jamais un compte
+  // preexistant : generateLink(type signup) peut aussi renvoyer un utilisateur
+  // existant non confirme (re-tentative d'inscription). Criteres cumulatifs :
+  //  - aucun profil deja en base pour cet id (une inscription anterieure aboutie
+  //    a toujours un profil) ;
+  //  - email jamais confirme ;
+  //  - compte cree il y a moins de 60 s (donc par cette requete).
+  const { data: preexistingProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+  const createdByThisRequest =
+    !preexistingProfile &&
+    !linkData.user.email_confirmed_at &&
+    Date.now() - new Date(linkData.user.created_at).getTime() < 60_000;
 
   // 2. Create profile (admin client bypasses RLS)
   const { error: profileError } = await supabase.from("profiles").insert({
@@ -83,6 +116,14 @@ export async function POST(request: NextRequest) {
   });
 
   if (profileError) {
+    console.error("[signup] profile insert error:", profileError);
+    if (createdByThisRequest) {
+      // Libere l'email en supprimant l'utilisateur Auth cree par cette requete.
+      const { error: cleanupError } = await supabase.auth.admin.deleteUser(userId);
+      if (cleanupError) {
+        console.error("[signup] compensation deleteUser echouee (utilisateur orphelin):", cleanupError);
+      }
+    }
     return NextResponse.json(
       { error: "Erreur lors de la creation du profil: " + profileError.message },
       { status: 500 }
@@ -234,5 +275,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, slug: profileSlug, video_skipped: videoSkipped });
+  // 7. Email de confirmation au branding Unkast via Resend (lien sur notre
+  // domaine -> /auth/confirm fera le verifyOtp + auto-login). En dev sans clé
+  // Resend, l'email est sauté proprement (confirmation_sent=false).
+  let confirmationSent = false;
+  if (hashedToken) {
+    const confirmUrl = `${siteUrl()}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=signup`;
+    const res = await sendConfirmationEmail({ to: email, confirmUrl });
+    confirmationSent = res.sent;
+  }
+
+  return NextResponse.json({
+    success: true,
+    slug: profileSlug,
+    video_skipped: videoSkipped,
+    needs_confirmation: true,
+    confirmation_sent: confirmationSent,
+  });
 }

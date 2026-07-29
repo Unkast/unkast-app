@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToUser } from "@/lib/push";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // PATCH: accept or refuse a credit request (project owner only)
 export async function PATCH(
@@ -15,7 +16,8 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { status } = body;
 
   if (!status || !["accepted", "refused"].includes(status)) {

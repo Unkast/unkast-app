@@ -13,6 +13,23 @@ export default function ConnexionClient() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+
+  async function resendConfirmation() {
+    if (!email || resendState === "sending") return;
+    setResendState("sending");
+    try {
+      await fetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      /* réponse générique de toute façon */
+    }
+    setResendState("sent");
+  }
 
   function getSupabase() {
     return createBrowserClient(
@@ -24,6 +41,7 @@ export default function ConnexionClient() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setNeedsConfirm(false);
     setLoading(true);
 
     try {
@@ -33,9 +51,16 @@ export default function ConnexionClient() {
       });
 
       if (authError) {
-        setError(authError.message.includes("Invalid login")
-          ? "Email ou mot de passe incorrect."
-          : authError.message);
+        const msg = authError.message.toLowerCase();
+        if (msg.includes("not confirmed")) {
+          // Compte non confirmé : message clair + bouton de renvoi.
+          setNeedsConfirm(true);
+          setError("Ton email n'est pas encore confirmé. Clique sur le lien reçu par email pour activer ton compte.");
+        } else if (msg.includes("invalid login")) {
+          setError("Email ou mot de passe incorrect.");
+        } else {
+          setError(authError.message);
+        }
         return;
       }
 
@@ -128,8 +153,22 @@ export default function ConnexionClient() {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                <p className="text-sm text-red-400">{error}</p>
+              <div className={`p-3 rounded-lg ${needsConfirm ? "bg-[rgba(255,180,0,0.08)] border border-[rgba(255,180,0,0.3)]" : "bg-red-500/10 border border-red-500/30"}`}>
+                <p className={`text-sm ${needsConfirm ? "text-[#e0b020]" : "text-red-400"}`}>{error}</p>
+                {needsConfirm && (
+                  resendState === "sent" ? (
+                    <p className="text-xs text-lime mt-2">Email renvoyé ✓ Pense à vérifier tes spams.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={resendConfirmation}
+                      disabled={resendState === "sending"}
+                      className="mt-2 text-xs font-semibold text-lime underline disabled:opacity-50"
+                    >
+                      {resendState === "sending" ? "Envoi…" : "Renvoyer l'email de confirmation"}
+                    </button>
+                  )
+                )}
               </div>
             )}
 

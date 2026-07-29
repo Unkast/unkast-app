@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST: create a project invitation (creator only)
 export async function POST(request: NextRequest) {
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Seuls les créateurs peuvent inviter." }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { project_id, invited_profile_id, role, message } = body;
 
   if (!project_id || !invited_profile_id || !role) {

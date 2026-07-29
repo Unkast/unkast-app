@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: "Unkast",
   webDir: "public",
   server: {
-    url: "http://192.168.1.241:3000",
-    cleartext: true,
+    url: "https://app.unkast.com",
   },
   android: {
     allowMixedContent: true,

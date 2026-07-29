@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
 import { CATEGORY_LABELS } from "@/lib/constants";
@@ -49,6 +50,22 @@ export default function RejoindreClient() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [videoSkipped, setVideoSkipped] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+
+  async function resendConfirmation() {
+    if (!email || resendState === "sending") return;
+    setResendState("sending");
+    try {
+      await fetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      /* réponse générique de toute façon */
+    }
+    setResendState("sent");
+  }
 
   // Step 1
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -825,46 +842,53 @@ export default function RejoindreClient() {
                 </div>
               )}
 
-              {/* ===== STEP 5 — Confirmation ===== */}
-              {step === 5 && accountType !== "recruiter" && (
+              {/* ===== STEP 5 — Confirmation email (tous les comptes) ===== */}
+              {step === 5 && (
                 <div className="text-center py-12">
                   <div style={{ width: 64, height: 64, borderRadius: 16, background: "rgba(200,255,0,0.1)", border: "1px solid rgba(200,255,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   </div>
                   <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.5px", color: "#f0f0f0", marginBottom: 12 }}>
-                    Bienvenue sur Unkast !
+                    Confirme ton email
                   </h1>
-                  <p style={{ fontSize: 14, color: "#666", maxWidth: 320, margin: "0 auto 32px", lineHeight: 1.6 }}>
-                    Ton compte est actif. Tu peux dès maintenant explorer les projets et gérer ton profil.
+                  <p style={{ fontSize: 14, color: "#888", maxWidth: 340, margin: "0 auto 8px", lineHeight: 1.6 }}>
+                    On t&apos;a envoyé un email de confirmation à
                   </p>
-                  {videoSkipped && (
-                    <div style={{ background: "rgba(255,180,0,0.08)", border: "1px solid rgba(255,180,0,0.3)", borderRadius: 12, padding: "14px 18px", maxWidth: 360, margin: "0 auto 28px", textAlign: "left" }}>
-                      <p style={{ fontSize: 13, color: "#e0b020", lineHeight: 1.6, margin: 0 }}>
-                        Ton compte est créé, mais cette vidéo est déjà référencée sur Unkast — ton film n'a pas été ajouté. Ajoutes-en une autre depuis ton dashboard.
+                  <p style={{ fontSize: 15, color: "#C8FF00", fontWeight: 600, marginBottom: 16, wordBreak: "break-all" }}>{email}</p>
+                  <p style={{ fontSize: 14, color: "#888", maxWidth: 340, margin: "0 auto 28px", lineHeight: 1.6 }}>
+                    Clique sur le lien dans l&apos;email pour activer ton compte, puis tu seras connecté·e automatiquement.
+                  </p>
+
+                  {accountType === "recruiter" && (
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 18px", maxWidth: 360, margin: "0 auto 20px", textAlign: "left" }}>
+                      <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, margin: 0 }}>
+                        Ton profil recruteur sera ensuite vérifié manuellement (sous 48h). Envoie un justificatif à <span style={{ color: "#C8FF00" }}>pro@unkast.com</span>.
                       </p>
                     </div>
                   )}
-                  <button onClick={() => router.replace("/dashboard")} style={{ background: "#C8FF00", color: "#0d0d0d", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "14px 32px", border: "none", cursor: "pointer" }}>
-                    Accéder à mon dashboard
-                  </button>
-                </div>
-              )}
 
-              {/* ===== STEP 5 — Recruiter confirmation ===== */}
-              {step === 5 && accountType === "recruiter" && (
-                <div className="text-center py-12">
-                  <div style={{ width: 64, height: 64, borderRadius: 16, background: "rgba(200,255,0,0.1)", border: "1px solid rgba(200,255,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.5px", color: "#f0f0f0", marginBottom: 12 }}>
-                    Demande envoyee !
-                  </h1>
-                  <p style={{ fontSize: 14, color: "#666", maxWidth: 320, margin: "0 auto 32px", lineHeight: 1.6 }}>
-                    Ton profil recruteur est en cours de vérification. Tu recevras un email sous 48h. En attendant, tu peux explorer la plateforme.
-                  </p>
-                  <button onClick={() => router.replace("/feed")} style={{ background: "#C8FF00", color: "#0d0d0d", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "14px 32px", border: "none", cursor: "pointer" }}>
-                    Explorer Unkast
-                  </button>
+                  {videoSkipped && (
+                    <div style={{ background: "rgba(255,180,0,0.08)", border: "1px solid rgba(255,180,0,0.3)", borderRadius: 12, padding: "14px 18px", maxWidth: 360, margin: "0 auto 20px", textAlign: "left" }}>
+                      <p style={{ fontSize: 13, color: "#e0b020", lineHeight: 1.6, margin: 0 }}>
+                        Note : cette vidéo était déjà référencée sur Unkast — ton film n&apos;a pas été ajouté. Tu pourras en ajouter un autre une fois connecté·e.
+                      </p>
+                    </div>
+                  )}
+
+                  {resendState === "sent" ? (
+                    <p style={{ fontSize: 13, color: "#C8FF00" }}>Email renvoyé ✓ Pense à vérifier tes spams.</p>
+                  ) : (
+                    <p style={{ fontSize: 13, color: "#666" }}>
+                      Pas reçu ?{" "}
+                      <button onClick={resendConfirmation} disabled={resendState === "sending"} style={{ background: "none", border: "none", color: "#C8FF00", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+                        {resendState === "sending" ? "Envoi…" : "Renvoyer l'email"}
+                      </button>
+                    </p>
+                  )}
+
+                  <Link href="/connexion" style={{ display: "inline-block", marginTop: 24, fontSize: 13, color: "#666" }}>
+                    Aller à la connexion
+                  </Link>
                 </div>
               )}
             </motion.div>

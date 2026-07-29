@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -131,9 +132,39 @@ export async function PATCH(request: NextRequest) {
   const adminId = await isAdmin(supabase);
   if (!adminId) return NextResponse.json({ error: "Non autorise." }, { status: 403 });
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { action, target_id, reason } = body;
   const admin = createAdminClient();
+
+  // Fiabilite (audit) : chaque action = une ecriture metier + une ligne d'audit,
+  // et CHAQUE ecriture est verifiee — plus de success renvoye sur echec.
+  // finalize() mutualise : echec metier -> 500 explicite ; sinon journalisation
+  // admin_logs, elle aussi verifiee (si elle echoue, l'action a DEJA porte :
+  // on le dit tel quel plutot que de pretendre a un echec complet).
+  async function finalize(
+    writeError: { message: string } | null,
+    actionName: string,
+    targetType: string,
+    details: Record<string, unknown> = {}
+  ) {
+    if (writeError) {
+      return NextResponse.json(
+        { error: `Échec de l'action ${actionName} : ${writeError.message}` },
+        { status: 500 }
+      );
+    }
+    const { error: logError } = await admin
+      .from("admin_logs")
+      .insert({ admin_id: adminId, action: actionName, target_type: targetType, target_id, details });
+    if (logError) {
+      return NextResponse.json(
+        { error: `Action ${actionName} appliquée, mais journal admin non écrit : ${logError.message}` },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ success: true });
+  }
 
   // Approve recruiter — règle métier : un recruteur approuvé passe plan 'pro'.
   // (La règle "recruiter ⇒ pro" vit ici, à la validation, pas à l'inscription :
@@ -141,97 +172,90 @@ export async function PATCH(request: NextRequest) {
   if (action === "approve_recruiter") {
     // pro_source='admin' => Pro accordé manuellement, jamais rétrogradé par le
     // webhook Stripe (chantier 7). On ne touche pas les champs stripe_*.
-    await admin.from("profiles").update({ recruiter_status: "approved", plan: "pro", pro_since: new Date().toISOString(), pro_source: "admin" }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "approve_recruiter", target_type: "profile", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ recruiter_status: "approved", plan: "pro", pro_since: new Date().toISOString(), pro_source: "admin" }).eq("id", target_id);
+    return finalize(error, "approve_recruiter", "profile");
   }
 
   // Reject recruiter
   if (action === "reject_recruiter") {
-    await admin.from("profiles").update({ recruiter_status: "rejected" }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "reject_recruiter", target_type: "profile", target_id, details: { reason } });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ recruiter_status: "rejected" }).eq("id", target_id);
+    return finalize(error, "reject_recruiter", "profile", { reason });
   }
 
   // Suspend user
   if (action === "suspend_user") {
-    await admin.from("profiles").update({ is_suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason || null }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "suspend_user", target_type: "profile", target_id, details: { reason } });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ is_suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason || null }).eq("id", target_id);
+    return finalize(error, "suspend_user", "profile", { reason });
   }
 
   // Reactivate user
   if (action === "reactivate_user") {
-    await admin.from("profiles").update({ is_suspended: false, suspended_at: null, suspended_reason: null }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "reactivate_user", target_type: "profile", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ is_suspended: false, suspended_at: null, suspended_reason: null }).eq("id", target_id);
+    return finalize(error, "reactivate_user", "profile");
   }
 
   // Set pro
   if (action === "set_pro") {
     // pro_source='admin' => Pro manuel, protégé du webhook (jamais rétrogradé).
-    await admin.from("profiles").update({ plan: "pro", pro_since: new Date().toISOString(), pro_source: "admin" }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "set_pro", target_type: "profile", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ plan: "pro", pro_since: new Date().toISOString(), pro_source: "admin" }).eq("id", target_id);
+    return finalize(error, "set_pro", "profile");
   }
 
   // Approve film
   if (action === "approve_film") {
-    await admin.from("projects").update({ status: "approved" }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "approve_film", target_type: "project", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("projects").update({ status: "approved" }).eq("id", target_id);
+    return finalize(error, "approve_film", "project");
   }
 
   // Refuse film
   if (action === "refuse_film") {
-    await admin.from("projects").update({ status: "refused" }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "refuse_film", target_type: "project", target_id, details: { reason } });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("projects").update({ status: "refused" }).eq("id", target_id);
+    return finalize(error, "refuse_film", "project", { reason });
   }
 
   // --- Re-verification de la description pro d'un recruteur (chantier 2) ---
 
   // Approuver la modif : la version en attente devient publique.
   if (action === "approve_recruiter_edit") {
-    const { data: target } = await admin.from("profiles").select("bio_pending").eq("id", target_id).single();
-    await admin.from("profiles").update({
-      bio: target?.bio_pending ?? null,
+    const { data: target, error: readError } = await admin.from("profiles").select("bio_pending").eq("id", target_id).single();
+    // Sans lecture fiable du brouillon, on n'ecrase PAS la bio publique
+    // (sinon une lecture en echec publierait bio=null).
+    if (readError || !target) {
+      return NextResponse.json({ error: "Profil cible introuvable ou illisible." }, { status: 404 });
+    }
+    const { error } = await admin.from("profiles").update({
+      bio: target.bio_pending ?? null,
       bio_pending: null,
       recruiter_review_status: "none",
     }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "approve_recruiter_edit", target_type: "profile", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    return finalize(error, "approve_recruiter_edit", "profile");
   }
 
   // Refuser la modif : on garde l'ancienne version publique, on jette le brouillon.
   if (action === "reject_recruiter_edit") {
-    await admin.from("profiles").update({
+    const { error } = await admin.from("profiles").update({
       bio_pending: null,
       recruiter_review_status: "rejected",
     }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "reject_recruiter_edit", target_type: "profile", target_id, details: { reason } });
-    return NextResponse.json({ success: true });
+    return finalize(error, "reject_recruiter_edit", "profile", { reason });
   }
 
   // Accorder le badge "recruteur verifie".
   if (action === "grant_recruiter_verified") {
-    await admin.from("profiles").update({ recruiter_verified: true, recruiter_verified_at: new Date().toISOString() }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "grant_recruiter_verified", target_type: "profile", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ recruiter_verified: true, recruiter_verified_at: new Date().toISOString() }).eq("id", target_id);
+    return finalize(error, "grant_recruiter_verified", "profile");
   }
 
   // Retirer le badge "recruteur verifie".
   if (action === "revoke_recruiter_verified") {
-    await admin.from("profiles").update({ recruiter_verified: false, recruiter_verified_at: null }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "revoke_recruiter_verified", target_type: "profile", target_id, details: { reason } });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("profiles").update({ recruiter_verified: false, recruiter_verified_at: null }).eq("id", target_id);
+    return finalize(error, "revoke_recruiter_verified", "profile", { reason });
   }
 
   // Dismiss report
   if (action === "dismiss_report") {
-    await admin.from("reports").update({ status: "dismissed", reviewed_by: adminId, reviewed_at: new Date().toISOString() }).eq("id", target_id);
-    await admin.from("admin_logs").insert({ admin_id: adminId, action: "dismiss_report", target_type: "report", target_id, details: {} });
-    return NextResponse.json({ success: true });
+    const { error } = await admin.from("reports").update({ status: "dismissed", reviewed_by: adminId, reviewed_at: new Date().toISOString() }).eq("id", target_id);
+    return finalize(error, "dismiss_report", "report");
   }
 
   return NextResponse.json({ error: "Action invalide." }, { status: 400 });

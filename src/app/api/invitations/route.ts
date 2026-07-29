@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit, isValidEmail } from "@/lib/rate-limit";
 import { sendInvitationEmail } from "@/lib/email";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST: inviter PAR EMAIL un collaborateur absent d'Unkast (chantier 10, cas b).
 //
@@ -24,7 +25,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Seuls les créateurs peuvent inviter." }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { project_id, email, role, name } = body;
 
   if (!project_id || !email || !role) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProWriter } from "../guard";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // Dispatch : ranger / retirer un candidat dans un dossier (folder_candidates).
 // RLS : ecriture autorisee seulement si le dossier appartient au recruteur.
@@ -13,7 +14,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
 
-  const { folder_id, talent_id, role, signal_id } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { folder_id, talent_id, role, signal_id } = body;
   if (!folder_id || !talent_id || !role) {
     return NextResponse.json({ error: "folder_id, talent_id et role requis." }, { status: 400 });
   }
@@ -40,7 +43,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
 
-  const { folder_id, talent_id, role } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { folder_id, talent_id, role } = body;
   if (!folder_id || !talent_id || !role) {
     return NextResponse.json({ error: "folder_id, talent_id et role requis." }, { status: 400 });
   }

@@ -3,6 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { sendPushToUser } from "@/lib/push";
+import {
+  countConversationsInitiatedToday,
+  DAILY_CONVERSATION_LIMIT,
+  DAILY_LIMIT_MESSAGE,
+} from "@/lib/messaging";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // RÈGLE 1 : Seuls les Pro peuvent initier une conversation
 // RÈGLE 2 : Tout le monde peut répondre (gratuit inclus)
@@ -23,7 +29,8 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { conversation_id, recipient_id, content } = body;
 
   if (!content?.trim()) {
@@ -55,18 +62,14 @@ export async function POST(request: NextRequest) {
     }, { status: 403 });
   }
 
-  // ── RÈGLE 3 : Max 5 nouvelles conversations/jour ──
+  // ── RÈGLE 3 : Max 5 nouvelles conversations/jour (helper partagé avec
+  // api/messages/conversation POST — aucune des deux routes ne peut diverger) ──
   if (isNewConversation) {
-    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { count: dailyConvs } = await admin.from("conversations")
-      .select("id", { count: "exact", head: true })
-      .eq("participant_1", user.id)
-      .gte("created_at", dayAgo);
-
-    if ((dailyConvs ?? 0) >= 5) {
+    const dailyConvs = await countConversationsInitiatedToday(admin, user.id);
+    if (dailyConvs >= DAILY_CONVERSATION_LIMIT) {
       return NextResponse.json({
         error: "daily_limit_reached",
-        message: "Tu as atteint ta limite de 5 nouveaux contacts par jour. Réessaie demain.",
+        message: DAILY_LIMIT_MESSAGE,
       }, { status: 429 });
     }
 

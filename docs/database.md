@@ -179,6 +179,9 @@ Ecartement **silencieux** d'un candidat, **par poste**. `id`, `recruiter_id` (�
 
 > **Usage des tables 16-19.** Côté talent : bouton « Disponible » sur `profil/[slug]` → `/api/availability` (écrit `availability_signals`). Côté recruteur : espace pré-casting dans `/moi` (onglet « Recrutement », composant `RecruitmentSpace`, visible si Pro createur/recruteur) → `/api/recruitment/*` (candidatures groupées, dossiers `recruiter_folders`, dispatch `folder_candidates`, écartement `recruiter_dismissals`). « Contacter » réutilise la messagerie Pro existante. Voir `docs/api-routes.md`.
 
+### 20. stripe_events *(fiabilité — 2026-07-02)* — ⚠️ **migration à exécuter**
+Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (TEXT), `received_at` (TIMESTAMPTZ, défaut `now()`). Le webhook (`api/billing/webhook`) **revendique** `event.id` par INSERT **avant** toute écriture sur `profiles` : doublon (23505) → 200 sans traitement ; échec de traitement → la ligne est supprimée (le retry Stripe rejouera). RLS activée **sans policy** (service role uniquement, même posture que `rate_limits`). Migration manuelle : `supabase/migrations/20260702_stripe_events.sql` — **pas encore exécutée en prod** ; tant qu'elle ne l'est pas, le webhook traite sans dédup (42P01 toléré, loggé).
+
 ## Index
 
 - **schema.sql** : `idx_profiles_slug`, `idx_profiles_status`, `idx_projects_slug`, `idx_projects_profile_id`, `idx_project_credits_project_id`, `idx_project_credits_profile_id`, `idx_contact_requests_to_profile`, `idx_profile_roles_profile_id`.

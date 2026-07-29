@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
 import { slugify, extractVideoKey } from "@/lib/utils";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // GET: fetch user's projects with credits
 export async function GET() {
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { title, category, year, video_url, description, owner_role, credits } = body;
 
   if (!title || !category || !video_url) {

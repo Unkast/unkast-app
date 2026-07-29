@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -18,7 +19,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Trop de signalements. Réessaie plus tard." }, { status: 429 });
   }
 
-  const body = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
   const { target_type, target_id, reason, description } = body;
 
   if (!target_type || !target_id || !reason) {

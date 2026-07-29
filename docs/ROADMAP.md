@@ -6,7 +6,7 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 14 juin 2026 (ajout chantiers 9 — anti-vol d'œuvre / authenticité des films — et 10 — invitation des collaborateurs crédités)
+Dernière mise à jour : 15 juin 2026 (chantier 12 — confirmation d'email obligatoire via Resend, bouclé ; chantier 11 — deep-link Google mobile, à faire avant l'APK)
 
 ---
 
@@ -134,6 +134,25 @@ Système complet et testable, **à basculer en live à la fin du dev** (rien enc
 - [x] **Une seule invitation par (email, projet)** (index unique) → 409 ; **token usage unique + expirant 30 j**.
 - [x] Flux complet : créditer → absent → invitation email → inscription `?invitation=<token>` → **rattachement ghost_credit → compte UNIQUEMENT si email du compte == email invité** (anti-détournement) ; route `claim` **ne révèle rien** si invalide (anti-énumération).
 - [ ] *(évolution future)* webhook Resend pour gérer bounces/désabonnements ; relance manuelle encadrée.
+
+### Chantier 11 — Connexion Google sur app mobile (deep-link OAuth Capacitor) *(à faire AVANT la sortie de l'APK)*
+**Problème** : dans l'APK (webview Capacitor chargeant `app.unkast.com`), le login Google s'ouvre dans le **navigateur système** (Google interdit l'OAuth en webview brut). La session se crée **dans le navigateur**, pas dans le webview de l'app → de retour dans l'app, l'utilisateur **n'est pas connecté**. En web pur (`signInWithOAuth` → `app.unkast.com/auth/callback`) ça fonctionne ; **seul le mobile est concerné**. L'email/mot de passe, lui, marche déjà sur mobile (pas de redirection).
+**Objectif** : faire revenir la session **dans le webview de l'app** via un **deep-link natif** après le retour de Google.
+- [ ] Ajouter **`@capacitor/browser`** : ouvrir l'URL OAuth Google dans un onglet in-app contrôlé (plutôt que la navigation brute du webview).
+- [ ] `redirectTo` vers un **deep-link** qui rouvre l'app : **App Link** `https://app.unkast.com/auth/callback` (recommandé) **ou** schéma custom `com.unkast.app://auth/callback`.
+- [ ] **`AndroidManifest.xml`** : ajouter l'**intent-filter** correspondant (config native — `android/`).
+- [ ] Listener **`appUrlOpen`** (plugin `@capacitor/app`, déjà installé) : capte le retour, **ferme le navigateur** in-app, récupère le `code`.
+- [ ] **`supabase.auth.exchangeCodeForSession(...)`** appelé **dans le webview** pour poser la session au bon endroit ; flux **PKCE** activé côté client Supabase.
+- [ ] **Supabase** → Authentication → Redirect URLs : ajouter le deep-link.
+- [ ] **Rebuild de l'APK** + test du flux complet sur téléphone (login → retour app → session active).
+- [ ] *(cosmétique, séparé, non bloquant)* **Custom Domain Supabase** (add-on payant) pour afficher `auth.unkast.com` au lieu de `<projet>.supabase.co` sur l'écran Google + **OAuth consent screen** Google (App name « Unkast » + logo).
+**Garde-fou process** : touche au **natif Android** (`AndroidManifest`, config Capacitor) → risque élevé (CLAUDE.md) : plan détaillé validé AVANT de coder, test desktop **et** mobile, rebuild APK.
+
+### Chantier 12 — Confirmation d'email obligatoire ✅ BOUCLÉ *(15 juin 2026)*
+**Objectif** : compte non activable tant que l'email n'est pas confirmé ; email de confirmation au **branding Unkast via Resend** (pas l'email générique Supabase). Avant, l'inscription auto-confirmait et ne connectait pas → parcours confus.
+**Livré (Option A — self-managed)** : `api/signup` utilise **`generateLink({type:"signup"})`** (crée l'utilisateur **non confirmé** + récupère `hashed_token`, **aucun email Supabase**) ; email envoyé via **Resend** (`lib/email.ts` → `sendConfirmationEmail`, charte `#0d0d0d`/lime, expéditeur `AUTH_FROM_EMAIL`). Lien sur **notre domaine** : `/auth/confirm?token_hash=…&type=signup` → page `auth/confirm` fait **`verifyOtp` + auto-login + redirection `/feed`**. `RejoindreClient` step 5 = écran « confirme ton email » + renvoi. `api/auth/resend-confirmation` (magiclink, rate-limit 3/h/email + 10/h/IP, anti-énumération). `ConnexionClient` : message clair « email non confirmé » + bouton renvoyer.
+**Config requise côté Supabase** : **Authentication → Email → « Confirm email » = ON** ; **Redirect URLs** : ajouter `https://app.unkast.com/auth/confirm` (+ localhost en dev).
+- [ ] **(barrière n°2, amélioration future)** **Blocage des emails jetables / Temp Mail** à l'inscription : refuser les domaines jetables connus (liste blocklist maintenue, ou service de réputation d'email). Vient **après** la confirmation d'email — la confirmation filtre déjà une partie ; le blocage jetable durcit contre les inscriptions massives automatisées.
 
 ---
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProWriter } from "../guard";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // Ecartement silencieux d'un candidat, par poste (recruiter_dismissals).
 // Le talent ne le sait jamais (table sans aucune policy SELECT cote talent).
@@ -14,7 +15,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
 
-  const { talent_id, role } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { talent_id, role } = body;
   if (!talent_id || !role) {
     return NextResponse.json({ error: "talent_id et role requis." }, { status: 400 });
   }
@@ -40,7 +43,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
 
-  const { talent_id, role } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { talent_id, role } = body;
   if (!talent_id || !role) {
     return NextResponse.json({ error: "talent_id et role requis." }, { status: 400 });
   }

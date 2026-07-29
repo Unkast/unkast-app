@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // Recrutement — signaux de disponibilite (cote talent).
 // Un talent (ou creator non-recruteur) se signale "Disponible" pour un poste
@@ -82,7 +83,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Trop de signalements de disponibilité. Réessaie plus tard." }, { status: 429 });
   }
 
-  const { recruiter_id, role } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { recruiter_id, role } = body;
   if (!recruiter_id || !role) {
     return NextResponse.json({ error: "recruiter_id et role requis." }, { status: 400 });
   }
@@ -123,7 +126,9 @@ export async function PATCH(request: NextRequest) {
   }
   const user = guard.user;
 
-  const { recruiter_id, role } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { recruiter_id, role } = body;
   if (!recruiter_id || !role) {
     return NextResponse.json({ error: "recruiter_id et role requis." }, { status: 400 });
   }
@@ -153,7 +158,9 @@ export async function DELETE(request: NextRequest) {
   }
   const user = guard.user;
 
-  const { recruiter_id, role } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body) return invalidBodyResponse();
+  const { recruiter_id, role } = body;
   if (!recruiter_id || !role) {
     return NextResponse.json({ error: "recruiter_id et role requis." }, { status: 400 });
   }

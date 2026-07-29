@@ -27,6 +27,11 @@ function fromAddress(): string {
   return process.env.INVITE_FROM_EMAIL || "Unkast <invitations@unkast.com>";
 }
 
+// Expéditeur des emails d'authentification (confirmation de compte).
+function authFromAddress(): string {
+  return process.env.AUTH_FROM_EMAIL || "Unkast <noreply@mail.unkast.com>";
+}
+
 export interface SendInvitationParams {
   to: string;
   inviterName: string;
@@ -64,6 +69,91 @@ export async function sendInvitationEmail(
     // On n'expose jamais l'erreur Resend brute ; l'appelant décide quoi en faire.
     return { sent: false, reason: "error" };
   }
+}
+
+// --- Email de confirmation de compte (chantier confirmation email) -----------
+
+export interface SendConfirmationParams {
+  to: string;
+  confirmUrl: string;
+}
+
+export async function sendConfirmationEmail(
+  params: SendConfirmationParams
+): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) {
+    // Pas de clé (dev/test) : on saute proprement l'envoi.
+    return { sent: false, reason: "no_api_key" };
+  }
+
+  try {
+    await resend.emails.send({
+      from: authFromAddress(),
+      to: params.to,
+      subject: "Confirme ton compte Unkast",
+      html: confirmationHtml(params.confirmUrl),
+      text: confirmationText(params.confirmUrl),
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}
+
+function confirmationText(confirmUrl: string): string {
+  return [
+    `Bienvenue sur Unkast !`,
+    ``,
+    `Confirme ton adresse email pour activer ton compte :`,
+    confirmUrl,
+    ``,
+    `Ce lien expire dans 24 heures. Si tu n'es pas à l'origine de cette inscription, ignore simplement cet email.`,
+    ``,
+    `— Unkast`,
+  ].join("\n");
+}
+
+function confirmationHtml(confirmUrl: string): string {
+  return `<!DOCTYPE html>
+<html lang="fr">
+  <body style="margin:0;padding:0;background:#0d0d0d;font-family:'DM Sans',Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d0d;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#141414;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="padding:32px 32px 8px 32px;">
+                <div style="font-weight:700;font-size:20px;letter-spacing:-0.5px;color:#C8FF00;">Unkast</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 32px 0 32px;">
+                <h1 style="margin:0 0 12px 0;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#f0f0f0;">Bienvenue sur Unkast</h1>
+                <p style="margin:0 0 24px 0;font-size:15px;line-height:1.6;color:#aaa;">
+                  Plus qu'une étape : confirme ton adresse email pour activer ton compte et accéder à la plateforme.
+                </p>
+                <a href="${confirmUrl}" style="display:inline-block;background:#C8FF00;color:#0d0d0d;font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:14px 28px;">
+                  Activer mon compte
+                </a>
+                <p style="margin:24px 0 0 0;font-size:12px;line-height:1.6;color:#666;">
+                  Ce lien expire dans 24 heures. Si tu n'es pas à l'origine de cette inscription, ignore simplement cet email.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 32px 32px;">
+                <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;font-size:11px;color:#555;">
+                  Unkast — la plateforme des professionnels du cinéma et de l'audiovisuel.
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
 }
 
 // --- Gabarits email (charte : fond #0d0d0d, lime #C8FF00, DM Sans) ------------
