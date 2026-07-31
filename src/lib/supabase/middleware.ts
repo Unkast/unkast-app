@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -46,7 +47,12 @@ export async function updateSession(request: NextRequest) {
       url.pathname = "/connexion";
       return NextResponse.redirect(url);
     }
-    const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
+    // is_admin est revoque pour anon/authenticated : lecture via le client de
+    // confiance (service role), scope sur la ligne de l'utilisateur courant.
+    // Le proxy tourne sur le runtime Node.js par defaut (Next 16), donc la cle
+    // service role y est disponible.
+    const admin = createAdminClient();
+    const { data: profile } = await admin.from("profiles").select("is_admin").eq("id", user.id).single();
     if (!profile?.is_admin) {
       const url = request.nextUrl.clone();
       url.pathname = "/feed";

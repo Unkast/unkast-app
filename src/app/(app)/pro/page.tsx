@@ -44,13 +44,14 @@ export default function ProPage() {
   useEffect(() => {
     (async () => {
       try {
-        const { createBrowserClient } = await import("@supabase/ssr");
-        const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: { user } } = await sb.auth.getUser();
-        if (!user) return;
-        const { data: profile } = await sb.from("profiles").select("is_admin, plan").eq("id", user.id).single();
-        if (profile?.is_admin) setIsAdmin(true);
-        if (profile?.plan === "pro") setIsPro(true);
+        // is_admin et plan sont revoques pour anon/authenticated : plus de
+        // lecture directe depuis le navigateur, on passe par la route serveur.
+        // 401 (visiteur non connecte) => on laisse les deux etats a false.
+        const res = await fetch("/api/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.is_admin) setIsAdmin(true);
+        if (data.plan === "pro") setIsPro(true);
       } catch {}
     })();
   }, []);

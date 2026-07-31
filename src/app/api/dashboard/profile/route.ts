@@ -12,6 +12,40 @@ function sanitizeRecruitingRoles(input: unknown): string[] {
   return [...new Set(valid)].slice(0, 20);
 }
 
+// Lecture du profil en DEUX temps (le contrat renvoye au front est inchange :
+// c'est toujours l'objet complet du type Profile de src/types/database.ts).
+//
+// OWN_COLUMNS : colonnes lues via le CLIENT UTILISATEUR (RLS) — c'est aussi ce
+// qui garantit que l'appelant ne lit que sa propre ligne.
+// PRIVILEGED_COLUMNS : colonnes REVOQUEES en base pour anon/authenticated ;
+// elles ne peuvent plus transiter par le client utilisateur et sont lues via le
+// client de confiance (service role), scope sur user.id.
+//
+// Toute colonne nouvellement revoquee doit MIGRER de OWN_COLUMNS vers
+// PRIVILEGED_COLUMNS : sinon PostgREST refusera la lecture (permission denied).
+const OWN_COLUMNS = [
+  "id", "full_name", "slug", "bio", "avatar_url", "location", "is_available",
+  "status", "created_at", "updated_at",
+  "account_type", "plan", "pro_since",
+  "recruiter_company", "recruiter_role", "recruiter_website",
+  "recruiter_verified", "recruiter_verified_at",
+  "is_suspended",
+  "first_name", "last_name", "stage_name", "display_name_preference",
+  "instagram_url", "website_url",
+  "show_contact_email_to", "show_phone_to", "show_real_name_to",
+  "is_recruiting", "recruiting_roles", "is_looking_for",
+].join(", ");
+
+// Liste EXACTE des 14 colonnes revoquees pour anon/authenticated.
+const PRIVILEGED_COLUMNS = [
+  "is_admin",
+  "contact_email", "contact_phone",
+  "recruiter_status", "recruiter_document_url", "recruiter_review_status", "bio_pending",
+  "suspended_at", "suspended_reason",
+  "pro_source",
+  "stripe_customer_id", "stripe_subscription_id", "subscription_status", "current_period_end",
+].join(", ");
+
 // GET: fetch current user's profile with roles
 export async function GET() {
   const supabase = await createClient();
@@ -23,7 +57,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select(OWN_COLUMNS)
     .eq("id", user.id)
     .single();
 
@@ -31,12 +65,37 @@ export async function GET() {
     return NextResponse.json({ error: "Profil introuvable." }, { status: 404 });
   }
 
+  // Colonnes protegees : client de confiance, scope sur la ligne de l'appelant.
+  const admin = createAdminClient();
+  const { data: privileged, error: privilegedError } = await admin
+    .from("profiles")
+    .select(PRIVILEGED_COLUMNS)
+    .eq("id", user.id)
+    .single();
+
+  // Echec ici = profil ampute (coordonnees / statut de re-validation absents).
+  // Erreur explicite plutot qu'un objet incomplet que le front interpreterait
+  // comme "aucune modification en attente".
+  if (privilegedError || !privileged) {
+    return NextResponse.json(
+      { error: "Lecture du profil incomplete. Reessaie dans un instant." },
+      { status: 500 }
+    );
+  }
+
   const { data: roles } = await supabase
     .from("profile_roles")
     .select("*")
     .eq("profile_id", user.id);
 
-  return NextResponse.json({ profile, roles: roles ?? [] });
+  // Cast : le parseur de types de supabase-js ne sait pas inferer une liste de
+  // colonnes construite dynamiquement (OWN_COLUMNS / PRIVILEGED_COLUMNS).
+  const merged = {
+    ...(profile as unknown as Record<string, unknown>),
+    ...(privileged as unknown as Record<string, unknown>),
+  };
+
+  return NextResponse.json({ profile: merged, roles: roles ?? [] });
 }
 
 // PATCH: update profile

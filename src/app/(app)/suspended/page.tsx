@@ -9,12 +9,18 @@ export default function SuspendedPage() {
   const [reason, setReason] = useState<string | null>(null);
 
   useEffect(() => {
-    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    sb.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { router.replace("/"); return; }
-      const { data } = await sb.from("profiles").select("suspended_reason").eq("id", user.id).single();
-      setReason(data?.suspended_reason || null);
-    });
+    // suspended_reason est revoque pour anon/authenticated : lecture via la
+    // route serveur, qui authentifie et repond 401 si personne n'est connecte
+    // (meme comportement qu'avant : redirection vers l'accueil).
+    (async () => {
+      try {
+        const res = await fetch("/api/me");
+        if (res.status === 401) { router.replace("/"); return; }
+        if (!res.ok) return;
+        const data = await res.json();
+        setReason(data.suspended_reason || null);
+      } catch {}
+    })();
   }, [router]);
 
   async function handleSignOut() {
