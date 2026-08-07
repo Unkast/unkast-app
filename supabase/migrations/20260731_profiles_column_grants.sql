@@ -114,13 +114,23 @@ commit;
 -- les colonnes RETOURNEES : la correction serait alors de les retirer du retour, PAS
 -- de basculer l'ecriture sur le service role.
 --
--- Pour connaitre l'etat reel des UPDATE :
+-- VERIFIE EN PRODUCTION LE 07/08/2026 (requete ci-dessous, role UPDATE) :
 --   select grantee, privilege_type, string_agg(column_name, ', ' order by column_name)
 --   from information_schema.column_privileges
 --   where table_schema = 'public' and table_name = 'profiles'
 --     and privilege_type = 'UPDATE' and grantee in ('anon', 'authenticated')
 --   group by grantee, privilege_type;
 --
--- Durcir l'UPDATE de la meme facon serait coherent (un client ne devrait pas
--- pouvoir ecrire is_admin, plan, pro_source ni les colonnes stripe_*), mais c'est
--- un changement a part entiere : a valider et tester avant.
+-- Resultat : `authenticated` dispose de 17 GRANT UPDATE colonne (avatar_url, bio,
+-- contact_email, contact_phone, display_name_preference, first_name, full_name,
+-- instagram_url, is_available, last_name, location, show_contact_email_to,
+-- show_phone_to, show_real_name_to, stage_name, updated_at, website_url).
+-- `anon` n'a aucun GRANT UPDATE colonne. Aucun GRANT UPDATE ni SELECT au niveau
+-- TABLE pour ces deux roles (le retrait table-level de la section SELECT
+-- ci-dessus s'applique donc egalement en pratique).
+--
+-- CONCLUSION : is_admin, plan, pro_source et les colonnes stripe_* ne sont PAS
+-- ecrivables par un client (anon ou authenticated). Le durcissement UPDATE
+-- evoque dans une version anterieure de ce commentaire comme "reste a faire"
+-- etait deja en place en production ; l'ecart etait dans la documentation, pas
+-- dans la base.

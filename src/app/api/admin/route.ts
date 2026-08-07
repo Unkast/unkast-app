@@ -68,18 +68,19 @@ export async function GET(request: NextRequest) {
       const { data: reporter } = await admin.from("profiles").select("full_name, slug").eq("id", r.reporter_id).single();
       let targetName = "";
       let targetSlug = "";
+      let targetOwnerId = "";
       if (r.target_type === "profile") {
         const { data: t } = await admin.from("profiles").select("full_name, slug").eq("id", r.target_id).single();
-        targetName = t?.full_name || ""; targetSlug = t?.slug || "";
+        targetName = t?.full_name || ""; targetSlug = t?.slug || ""; targetOwnerId = r.target_id;
       } else if (r.target_type === "project") {
-        const { data: t } = await admin.from("projects").select("title, slug").eq("id", r.target_id).single();
-        targetName = t?.title || ""; targetSlug = t?.slug || "";
+        const { data: t } = await admin.from("projects").select("title, slug, profile_id").eq("id", r.target_id).single();
+        targetName = t?.title || ""; targetSlug = t?.slug || ""; targetOwnerId = t?.profile_id || "";
       }
       // Count total reports for this target
       const { count } = await admin.from("reports").select("id", { count: "exact", head: true })
         .eq("target_type", r.target_type).eq("target_id", r.target_id).eq("status", "pending");
       const total = count || 1;
-      return { ...r, reporter_name: reporter?.full_name || "", target_name: targetName, target_slug: targetSlug, total_reports: total, urgent: total >= 3 };
+      return { ...r, reporter_name: reporter?.full_name || "", target_name: targetName, target_slug: targetSlug, target_owner_id: targetOwnerId, total_reports: total, urgent: total >= 3 };
     }));
 
     // Alerte prioritaire : les cibles les plus signalees remontent en tete
@@ -136,6 +137,29 @@ export async function PATCH(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { action, target_id, reason } = body;
   const admin = createAdminClient();
+
+  // Auto-protection : refuse les actions qui, appliquees a soi-meme, sortiraient
+  // l'admin du back-office (suspension) ou degraderaient son propre statut
+  // recruteur. Les actions "avantage a soi" (set_pro, approve_*) restent permises :
+  // admin unique, les bloquer imposerait du SQL manuel — admin_logs trace tout.
+  // Films et signalements (approve_film, refuse_film, dismiss_report) : hors
+  // perimetre, meme raison (decision produit du 07/08/2026).
+  const SELF_BLOCKED_ACTIONS = ["suspend_user", "reject_recruiter", "revoke_recruiter_verified"];
+  if (SELF_BLOCKED_ACTIONS.includes(action) && target_id === adminId) {
+    // Journalisation best-effort : le refus tient meme si le log echoue,
+    // contrairement a finalize() ou l'ecriture metier a deja porte.
+    await admin.from("admin_logs").insert({
+      admin_id: adminId,
+      action: "self_action_blocked",
+      target_type: "profile",
+      target_id,
+      details: { attempted_action: action, reason: reason ?? null },
+    });
+    return NextResponse.json(
+      { error: "Auto-protection : un admin ne peut pas appliquer cette action à son propre compte." },
+      { status: 403 }
+    );
+  }
 
   // Fiabilite (audit) : chaque action = une ecriture metier + une ligne d'audit,
   // et CHAQUE ecriture est verifiee — plus de success renvoye sur echec.

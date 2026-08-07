@@ -7,7 +7,7 @@ type Tab = "recruiters" | "reports" | "users" | "films";
 
 interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; recruiter_verified?: boolean; is_suspended?: boolean; created_at: string; }
 interface RecruiterEdit { id: string; full_name: string; slug: string; bio: string | null; bio_pending: string | null; recruiter_verified: boolean; recruiter_company: string | null; created_at: string; }
-interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; }
+interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; target_owner_id: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; }
 interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; }
 interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; }
 
@@ -49,12 +49,17 @@ export default function AdminClient() {
 
   async function doAction(action: string, targetId: string, reason?: string) {
     setActionLoading(targetId);
-    await fetch("/api/admin", {
+    const res = await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, target_id: targetId, reason }),
     });
     setActionLoading(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      showToast(data?.error || "Erreur inconnue");
+      return;
+    }
     showToast("Action effectuee");
     fetchData();
   }
@@ -229,7 +234,7 @@ export default function AdminClient() {
               <div style={{ display: "flex", gap: 8 }}>
                 {r.target_type === "profile" && <Link href={`/profil/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Voir le profil</Link>}
                 {r.target_type === "project" && <Link href={`/projet/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Voir le film</Link>}
-                <button onClick={() => confirmAction("suspend_user", r.target_type === "profile" ? r.target_id : "", `Suspendre le compte`)} style={btnDanger}>Suspendre</button>
+                <button onClick={() => confirmAction("suspend_user", r.target_owner_id, `Suspendre le compte`)} style={btnDanger}>Suspendre</button>
                 <button onClick={() => doAction("dismiss_report", r.id)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Ignorer</button>
               </div>
             </div>
