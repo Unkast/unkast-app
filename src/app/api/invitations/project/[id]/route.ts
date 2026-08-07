@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
+import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // PATCH: accept or refuse an invitation (invited talent only)
@@ -10,8 +11,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+  const user = guard.user;
 
   const { id } = await params;
   const body = await readJsonBody(request);
@@ -67,8 +72,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+  const user = guard.user;
 
   const { id } = await params;
   const admin = createAdminClient();

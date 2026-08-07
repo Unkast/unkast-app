@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, priceIdForInterval, siteUrl } from "@/lib/stripe";
+import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST { interval: 'monthly' | 'yearly' } : crée une session Stripe Checkout
@@ -9,10 +10,14 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 // qui le fait une fois le paiement confirmé.
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  // On ne fait pas payer un compte banni. NOTE : `billing/portal` reste
+  // volontairement ouvert aux suspendus — c'est la voie de résiliation.
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
+  const user = guard.user;
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();

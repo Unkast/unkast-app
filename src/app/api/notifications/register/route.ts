@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST: register or refresh a push token for the authenticated user
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  // Un compte suspendu ne doit plus recevoir de push. L'appelant
+  // (usePushNotifications) n'inspecte pas la reponse : echec silencieux.
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
+  const user = guard.user;
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();

@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToUser } from "@/lib/push";
+import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST /api/credits/request
 // Body: { project_id, role, message? }
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
+  const user = guard.user;
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();

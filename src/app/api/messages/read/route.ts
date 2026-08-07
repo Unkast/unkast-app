@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  // Sans effet visible cote client : l'appelant (messages/[id]) ignore l'echec.
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+  const user = guard.user;
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();

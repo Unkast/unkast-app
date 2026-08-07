@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveUser } from "@/lib/auth-guard";
 import { ALL_ROLES } from "@/lib/constants";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
@@ -101,11 +102,13 @@ export async function GET() {
 // PATCH: update profile
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  // Le GET reste sur getUser seul : un suspendu doit pouvoir consulter son profil.
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
+  const user = guard.user;
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();
@@ -165,6 +168,12 @@ export async function PATCH(request: NextRequest) {
   if (location !== undefined) updates.location = location;
   if (is_available !== undefined) updates.is_available = is_available;
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+  // contact_email / contact_phone : REVOQUEES en SELECT pour anon/authenticated
+  // (d'ou leur presence dans PRIVILEGED_COLUMNS a la lecture) mais ACCORDEES en
+  // UPDATE. Elles restent donc des champs editables ordinaires, ecrits par le
+  // client utilisateur. Ne pas les basculer sur le client de confiance : l'update
+  // n'a pas de .select() chaine, donc aucune representation n'est renvoyee et
+  // aucun privilege SELECT n'est exerce sur ce qu'on ecrit.
   if (contact_email !== undefined) updates.contact_email = contact_email;
   if (contact_phone !== undefined) updates.contact_phone = contact_phone;
   if (instagram_url !== undefined) updates.instagram_url = instagram_url;

@@ -9,9 +9,11 @@ import { checkRateLimit } from "@/lib/rate-limit";
 // La RLS reste le backstop reel.
 
 type Server = Awaited<ReturnType<typeof createClient>>;
+// 503 vient de getActiveUser (verification de suspension impossible) et transite
+// tel quel ; 429 est propre a getProWriter (rate-limit).
 type GuardResult =
   | { user: { id: string }; error: null; status: 200 }
-  | { user: null; error: string; status: 401 | 403 | 429 };
+  | { user: null; error: string; status: 401 | 403 | 429 | 503 };
 
 // LECTURES : authentifie + non suspendu + Pro.
 export async function getProUser(supabase: Server): Promise<GuardResult> {

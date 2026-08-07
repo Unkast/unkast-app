@@ -21,11 +21,15 @@ export interface ActiveUserProfile {
   full_name: string | null;
 }
 
+// `email` vient de l'utilisateur Auth (pas de `profiles.contact_email`, qui est un
+// champ public editable et sans rapport). Expose parce que getUser() est deja
+// appele ici : sans ca, une route qui a besoin de l'email (billing/checkout, pour
+// creer le customer Stripe) devrait refaire un aller-retour Auth complet.
 export async function getActiveUser(
   supabase: Server
 ): Promise<
-  | { user: { id: string }; profile: ActiveUserProfile; error: null; status: 200 }
-  | { user: null; profile: null; error: string; status: 401 | 403 }
+  | { user: { id: string; email: string | null }; profile: ActiveUserProfile; error: null; status: 200 }
+  | { user: null; profile: null; error: string; status: 401 | 403 | 503 }
 > {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -33,19 +37,64 @@ export async function getActiveUser(
   }
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("id, is_suspended, plan, account_type, full_name")
     .eq("id", user.id)
     .single();
 
-  if (profile?.is_suspended) {
+  // FAIL-CLOSED. Cette lecture est le SEUL controle de suspension du serveur : si
+  // elle n'aboutit pas, on ne sait pas si le compte est banni. L'ancienne version
+  // ignorait `error` et retombait sur un profil de secours `is_suspended: false`,
+  // qui affirmait "non suspendu" au lieu de dire "je n'ai pas pu verifier" — un
+  // compte suspendu passait donc pendant toute la duree d'un incident base.
+  if (profileError) {
+    // PGRST116 = ".single() n'a pas eu exactement une ligne". Le filtre porte sur
+    // la cle primaire, donc "plusieurs lignes" est impossible : c'est forcement
+    // ZERO ligne, un utilisateur Auth sans ligne `profiles` (orphelin). Etat
+    // PERMANENT, pas transitoire : un 503 ferait boucler le client indefiniment.
+    // Origine connue : compensation ratee dans api/signup (cf. le log
+    // "compensation deleteUser echouee"), ou suppression manuelle de la ligne.
+    // Un compte Google se repare seul au re-login (auth/callback recree le
+    // profil) ; un compte email/mot de passe n'a aucun chemin de reparation
+    // automatique, la ligne doit etre recreee a la main.
+    if (profileError.code === "PGRST116") {
+      console.error(
+        `[auth-guard] Profil introuvable pour l'utilisateur Auth ${user.id} — ligne profiles absente (orphelin). Ecriture refusee.`
+      );
+      return {
+        user: null,
+        profile: null,
+        error: "Profil introuvable. Contacte le support.",
+        status: 403,
+      };
+    }
+
+    // Tout le reste est TRANSITOIRE : reseau, timeout, 5xx PostgREST, pool
+    // sature, cle service role invalide. 503 et message neutre — surtout pas
+    // "Compte suspendu.", qui mentirait sur la cause et enverrait un utilisateur
+    // legitime vers /suspended pendant un incident.
+    console.error(
+      `[auth-guard] Verification de suspension impossible pour ${user.id} :`,
+      profileError
+    );
+    return {
+      user: null,
+      profile: null,
+      error: "Verification impossible, reessaie.",
+      status: 503,
+    };
+  }
+
+  if (profile.is_suspended) {
     return { user: null, profile: null, error: "Compte suspendu.", status: 403 };
   }
 
+  // `profile` est garanti non-null ici (toute erreur est sortie plus haut) : plus
+  // aucun profil de secours n'est fabrique.
   return {
-    user: { id: user.id },
-    profile: (profile ?? { id: user.id, is_suspended: false, plan: null, account_type: null, full_name: null }) as ActiveUserProfile,
+    user: { id: user.id, email: user.email ?? null },
+    profile: profile as ActiveUserProfile,
     error: null,
     status: 200,
   };

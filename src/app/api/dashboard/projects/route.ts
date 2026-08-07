@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
 import { slugify, extractVideoKey } from "@/lib/utils";
+import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // GET: fetch user's projects with credits
@@ -35,11 +36,12 @@ export async function GET() {
 // POST: create a new project
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
+  const user = guard.user;
 
   // Plafond plan-aware : 2 films (free) / 30 films (pro). Plan lu cote serveur.
   const { data: planRow } = await supabase
@@ -148,11 +150,12 @@ export async function POST(request: NextRequest) {
 // DELETE: delete a project
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
+  const guard = await getActiveUser(supabase);
+  if (!guard.user) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
+  const user = guard.user;
 
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("id");
