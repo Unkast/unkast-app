@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminId } from "@/lib/adminGuard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
-
-async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("is_admin").eq("id", user.id).single();
-  if (!profile?.is_admin) return null;
-  return user.id;
-}
 
 // GET: fetch admin dashboard data
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const adminId = await isAdmin(supabase);
+  const adminId = await getAdminId();
   if (!adminId) return NextResponse.json({ error: "Non autorise." }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
@@ -129,8 +119,7 @@ export async function GET(request: NextRequest) {
 
 // PATCH: admin actions
 export async function PATCH(request: NextRequest) {
-  const supabase = await createClient();
-  const adminId = await isAdmin(supabase);
+  const adminId = await getAdminId();
   if (!adminId) return NextResponse.json({ error: "Non autorise." }, { status: 403 });
 
   const body = await readJsonBody(request);

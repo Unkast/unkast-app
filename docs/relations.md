@@ -124,9 +124,11 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `ReportModal` | [declenche] | `POST /api/reports` |
 | `POST /api/reports` | [persiste dans] | `reports`, `admin_logs` (ecriture) |
 | **Admin** | | |
-| `AdminClient` (`/admin`) | [declenche] | `GET/PATCH /api/admin` |
+| `AdminClient` (`/admin`, `src/app/admin/`) | [declenche] | `GET/PATCH /api/admin` |
+| `src/app/admin/layout.tsx` (garde serveur) | [depend de] | `lib/adminGuard.ts` (`getAdminId()`) |
 | `/api/admin` | [persiste dans] | `profiles`, `projects`, `reports`, `admin_logs` (ecriture) |
-| `/api/admin` | [depend de] | `lib/supabase/admin.ts` (service role) + `profiles.is_admin` |
+| `/api/admin` | [depend de] | `lib/adminGuard.ts` (`getAdminId()`) → `lib/supabase/admin.ts` (service role) + `profiles.is_admin` |
+| `AppShell` (menu utilisateur desktop) | [utilise] | `GET /api/me` (`is_admin`) pour afficher le lien « Administration » |
 | **Pro / statut** | | |
 | `pro/page.tsx`, `ConversionBanner` | [utilise] | `useUserStatus` (lit `profiles.plan`) |
 | **Avatar** | | |

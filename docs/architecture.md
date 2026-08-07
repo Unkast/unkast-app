@@ -134,7 +134,12 @@ FEATURE  Pro / Freemium — /pro (src/app/(app)/pro/)
 FEATURE  Suspendu — /suspended (src/app/(app)/suspended/)
   Ecran pour comptes is_suspended (lit suspended_reason).
 
-FEATURE  Admin — /admin (src/app/(app)/admin/ + AdminClient)
+FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) depuis le 07/08/2026
+  Espace structurellement separe de la vue client : pas d'AppShell, layout propre
+  (src/app/admin/layout.tsx) avec garde serveur getAdminId() (lib/adminGuard.ts,
+  helper partage avec /api/admin) + lien « Retour a l'app ». Entree cote client :
+  lien « Administration » dans le menu utilisateur desktop d'AppShell (visible si
+  is_admin via fetch /api/me).
   Back-office : recruteurs, reports, users, films. [declenche] GET/PATCH /api/admin
   Onglets : approbation recruteur, moderation reports, suspension, set_pro, approbation films.
 ```

@@ -10,8 +10,9 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/AppShell.tsx`
 - **Role** : Shell principal de l'app (sidebar desktop, bottom tab mobile, header)
-- **Consommateurs** : TOUTES les pages du groupe (via `src/app/(app)/layout.tsx`)
+- **Consommateurs** : TOUTES les pages du groupe (via `src/app/(app)/layout.tsx`). `/admin` n'en fait **plus** partie (espace separe `src/app/admin/` depuis le 07/08/2026, layout propre sans AppShell)
 - **Risque si modifie** : **CRITIQUE** — casse la navigation de toute l'app
+- **Note admin** : le menu utilisateur desktop affiche un lien « Administration » si `is_admin` (fetch `GET /api/me` au montage quand connecte — affichage seulement, la garde reelle est le layout serveur de `/admin`)
 
 ## Avatar
 

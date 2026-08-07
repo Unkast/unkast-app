@@ -102,6 +102,7 @@ export default function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnread);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const showBack = !ROOT_PAGES.includes(pathname);
   const pageTitle = getPageTitle(pathname);
@@ -109,6 +110,20 @@ export default function AppShell({
 
   // Register push notifications when logged in
   usePushNotifications(!!user);
+
+  // is_admin est revoque cote navigateur : seule /api/me l'expose (service role,
+  // scope sur soi). Un fetch au montage quand connecte — pilote uniquement
+  // l'affichage du lien Administration, la vraie garde est serveur (layout /admin).
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    let cancelled = false;
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setIsAdmin(d.is_admin === true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!user]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -360,6 +375,9 @@ export default function AppShell({
                   className="absolute bottom-full left-2.5 right-2.5 mb-1.5 bg-[#1a1a1a] border border-white/[0.08] rounded-lg p-1.5 shadow-xl z-50"
                 >
                   <MenuLink href="/moi" onClick={() => setMenuOpen(false)}>Mon profil</MenuLink>
+                  {isAdmin && (
+                    <MenuLink href="/admin" onClick={() => setMenuOpen(false)}>Administration</MenuLink>
+                  )}
                   <div className="h-px bg-white/5 my-1" />
                   <button
                     onClick={handleSignOut}
