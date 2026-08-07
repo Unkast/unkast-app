@@ -943,7 +943,7 @@ export default function MoiClient() {
                     <svg style={{ margin: "0 auto 10px", opacity: 0.5 }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" /></svg>
                     <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Tu réalises ou produis des films ?</p>
                     <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6, marginBottom: 16 }}>Passe en compte Créateur pour publier tes œuvres et construire ton équipe sur Unkast.</p>
-                    <button onClick={() => {/* TODO: switch account type */}} style={{ background: "transparent", border: "1px solid rgba(200,255,0,0.3)", color: "#C8FF00", borderRadius: 10, padding: "11px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                    <button onClick={() => switchAccountType("creator")} style={{ background: "transparent", border: "1px solid rgba(200,255,0,0.3)", color: "#C8FF00", borderRadius: 10, padding: "11px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
                       Devenir Créateur →
                     </button>
                   </div>

@@ -205,10 +205,14 @@ export default function ConversationPage({
 
   return (
     <div
+      // On remplit le parent, et `pb-tabbar` (globals.css) reserve la hauteur de la
+      // tab bar mobile — sinon la barre de saisie passe derriere.
+      className="pb-tabbar"
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "calc(100vh - 120px)",
+        height: "100%",
+        minHeight: 0,
       }}
     >
       {/* ── Header ── */}

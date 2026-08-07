@@ -283,7 +283,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
 
   if (loading) {
     return (
-      <div className="pb-16 lg:pb-0">
+      <div className="pb-tabbar">
         <main className="flex items-center justify-center py-20">
           <div className="w-6 h-6 border-2 border-lime/30 border-t-lime rounded-full animate-spin" />
         </main>
@@ -293,7 +293,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
 
   if (!profile) {
     return (
-      <div className="pb-16 lg:pb-0">
+      <div className="pb-tabbar">
         <main className="flex items-center justify-center text-center px-4 py-20">
           <div>
             <p className="text-text-secondary mb-4">Tu dois etre connecte pour acceder au dashboard.</p>
@@ -308,7 +308,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-    <div className="pb-16 lg:pb-0">
+    <div className="pb-tabbar">
       <main className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 lg:py-8">
         {/* Toast */}
         <AnimatePresence>

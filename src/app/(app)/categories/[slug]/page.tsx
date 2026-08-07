@@ -62,7 +62,7 @@ export default async function CategoryPage({ params }: Props) {
   const rest = enrichedProjects.slice(1);
 
   return (
-    <div className="pb-16 lg:pb-0">
+    <div className="pb-tabbar">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-center gap-3 mb-1">

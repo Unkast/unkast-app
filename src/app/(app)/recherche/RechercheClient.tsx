@@ -216,7 +216,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
   }
 
   return (
-    <div className="pb-16 lg:pb-0">
+    <div className="pb-tabbar">
       <div className="mx-auto w-full max-w-[1600px] lg:px-12 xl:px-16">
       {/* Header */}
       <div className="px-5 pt-5">

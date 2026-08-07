@@ -232,7 +232,7 @@ export default function ProfileClient({
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-16 lg:pb-0">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-tabbar">
       <style>{`@keyframes recruiting-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }`}</style>
       <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-4 sm:py-6 lg:py-10">
         <div className="flex flex-col lg:flex-row lg:gap-12 lg:items-start">
