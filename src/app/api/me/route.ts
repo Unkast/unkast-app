@@ -4,10 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 // GET /api/me : statut du visiteur sur SON PROPRE compte.
 //
-// is_admin, plan et suspended_reason sont revoques en base pour anon et
-// authenticated : ils ne peuvent plus etre lus depuis le navigateur. Cette route
-// authentifie via le client utilisateur (cookies de session) puis lit ces trois
-// colonnes via le client de confiance, toujours scope sur user.id.
+// is_admin et suspended_reason sont revoques en base pour anon et authenticated
+// (migration 20260731_profiles_column_grants.sql) : ils ne peuvent plus etre lus
+// depuis le navigateur. Cette route authentifie via le client utilisateur (cookies
+// de session) puis les lit via le client de confiance, scope sur user.id.
+// `plan` reste lisible par le client (useUserStatus l'interroge directement) ; il
+// est renvoye ici par commodite, pour eviter un second aller-retour.
 //
 // Volontairement PAS de getActiveUser ici : la page /suspended doit rester
 // consultable par un compte suspendu (le middleware exclut deja /api de la

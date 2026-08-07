@@ -200,10 +200,39 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 ### Tables ajoutees — RLS auditee (introspection prod, 13/06/2026 ; recrutement 14/06/2026)
 
 ✅ **Les 14 tables ont `rowsecurity = true` avec des policies correctes** (10 auditees le 13/06 + les 4
-tables de recrutement creees et verifiees actives le 14/06). Les `GRANT` larges a
-`anon`/`authenticated` sont la config Supabase par defaut, **neutralisee par la RLS active** — pas un
-risque. RLS non encore versionnee dans `schema.sql` (a inclure lors de la regeneration ; pour le
-recrutement, source = `supabase/migrations/20260614_recruitment.sql`).
+tables de recrutement creees et verifiees actives le 14/06). RLS non encore versionnee dans
+`schema.sql` (a inclure lors de la regeneration ; pour le recrutement, source =
+`supabase/migrations/20260614_recruitment.sql`).
+
+> ⚠️ **Correction du 31/07/2026.** Cette section affirmait auparavant que les `GRANT` larges a
+> `anon`/`authenticated` etaient « neutralises par la RLS active, pas un risque ». **C'est faux pour
+> `profiles`** : la RLS filtre les LIGNES, jamais les COLONNES. Une ligne de profil etant lisible
+> publiquement (`status='approved'`), n'importe qui pouvait lire `contact_email`, `is_admin` ou
+> `stripe_customer_id` en interrogeant PostgREST avec la cle anon. **14 colonnes de `profiles` ont
+> donc ete revoquees** pour `anon` et `authenticated` : `is_admin`, `contact_email`, `contact_phone`,
+> `recruiter_status`, `recruiter_document_url`, `recruiter_review_status`, `bio_pending`,
+> `suspended_at`, `suspended_reason`, `pro_source`, `stripe_customer_id`, `stripe_subscription_id`,
+> `subscription_status`, `current_period_end`.
+>
+> Migration : [`20260731_profiles_column_grants.sql`](../supabase/migrations/20260731_profiles_column_grants.sql)
+> (retro-documentee, la regle avait ete posee a la main). Cote code : elles ne sont lues **que** par le
+> service role (`api/dashboard/profile` GET via `PRIVILEGED_COLUMNS`, `api/me`, `lib/supabase/middleware.ts`,
+> `api/billing/*`, `api/admin`). **`plan` n'est PAS revoque** : `hooks/useUserStatus.ts` le lit depuis le
+> navigateur pour le gating Pro.
+>
+> **La revocation porte sur le SELECT, pas sur l'UPDATE.** `contact_email` et `contact_phone` sont
+> accordees en UPDATE a `authenticated` et restent donc **ecrites par le client utilisateur** dans le
+> PATCH, comme les autres champs editables. C'est sans risque parce que l'update ne chaine pas
+> `.select()` : postgrest-js n'ajoute `Prefer: return=representation` que dans `select()`, donc PostgREST
+> repond 204 sans `RETURNING` et n'exerce aucun privilege de lecture sur ce qu'on ecrit. Chainer un
+> `.select()` sur cet update declencherait un 403 sur les colonnes retournees.
+>
+> **Regle a tenir** : `OWN_COLUMNS` + `PRIVILEGED_COLUMNS` dans `api/dashboard/profile/route.ts` doivent
+> couvrir exactement les 45 colonnes de `profiles`. Toute colonne nouvellement revoquee doit passer de
+> la premiere liste a la seconde, sinon PostgREST renvoie `permission denied` et /moi casse.
+>
+> Les `GRANT` par defaut restent en revanche sans danger sur les autres tables, dont aucune ligne n'est
+> lisible publiquement (scope participants, proprietaire ou admin).
 
 | Table | RLS | Policy reelle |
 |---|---|---|

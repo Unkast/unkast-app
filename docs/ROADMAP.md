@@ -6,11 +6,24 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 15 juin 2026 (chantier 12 — confirmation d'email obligatoire via Resend, bouclé ; chantier 11 — deep-link Google mobile, à faire avant l'APK)
+Dernière mise à jour : 1er août 2026 (durcissement des colonnes `profiles` + passe de dette technique ; chantier 11 — deep-link Google mobile, toujours à faire avant l'APK)
 
 ---
 
 ## ✅ Terminé
+
+### Durcissement base — colonnes sensibles de `profiles` *(31 juillet / 1er août 2026)*
+- [x] **14 colonnes révoquées** pour `anon`/`authenticated` (`is_admin`, `contact_*`, `recruiter_status`, `bio_pending`, `suspended_*`, `pro_source`, `stripe_*`, `subscription_status`, `current_period_end`). La RLS filtre les **lignes**, pas les **colonnes** : une ligne de profil étant lisible publiquement, ces champs étaient interrogeables avec la clé anon. *(31 juil.)*
+- [x] **Lectures basculées sur le client de confiance** — `api/dashboard/profile` GET en deux temps (`OWN_COLUMNS` / `PRIVILEGED_COLUMNS`), nouvelle route `api/me`, `middleware.ts`, pages `/pro` et `/suspended`. *(31 juil.)*
+- [x] **Point laissé ouvert par le commit du 31 juillet, tranché** : l'écriture de `contact_email`/`contact_phone` **reste sur le client utilisateur**. La révocation porte sur le SELECT, ces colonnes sont accordées en UPDATE à `authenticated`, et l'update ne chaîne pas `.select()` (postgrest-js n'envoie `return=representation` que via `select()`) donc PostgREST répond 204 sans `RETURNING`. Rien à corriger, comportement vérifié et documenté. *(1er août)*
+- [x] **Migration rétro-documentée** — `supabase/migrations/20260731_profiles_column_grants.sql` : la règle avait été posée à la main, le repo et la base avaient divergé. Fichier déclaratif + idempotent + requête de vérification. *(1er août)*
+
+### Passe de dette technique *(1er août 2026)*
+- [x] **Barre de saisie de la messagerie invisible sur mobile** — `messages/[id]` forçait `height: calc(100vh - 120px)`, valeur qui ne correspondait ni au header ni à la tab bar : l'input tombait 16 px derrière la barre d'onglets. Passé en `height: 100%` + réserve explicite.
+- [x] **Réserve de la tab bar unifiée** — classe `.pb-tabbar` (`globals.css`) = `56px + env(safe-area-inset-bottom)`, appliquée à feed, recherche, dashboard, catégories, profil et messagerie. Le `pb-16` en dur (64 px) sous-réservait de ~26 px sur les appareils à home indicator.
+- [x] **Bouton « Devenir Créateur » mort** (`MoiClient`) — `onClick` vide avec un TODO, alors que `switchAccountType` existait juste à côté. C'était le CTA de conversion talent → créateur.
+- [x] **Docs recalées sur le code** — `database.md` affirmait l'inverse de la réalité sur les GRANT ; `api/me` et la lecture en deux temps ajoutées à `api-routes.md`.
+- [x] **`.env.local.example`** — 3 variables listées sur 12 réellement utilisées (manquaient service role, les 4 Stripe, `NEXT_PUBLIC_SITE_URL`, les 2 expéditeurs Resend, Firebase).
 
 ### Remise en ordre des fondations (audit post-restructuration)
 - [x] **Resynchroniser le typage** — `src/types/database.ts` réécrit sur le schéma Supabase réel (15 tables, `profiles` 35 colonnes, `projects` 12 colonnes). *(14 juin 2026)*
@@ -87,6 +100,8 @@ Audit puis correctifs priorisés. Garde commun `getActiveUser` ([lib/auth-guard.
 - [x] **Rate-limit** ajouté sur `api/reports` (10/h), `api/availability` (30/h), `api/recruitment/*` écritures (60/h) — réutilise `checkRateLimit`.
 - [x] **Faux recruteurs / anti-prédateurs** : validation manuelle recruteur + badge vérifié (chantier 2) + signalement + suspension effective + coordonnées masquées en chat = combinaison en place.
 - [x] **Contournement creator-spam** : atténué (Pro payant + 5 conv/j + coordonnées bloquées + signalement).
+- [x] **Suspension effective sur TOUTES les écritures API** *(1er août 2026)* — l'audit a montré que `getActiveUser` n'était branché que sur 8 handlers : `avatar`, `credits/request`, `credits/[id]`, `dashboard/profile` PATCH, `dashboard/projects`, `invitations/project`, `invitations/project/[id]`, `messages/read`, `notifications/register` et `billing/checkout` écrivaient **sans aucun contrôle de suspension**. Un compte banni pouvait encore publier un film, éditer son profil ou demander un crédit via appel API direct. Les **14 handlers** sont corrigés (`avatar` ×2, `credits/[id]` ×2, `dashboard/projects` ×2, `invitations/project/[id]` ×2, plus les 6 autres). Exceptions volontaires documentées : `billing/portal` (résiliation), `logout`, `admin` PATCH.
+- [ ] **Décision produit en attente** : faut-il bloquer `api/admin` PATCH pour un admin suspendu ? Risque d'auto-blocage si l'unique admin est suspendu par erreur ; le middleware bloque déjà la navigation vers `/admin`.
 - [ ] *(évolution future, non prioritaire)* exploiter les **crédits croisés** comme signal anti-faux-profil automatisé ; bloquer les **API en lecture** pour un suspendu (aujourd'hui seules les écritures le sont).
 
 ### Chantier 4 — Formats & modélisation des œuvres

@@ -1,7 +1,8 @@
 # Unkast — Routes API
 
-> Regenere 2026-06-13 depuis le code (`src/app/api/**` + `src/app/(app)/auth/callback`). Le MVP
-> documentait 6 routes ; le code en compte **31** (+ 1 route handler `auth/callback`).
+> Regenere 2026-06-13 depuis le code (`src/app/api/**` + `src/app/(app)/auth/callback`), mis a jour
+> le 2026-08-01. Le MVP documentait 6 routes ; le code en compte **35** (+ 1 route handler
+> `auth/callback`).
 > *(Nettoyage : l'ancien canal `contact_requests` — `/api/contact` + `/api/dashboard/contacts` — a été retiré ; le contact est unifié sur la messagerie. Table conservée en base.)*
 > *(Chantier 7 : ajout de `/api/billing/checkout`, `/api/billing/webhook`, `/api/billing/portal` — paiement Stripe en **mode TEST**.)*
 > Auth = verification `supabase.auth.getUser()` cote serveur. « Admin » = check `profiles.is_admin`
@@ -24,6 +25,7 @@
 
 | Route | Methodes | Tables lues | Tables ecrites |
 |---|---|---|---|
+| `/api/me` | GET | `profiles` (service role) | — |
 | `/api/dashboard/profile` | GET, PATCH | `profiles`, `profile_roles` | `profiles`, `profile_roles` |
 | `/api/dashboard/projects` | GET, POST, DELETE | `projects`, `project_credits` | `projects`, `project_credits` |
 | `/api/dashboard/credits` | GET | `projects`, `credit_requests`, `project_credits`, `profiles` | — |
@@ -88,7 +90,34 @@ Espace de travail du recruteur Pro. **Garde-fou commun** (`api/recruitment/guard
 > **Contacter un candidat retenu** ne crée aucune route : réutilise `POST /api/messages/conversation` (Pro-gated) → `conversation_id` → navigation `/messages/<id>`. **Pas de rate-limit** sur l'espace (privé, authentifié).
 
 ### Modération & suspension (chantier 3)
-**Garde commun `getActiveUser` ([lib/auth-guard.ts](../src/lib/auth-guard.ts))** : authentifie + **bloque les comptes suspendus** (`is_suspended`) côté serveur, et renvoie le profil (plan/account_type/full_name) pour mutualiser les lectures. Branché sur les **écritures sensibles** : `api/messages` POST, `api/messages/conversation` POST, `api/reports` POST, `api/availability` POST/PATCH/DELETE, `api/recruitment/*` écritures (via `guard.ts` → `getProUser`/`getProWriter`). Comble le trou : le middleware ne protégeait que la **navigation** (et excluait `/api`).
+**Garde commun `getActiveUser` ([lib/auth-guard.ts](../src/lib/auth-guard.ts))** : authentifie + **bloque les comptes suspendus** (`is_suspended`) côté serveur. Renvoie `user` (`id` + `email` Auth) et le profil (plan/account_type/full_name) pour mutualiser les lectures. Comble le trou de [`middleware.ts`](../src/lib/supabase/middleware.ts) ligne 64, dont la redirection des suspendus exclut explicitement `/api` : les **pages** étaient fermées, les **routes API** restaient ouvertes.
+
+**Statuts renvoyés** (les handlers relaient `guard.status` et `guard.error` verbatim) :
+
+| Statut | `error` | Cause |
+|---|---|---|
+| 401 | `Non authentifie.` | Pas de session. Inclut les pannes réseau vers le serveur Auth (`AuthRetryableFetchError` → `user: null`) |
+| 403 | `Compte suspendu.` | `is_suspended = true` |
+| 403 | `Profil introuvable. Contacte le support.` | `PGRST116` : utilisateur Auth **sans ligne `profiles`**. État permanent, pas transitoire |
+| 503 | `Verification impossible, reessaie.` | La lecture de `profiles` a échoué : réseau, timeout, 5xx PostgREST, pool saturé, clé service role invalide |
+
+> **Fail-closed (corrigé le 1er août 2026).** La lecture de `profiles` est le **seul** contrôle de suspension côté serveur. Le `error` de cette requête était jeté par la destructuration et le helper retombait sur un profil de secours `{ is_suspended: false, plan: null, … }` : il **affirmait « non suspendu »** au lieu de dire « je n'ai pas pu vérifier », donc un compte banni passait pendant toute la durée d'un incident base. L'erreur est désormais capturée, loguée (`[auth-guard]`) et convertie en variant non-200. Le profil de secours a disparu. **Ne pas réintroduire de valeur par défaut sur `is_suspended`.**
+>
+> Le 503 est distinct du 403 volontairement : réutiliser `« Compte suspendu. »` mentirait sur la cause et enverrait un utilisateur légitime vers `/suspended` pendant une panne. Le `PGRST116` est distinct du 503 pour la raison inverse : c'est permanent, un 503 ferait boucler le client. Origine connue d'un orphelin : compensation ratée dans `api/signup` (log `compensation deleteUser echouee`) ou suppression manuelle de la ligne. Un compte **Google** se répare seul au re-login (`auth/callback` recrée le profil) ; un compte **email/mot de passe** n'a aucun chemin automatique, la ligne `profiles` doit être recréée à la main. Côté front : afficher le message tel quel, **sans redirection** (sinon boucle).
+
+> **Couverture (audit du 1er août 2026).** Le garde n'était branché que sur 10 handlers d'écriture ; l'audit en a trouvé **14 autres qui écrivaient sans aucun contrôle de suspension**. Tous corrigés. État actuel : **toute route API qui écrit en base et possède un utilisateur authentifié passe par `getActiveUser`**, sans exception non documentée ci-dessous.
+>
+> | Couverture | Routes |
+> |---|---|
+> | Garde d'origine | `messages` POST · `messages/conversation` POST · `reports` POST · `availability` POST/PATCH/DELETE · `invitations` POST · `recruitment/*` écritures (via `guard.ts` → `getProUser`/`getProWriter`) |
+> | Ajouté le 01/08 | `avatar` POST/DELETE · `credits/request` POST · `credits/[id]` PATCH/DELETE · `dashboard/profile` PATCH · `dashboard/projects` POST/DELETE · `invitations/project` POST · `invitations/project/[id]` PATCH/DELETE · `messages/read` PATCH · `notifications/register` POST · `billing/checkout` POST |
+>
+> **Trois exceptions volontaires, à ne pas « corriger » :**
+> - **`billing/portal` POST** reste ouvert aux suspendus. C'est la voie de résiliation d'abonnement (Stripe Customer Portal) : la fermer reviendrait à continuer de prélever un compte banni sans lui laisser de moyen d'arrêter.
+> - **`logout` POST** reste ouvert (et n'écrit rien en base) : un suspendu doit pouvoir se déconnecter.
+> - **`admin` PATCH** garde son propre helper `isAdmin()` et **ne vérifie pas la suspension**. Ajouter le contrôle créerait un risque d'auto-blocage (unique admin suspendu par erreur → plus personne ne peut le réactiver). Le middleware bloque déjà la navigation vers `/admin`. **Décision produit en attente.**
+>
+> Hors périmètre par nature : `billing/webhook` (signature Stripe, pas d'utilisateur), `signup` / `waitlist` / `auth/resend-confirmation` (publics). Les **GET restent volontairement non gardés** : un suspendu doit pouvoir consulter son compte et la page `/suspended` (qui appelle `api/me`).
 - **Retrait de la vue publique** d'un suspendu (filtre applicatif `is_suspended IS NOT TRUE`, pas de RLS modifiée) : `recherche` (talents + films via owner), `feed` (talents + films), page `profil/[slug]` (→ 404), page `projet/[slug]` (→ 404 si propriétaire suspendu).
 - **Rate-limit** (réutilise `checkRateLimit`, fail-open, clé = `user.id`) : `api/reports` (10/h), `api/availability` POST (30/h), `api/recruitment/*` écritures (60/h, via `getProWriter`).
 - **Signalement en conversation** : `messages/[id]` ouvre le `ReportModal` ciblant le **profil de l'interlocuteur** (`target_type='profile'`, actionnable admin). Aucune route nouvelle.
@@ -119,8 +148,16 @@ Cree un projet. **Plafond plan-aware** (lu cote serveur) : **2 films si `plan = 
 ### POST/DELETE /api/avatar
 Upload / suppression de la photo de profil (Storage bucket `avatars`). **Pipeline image** : compression **navigateur** d'abord (`AvatarUpload` → canvas **512×512 WebP q0.8** ≈ 30–60 Ko, via `lib/image-compress.ts`) + **plafond d'entrée 10 Mo** côté client. **Garde-fou serveur** : type ∈ {jpeg,png,webp} + **taille ≤ 3 Mo** (vrai rempart anti-saturation, valide avant chargement en mémoire). Stocke `${user.id}/avatar.webp` (`upsert`), supprime l'ancien `avatar.jpg` legacy, met à jour `profiles.avatar_url` (`+ ?t=timestamp`). DELETE retire `.webp` + `.jpg` et remet `avatar_url` à null. *(Les affiches `poster_url`/`preview_url` ne sont PAS uploadées par l'utilisateur — `lib/image-compress.ts` est prêt à les couvrir le jour où la feature sera ajoutée.)*
 
+### GET /api/me
+Statut du visiteur sur **son propre** compte : `{ is_admin, plan, suspended_reason }`. Authentifie via le client utilisateur (cookies de session), puis lit ces colonnes via **`createAdminClient()`** scope sur `user.id` — `is_admin` et `suspended_reason` font partie des **14 colonnes revoquees** pour `anon`/`authenticated` (voir [database.md](database.md#row-level-security-rls)) et ne sont plus lisibles depuis le navigateur. **Volontairement sans `getActiveUser`** : la page `/suspended` doit rester consultable par un compte suspendu. Consommee par `pro/page.tsx` et `suspended/page.tsx`. 401 si non connecte.
+
+### GET /api/dashboard/profile
+**Lecture en deux temps**, contrat inchange (l'objet renvoye porte toujours les 45 cles du type `Profile`) : les 31 colonnes de `OWN_COLUMNS` via le **client utilisateur** (c'est la RLS qui garantit qu'on ne lit que sa propre ligne), les 14 de `PRIVILEGED_COLUMNS` (revoquees en base) via le **client de confiance**, scope sur `user.id`, puis fusion. Si la lecture protegee echoue → **500**, jamais un profil ampute (un objet sans `bio_pending` se lirait a tort comme « aucune modification en attente »).
+
 ### PATCH /api/dashboard/profile
-Met a jour le profil. **Double client d'ecriture** : les colonnes editables par l'utilisateur (nom, bio, localisation, liens, coordonnees, `show_*_to`…) sont ecrites via le **client utilisateur** (RLS) ; les **5 colonnes systeme** (`account_type`, `is_recruiting`, `recruiting_roles`, `bio_pending`, `recruiter_review_status`) sont ecrites via **`createAdminClient()`** (service role) dans un **update separe**, uniquement si l'une d'elles change (prepare la regle base reservant ces colonnes au client de confiance). L'authentification reste sur le client utilisateur (`getUser`). Chaque ecriture verifie `error` — en cas d'echec, erreur explicite (pas de succes partiel silencieux), y compris si le delete des `profile_roles` reussit mais que le re-insert echoue.
+Met a jour le profil. **Double client d'ecriture** : les colonnes editables par l'utilisateur (nom, bio, localisation, liens, **coordonnees**, `show_*_to`…) sont ecrites via le **client utilisateur** (RLS) ; les **5 colonnes systeme** (`account_type`, `is_recruiting`, `recruiting_roles`, `bio_pending`, `recruiter_review_status`) sont ecrites via **`createAdminClient()`** (service role) dans un **update separe**, uniquement si l'une d'elles change. L'authentification reste sur le client utilisateur (`getUser`). Chaque ecriture verifie `error` — en cas d'echec, erreur explicite (pas de succes partiel silencieux), y compris si le delete des `profile_roles` reussit mais que le re-insert echoue.
+
+> **`contact_email` / `contact_phone` restent sur le client utilisateur** malgre leur presence dans `PRIVILEGED_COLUMNS` : elles sont revoquees en **SELECT** pour `anon`/`authenticated`, mais **accordees en UPDATE**. L'ecriture ne demande donc aucun privilege de lecture, a une condition verifiee dans postgrest-js 2.99.2 : `Prefer: return=representation` n'est ajoute que par `.select()`, et l'update de cette route n'en chaine pas. La reponse est un 204 sans `RETURNING`. **Si un jour on chaine `.select()` sur cet update**, PostgREST renverra 403 sur les colonnes retournees : la correction sera alors de retirer ces deux colonnes du retour, **pas** de changer de client.
 **Validation `recruiting_roles`** : non-tableau → `[]` ; valeurs filtrees sur `ALL_ROLES` (`lib/constants.ts`), dedoublonnees, plafonnees a **20**.
 **Badge « Je recrute »** : `is_recruiting` / `recruiting_roles` ne sont ecrits **que si `plan = pro` ET `account_type ∈ {creator, recruiter}`** (verification serveur, sur le role EFFECTIF). Sinon forces a `false`/`[]` — un talent ou un compte gratuit ne peut pas l'activer, meme par appel API direct.
 **Changement de role** : `account_type` accepte **uniquement les bascules `talent ↔ creator`**. Toute autre transition (vers/depuis `recruiter`) → **403** (le Pro recruteur reste attribue par l'admin a la validation). Une bascule `creator → talent` nettoie automatiquement le badge « Je recrute ». Le `plan` n'est jamais modifie par cette route.
