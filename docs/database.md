@@ -146,11 +146,15 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 
 ### 5. contact_requests — ⚠️ **LEGACY (plus utilisée par le code)**
 `id`, `from_name`, `from_email`, `to_profile_id` (→ profiles), `subject` (`contact_subject`, **enum**), `message`, `status` (`contact_status`, **enum**, nullable), `created_at`.
-> Ancien canal de contact (formulaire nom/email/objet/message), **antérieur à la messagerie**. Retiré du code (nettoyage) : `ContactModal`, `/api/contact` et `/api/dashboard/contacts` supprimés ; le contact est désormais **unifié sur la messagerie** (seul un Pro initie, tout le monde reçoit/répond). **Table conservée en base** (pas de `DROP`, historique préservé, réactivable). Le type `ContactRequest` est gardé dans `database.ts` tant que la table existe.
+> Ancien canal de contact (formulaire nom/email/objet/message), **antérieur à la messagerie**. Retiré du code (nettoyage) : `ContactModal`, `/api/contact` et `/api/dashboard/contacts` supprimés ; le contact est désormais **unifié sur la messagerie** (depuis le 10/08/2026 : un compte gratuit initie vers **2 personnes**, le Pro sans limite ; tout le monde reçoit et répond librement). **Table conservée en base** (pas de `DROP`, historique préservé, réactivable). Le type `ContactRequest` est gardé dans `database.ts` tant que la table existe.
 
 ### 6. conversations
 `id`, `participant_1` (→ profiles), `participant_2` (→ profiles), `last_message_at` (nullable), `created_at`.
 
+> **Une conversation = une paire de profils.** `participant_1` est l'**initiateur** par **convention applicative** : les deux chemins d'insertion (`api/messages` POST et `api/messages/conversation` POST) l'écrivent ainsi. Aucune contrainte ne peut exprimer « qui a commencé » ; il faudrait une colonne dédiée (`initiator_id`), dont le quota gratuit n'a pas besoin. Cette convention est la base du quota « 2 personnes contactées » et du quota journalier.
+>
+> **Unicité de la paire (migration `20260810_conversations_pair_unique.sql`, ⚠️ à exécuter).** Index **unique sur expression** `conversations_pair_unique` sur `(least(participant_1, participant_2), greatest(participant_1, participant_2))` : une paire de profils ne peut avoir qu'une conversation, quel que soit l'ordre des colonnes. Une contrainte `UNIQUE` de table ne pouvant pas porter sur une expression, c'est nécessairement un index. Sans lui, un doublon ferait compter la même personne deux fois dans le quota gratuit et casserait le lookup applicatif. Plus un CHECK `conversations_distinct_participants` (`participant_1 <> participant_2`), une auto-conversation gonflant le quota d'une personne inexistante. **État vérifié avant écriture de la migration (lecture seule, 10/08/2026) : 4 conversations, 4 paires distinctes, 0 doublon, 0 auto-conversation** — les deux contraintes passent sans nettoyage.
+>
 ### 7. messages
 `id`, `conversation_id` (→ conversations), `sender_id` (→ profiles), `content` (TEXT), `is_read` (BOOLEAN, nullable), `created_at`.
 
@@ -193,7 +197,7 @@ Rangement d'un candidat dans un dossier (dispatch). `id`, `folder_id` (→ recru
 ### 19. recruiter_dismissals *(recrutement — chantier 2)*
 Ecartement **silencieux** d'un candidat, **par poste**. `id`, `recruiter_id` (→ profiles, cascade), `talent_id` (→ profiles, cascade), `role` (TEXT), `created_at`. `UNIQUE (recruiter_id, talent_id, role)`. Table **separee** exprès (jamais lisible par le talent) → l'ecartement est **structurellement invisible** cote talent. « Liste a traiter d'un poste » = `availability_signals` (non expires) **MINUS** `recruiter_dismissals`.
 
-> **Usage des tables 16-19.** Côté talent : bouton « Disponible » sur `profil/[slug]` → `/api/availability` (écrit `availability_signals`). Côté recruteur : espace pré-casting dans `/moi` (onglet « Recrutement », composant `RecruitmentSpace`, visible si Pro createur/recruteur) → `/api/recruitment/*` (candidatures groupées, dossiers `recruiter_folders`, dispatch `folder_candidates`, écartement `recruiter_dismissals`). « Contacter » réutilise la messagerie Pro existante. Voir `docs/api-routes.md`.
+> **Usage des tables 16-19.** Côté talent : bouton « Disponible » sur `profil/[slug]` → `/api/availability` (écrit `availability_signals`). Côté recruteur : espace pré-casting dans `/moi` (onglet « Recrutement », composant `RecruitmentSpace`, visible si Pro createur/recruteur) → `/api/recruitment/*` (candidatures groupées, dossiers `recruiter_folders`, dispatch `folder_candidates`, écartement `recruiter_dismissals`). « Contacter » réutilise la messagerie existante (l'espace pré-casting est de toute façon réservé aux Pro, dont les contacts sont illimités). Voir `docs/api-routes.md`.
 
 ### 20. stripe_events *(fiabilité — 2026-07-02)* — ⚠️ **migration à exécuter**
 Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (TEXT), `received_at` (TIMESTAMPTZ, défaut `now()`). Le webhook (`api/billing/webhook`) **revendique** `event.id` par INSERT **avant** toute écriture sur `profiles` : doublon (23505) → 200 sans traitement ; échec de traitement → la ligne est supprimée (le retry Stripe rejouera). RLS activée **sans policy** (service role uniquement, même posture que `rate_limits`). Migration manuelle : `supabase/migrations/20260702_stripe_events.sql` — **pas encore exécutée en prod** ; tant qu'elle ne l'est pas, le webhook traite sans dédup (42P01 toléré, loggé).
@@ -413,7 +417,8 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 |---|---|---|
 | Films / compte (free) | **3** | `lib/constants.ts` (`MAX_PROJECTS_FREE`) — 2 → 3 le 10/08/2026. Tous les textes qui annoncent la limite l'**interpolent** depuis cette constante (`/pro`, `/rejoindre`, dashboard, `/moi`, email d'expiration) : ne jamais réécrire le nombre en dur |
 | Films / compte (pro) | **30** | `lib/constants.ts` (`MAX_PROJECTS_PRO`) — plafond plan-aware (`api/dashboard/projects` POST) |
-| Nouvelles conversations / jour | 5 | `api/messages/route.ts:63` |
+| **Personnes contactées (free, à vie)** | **2** | `lib/constants` non concerné — `lib/messaging.ts` (`FREE_CONTACT_LIMIT`, 10/08/2026). Compte les conversations **initiées** dans lesquelles on a **envoyé au moins un message**. Garde serveur au **premier message** (`api/messages` POST), pré-vérification au clic (`api/messages/conversation` POST). Le Pro est illimité |
+| Nouvelles conversations / jour | 5 | `lib/messaging.ts` (`DAILY_CONVERSATION_LIMIT`) — tous plans ; inatteignable en free (2 à vie < 5 par jour) |
 | Blocage coordonnees (1ers messages) | < 3 messages | `api/messages/route.ts:136` |
 | Relance si non-reponse | 48 h | `api/messages/route.ts:119` |
 | Rate limit signup | 5 / IP / heure | `api/signup/route.ts:10` |

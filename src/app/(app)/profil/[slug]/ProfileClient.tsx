@@ -111,6 +111,12 @@ export default function ProfileClient({
       const data = await res.json();
       if (res.ok && data.conversation_id) {
         router.push(`/messages/${data.conversation_id}`);
+      } else if (data.error === "free_contact_limit_reached") {
+        // Quota gratuit épuisé. Message explicite (distinct de l'ancien « passe
+        // à Pro pour contacter ») avant de renvoyer vers l'offre.
+        setContacting(false);
+        alert(data.message || "Tu as utilisé tes contacts gratuits.");
+        router.push("/pro");
       } else if (res.status === 403 || data.redirect) {
         router.push(data.redirect || "/pro");
       } else {
@@ -380,17 +386,13 @@ export default function ProfileClient({
                   <button onClick={() => router.push("/rejoindre")} style={{ width: "100%", background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: 13, border: "none", cursor: "pointer" }}>Rejoindre Unkast</button>
                 </div>
               )}
-              {/* Free: Pro upsell */}
-              {userStatus === "free" && (
-                <div style={{ maxWidth: 240, background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.15)", borderRadius: 12, padding: 16 }}>
-                  <svg style={{ marginBottom: 8, opacity: 0.7 }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", marginBottom: 4 }}>Contacter {profile.full_name.split(" ")[0]}</p>
-                  <p style={{ fontSize: 12, color: "#555", marginBottom: 14, lineHeight: 1.5 }}>La messagerie directe est disponible avec Unkast Pro.</p>
-                  <button onClick={() => router.push("/pro")} style={{ width: "100%", background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: 11, border: "none", cursor: "pointer" }}>Découvrir Pro</button>
-                </div>
-              )}
-              {/* Pro: full contact */}
-              {userStatus === "pro" && (
+              {/* Free ET Pro : même bouton de contact depuis le 2026-08-10. Un
+                  compte gratuit peut contacter 2 personnes ; le quota est
+                  arbitré CÔTÉ SERVEUR au premier message. Volontairement aucun
+                  compteur ici : la page profil est publique et rendue serveur
+                  (revalidate 60), l'afficher imposerait un aller-retour client
+                  supplémentaire. Le compteur vit sur /messages. */}
+              {(userStatus === "free" || userStatus === "pro") && (
                 <button
                   onClick={openConversation}
                   disabled={contacting}

@@ -16,96 +16,17 @@ interface Conversation {
   unread_count: number;
 }
 
-/* ── Pro lock screen ── */
+/* ── Boîte vide (compte gratuit) ── */
 
-function ProLockScreen() {
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    fetch("/api/messages/unread-count")
-      .then((r) => r.json())
-      .then((data) => setUnreadCount(data.count ?? 0))
-      .catch(() => {});
-  }, []);
-
-  const features = [
-    "Messages illimités avec les pros",
-    "Notifications en temps réel",
-    "Historique complet des échanges",
-  ];
-
+// Remplace, le 2026-08-10, l'ancien « Pro lock screen » (cadenas, faux aperçus
+// floutés, « Débloquer la messagerie », « Passe à Pro pour les lire »). Ce
+// discours est devenu FAUX avec le nouveau modèle économique : un compte
+// gratuit peut recevoir des messages ET en initier vers 2 personnes. L'écran
+// n'a donc plus rien à verrouiller, il annonce une boîte vide et le quota
+// disponible.
+function EmptyInbox({ contactsLimit }: { contactsLimit: number }) {
   return (
-    <div style={{ padding: "20px 16px 120px", maxWidth: 600, margin: "0 auto" }}>
-      {/* Unread banner */}
-      {unreadCount > 0 && (
-        <div
-          style={{
-            background: "rgba(239,68,68,0.12)",
-            border: "1px solid rgba(239,68,68,0.3)",
-            borderRadius: 12,
-            padding: "12px 16px",
-            marginBottom: 20,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#ef4444",
-              flexShrink: 0,
-            }}
-          />
-          <div>
-            <p style={{ fontSize: 14, fontWeight: 600, color: "#ef4444" }}>
-              Tu as {unreadCount} message{unreadCount > 1 ? "s" : ""} non lu
-              {unreadCount > 1 ? "s" : ""}
-            </p>
-            <p style={{ fontSize: 12, color: "#ef4444", opacity: 0.8, marginTop: 2 }}>
-              Passe à Pro pour les lire
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Fake conversation previews */}
-      <div style={{ position: "relative", marginBottom: 32 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {[1, 2, 3].map((i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  background: "#222",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ width: "40%", height: 12, background: "#222", borderRadius: 6 }} />
-                <div style={{ width: "70%", height: 10, background: "#1a1a1a", borderRadius: 6 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Blur gradient overlay */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(180deg, rgba(13,13,13,0.3) 0%, rgba(13,13,13,0.95) 100%)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            borderRadius: 12,
-          }}
-        />
-      </div>
-
-      {/* Lock icon */}
+    <div style={{ padding: "48px 16px 120px", maxWidth: 600, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <svg
           width="32"
@@ -116,24 +37,22 @@ function ProLockScreen() {
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ margin: "0 auto" }}
+          style={{ margin: "0 auto", opacity: 0.5 }}
         >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0110 0v4" />
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
         </svg>
       </div>
 
-      {/* Title & description */}
       <h1
         style={{
-          fontSize: 24,
+          fontSize: 22,
           fontWeight: 700,
           color: "#f0f0f0",
           textAlign: "center",
           marginBottom: 8,
         }}
       >
-        Messagerie directe
+        Aucune conversation
       </h1>
       <p
         style={{
@@ -145,45 +64,14 @@ function ProLockScreen() {
           lineHeight: 1.5,
         }}
       >
-        Contacte directement les talents du cinéma et de l&apos;audiovisuel.
-        Envoie des propositions, discute de projets.
+        Avec ton compte gratuit, tu peux contacter {contactsLimit} personnes et
+        répondre sans limite à celles qui t&apos;écrivent. Trouve quelqu&apos;un
+        et écris-lui depuis son profil.
       </p>
 
-      {/* Features */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          marginBottom: 28,
-          maxWidth: 320,
-          margin: "0 auto 28px",
-        }}
-      >
-        {features.map((feat) => (
-          <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#C8FF00"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ flexShrink: 0 }}
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span style={{ fontSize: 14, color: "#ccc" }}>{feat}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* CTA buttons */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
         <Link
-          href="/pro"
+          href="/recherche"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -199,7 +87,7 @@ function ProLockScreen() {
             textDecoration: "none",
           }}
         >
-          Débloquer la messagerie
+          Explorer les profils
         </Link>
         <Link
           href="/pro"
@@ -219,22 +107,9 @@ function ProLockScreen() {
             textDecoration: "none",
           }}
         >
-          Rejoindre la liste d&apos;attente
+          Contacts illimités avec Pro
         </Link>
       </div>
-
-      {/* Price tag */}
-      <p
-        style={{
-          textAlign: "center",
-          fontSize: 10,
-          color: "#333",
-          fontFamily: "JetBrains Mono, monospace",
-          marginTop: 16,
-        }}
-      >
-        Bientôt disponible · 9,99€/mois
-      </p>
     </div>
   );
 }
@@ -246,6 +121,9 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dailyCount, setDailyCount] = useState(0);
+  // Quota gratuit à vie (null = inconnu ou compte Pro) — voir /api/messages/daily-count.
+  const [contactsUsed, setContactsUsed] = useState<number | null>(null);
+  const [contactsLimit, setContactsLimit] = useState(2);
 
   useEffect(() => {
     fetch("/api/messages")
@@ -257,14 +135,18 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
       .catch(() => setLoading(false));
   }, []);
 
+  // Fetch pour les deux plans depuis le 2026-08-10 : le compte gratuit a
+  // désormais lui aussi un quota à afficher (personnes contactées).
   useEffect(() => {
-    if (userPlan === "pro") {
-      fetch("/api/messages/daily-count")
-        .then((r) => r.json())
-        .then((data) => setDailyCount(data.count ?? 0))
-        .catch(() => {});
-    }
-  }, [userPlan]);
+    fetch("/api/messages/daily-count")
+      .then((r) => r.json())
+      .then((data) => {
+        setDailyCount(data.count ?? 0);
+        setContactsUsed(typeof data.contacts_used === "number" ? data.contacts_used : null);
+        if (typeof data.contacts_limit === "number") setContactsLimit(data.contacts_limit);
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = conversations
     .filter((c) => c.other_name.toLowerCase().includes(search.toLowerCase()))
@@ -273,9 +155,11 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
         new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
     );
 
-  // Free user with no conversations → show lock screen
+  // Compte gratuit sans aucune conversation : boîte vide, pas un mur payant.
+  // Depuis le 2026-08-10 un compte gratuit PEUT contacter (2 personnes) et
+  // recevoir : lui annoncer « passe à Pro pour lire » serait faux.
   if (!loading && userPlan === "free" && conversations.length === 0) {
-    return <ProLockScreen />;
+    return <EmptyInbox contactsLimit={contactsLimit} />;
   }
 
   return (
@@ -292,6 +176,21 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
         >
           {dailyCount} / 5 nouveaux contacts aujourd&apos;hui
           {dailyCount >= 5 ? " · Limite atteinte" : ""}
+        </p>
+      )}
+      {/* Même emplacement, quota différent : personnes contactées à vie. */}
+      {userPlan === "free" && contactsUsed !== null && (
+        <p
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 10,
+            color: contactsUsed >= contactsLimit ? "#f97316" : "#555",
+            textAlign: "right",
+            padding: "8px 20px",
+          }}
+        >
+          {contactsUsed} / {contactsLimit} contacts gratuits
+          {contactsUsed >= contactsLimit ? " · Limite atteinte" : ""}
         </p>
       )}
       <h1

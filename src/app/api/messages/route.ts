@@ -5,17 +5,29 @@ import { getActiveUser } from "@/lib/auth-guard";
 import { sendPushToUser } from "@/lib/push";
 import {
   countConversationsInitiatedToday,
+  countPeopleContacted,
+  hasSentMessageIn,
   DAILY_CONVERSATION_LIMIT,
   DAILY_LIMIT_MESSAGE,
+  FREE_CONTACT_LIMIT,
+  FREE_CONTACT_LIMIT_MESSAGE,
 } from "@/lib/messaging";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
-// RÈGLE 1 : Seuls les Pro peuvent initier une conversation
-// RÈGLE 2 : Tout le monde peut répondre (gratuit inclus)
-// RÈGLE 3 : Max 5 nouvelles conversations/jour pour les Pro
+// RÈGLE 1 : Un compte gratuit peut contacter 2 PERSONNES (quota à vie) ; le Pro
+//           est illimité. Voir FREE_CONTACT_LIMIT. Remplace, le 2026-08-10,
+//           l'ancien blocage binaire « seuls les Pro peuvent initier ».
+// RÈGLE 2 : Tout le monde peut répondre (gratuit inclus), sans quota
+// RÈGLE 3 : Max 5 nouvelles conversations/jour (tous plans)
 // RÈGLE 4 : Délai 48h si pas de réponse avant relance
 // RÈGLE 5 : Coordonnées bloquées dans les 3 premiers messages
 // RÈGLE 6 : Badge non lus visible pour tous (free et pro)
+//
+// C'est ICI que le quota gratuit fait foi, au PREMIER MESSAGE vers une
+// personne — pas à la création de la ligne `conversations`. Garder la ligne
+// comme unité de compte laisserait un trou béant : ouvrir 5 fils vides via
+// POST /api/messages/conversation, puis écrire dans les 5, chaque envoi
+// empruntant le chemin « conversation existante » qui ne testait rien.
 
 const CONTACT_REGEX = /(\b06|\b07|\+33|@\w+\.\w+|https?:\/\/|www\.)/i;
 
@@ -38,28 +50,66 @@ export async function POST(request: NextRequest) {
   }
 
   let convId = conversation_id;
+  let conv: { participant_1: string; participant_2: string } | null = null;
   let isNewConversation = false;
 
   // Try to find existing conversation
   if (!convId && recipient_id) {
     const { data: existing } = await admin.from("conversations")
-      .select("id")
+      .select("id, participant_1, participant_2")
       .or(`and(participant_1.eq.${user.id},participant_2.eq.${recipient_id}),and(participant_1.eq.${recipient_id},participant_2.eq.${user.id})`)
       .single();
 
     if (existing) {
       convId = existing.id;
+      conv = existing;
     } else {
       isNewConversation = true;
     }
   }
 
-  // ── RÈGLE 1 : Seuls les Pro peuvent INITIER ──
-  if (isNewConversation && profile?.plan !== "pro") {
-    return NextResponse.json({
-      error: "pro_required",
-      message: "Passe à Pro pour initier une conversation.",
-    }, { status: 403 });
+  if (!convId && !isNewConversation) {
+    return NextResponse.json({ error: "conversation_id ou recipient_id requis." }, { status: 400 });
+  }
+
+  // Conversation désignée par son id : lue MAINTENANT, ses participants étant
+  // nécessaires au contrôle d'appartenance comme au quota gratuit ci-dessous.
+  if (convId && !conv) {
+    const { data } = await admin.from("conversations")
+      .select("participant_1, participant_2").eq("id", convId).single();
+    if (!data) return NextResponse.json({ error: "Conversation introuvable." }, { status: 404 });
+    conv = data;
+  }
+
+  // SÉCURITÉ : interdire d'écrire dans une conversation dont on n'est pas participant
+  // (le service role bypasse la RLS — la vérif d'appartenance doit être faite ici).
+  if (conv && conv.participant_1 !== user.id && conv.participant_2 !== user.id) {
+    return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
+  }
+
+  // ── RÈGLE 1 : quota À VIE du plan gratuit (2 personnes contactées) ──
+  // Ne se déclenche que si CE message ouvre un nouveau contact : fil que
+  // j'initie, dans lequel je n'ai encore rien écrit. Répondre est toujours
+  // libre (RÈGLE 2), y compris pour un ex-Pro largement au-dessus du quota.
+  if (profile?.plan !== "pro") {
+    let opensNewContact = isNewConversation;
+
+    if (!opensNewContact && conv && conv.participant_1 === user.id) {
+      opensNewContact = !(await hasSentMessageIn(admin, convId, user.id));
+    }
+
+    if (opensNewContact) {
+      const count = await countPeopleContacted(admin, user.id);
+
+      if (count >= FREE_CONTACT_LIMIT) {
+        return NextResponse.json({
+          error: "free_contact_limit_reached",
+          message: FREE_CONTACT_LIMIT_MESSAGE,
+          contacts_used: count,
+          contacts_limit: FREE_CONTACT_LIMIT,
+        }, { status: 403 });
+      }
+    }
   }
 
   // ── RÈGLE 3 : Max 5 nouvelles conversations/jour (helper partagé avec
@@ -76,28 +126,17 @@ export async function POST(request: NextRequest) {
     // Create the conversation
     const { data: newConv } = await admin.from("conversations")
       .insert({ participant_1: user.id, participant_2: recipient_id })
-      .select("id").single();
+      .select("id, participant_1, participant_2").single();
     if (!newConv) return NextResponse.json({ error: "Erreur création conversation." }, { status: 500 });
     convId = newConv.id;
+    conv = newConv;
   }
 
-  if (!convId) return NextResponse.json({ error: "conversation_id ou recipient_id requis." }, { status: 400 });
-
-  // Get conversation participants
-  const { data: conv } = await admin.from("conversations")
-    .select("participant_1, participant_2").eq("id", convId).single();
-  if (!conv) return NextResponse.json({ error: "Conversation introuvable." }, { status: 404 });
-
-  // SÉCURITÉ : interdire d'écrire dans une conversation dont on n'est pas participant
-  // (le service role bypasse la RLS — la vérif d'appartenance doit être faite ici).
-  if (conv.participant_1 !== user.id && conv.participant_2 !== user.id) {
-    return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
+  if (!convId || !conv) {
+    return NextResponse.json({ error: "Conversation introuvable." }, { status: 404 });
   }
 
   const recipientId = conv.participant_1 === user.id ? conv.participant_2 : conv.participant_1;
-
-  // ── RÈGLE 2 : Gratuit peut répondre dans une conv existante ──
-  // (pas de check plan ici — déjà passé la règle 1)
 
   // ── RÈGLE 4 : Délai 48h si pas de réponse ──
   if (!isNewConversation) {

@@ -133,7 +133,7 @@ export default function ConversationPage({
 
   /* ── Derived: is input blocked ── */
   const inputBlocked =
-    error === "pro_required" ||
+    error === "free_limit" ||
     error === "daily_limit" ||
     error.startsWith("wait_reply:");
 
@@ -171,8 +171,8 @@ export default function ConversationPage({
         }
       } else {
         // Handle specific error codes
-        if (data.error === "pro_required") {
-          setError("pro_required");
+        if (data.error === "free_contact_limit_reached") {
+          setError("free_limit");
         } else if (data.error === "daily_limit_reached") {
           setError("daily_limit");
         } else if (data.error === "wait_for_reply") {
@@ -375,7 +375,10 @@ export default function ConversationPage({
       </div>
 
       {/* ── Error display ── */}
-      {error === "pro_required" && (
+      {/* Quota gratuit épuisé : message distinct de l'ancien « passe à Pro pour
+          initier ». Le compte n'est pas privé de messagerie, il a consommé ses
+          contacts gratuits et garde l'accès à ses échanges en cours. */}
+      {error === "free_limit" && (
         <div
           style={{
             margin: "0 16px 12px",
@@ -391,10 +394,21 @@ export default function ConversationPage({
               fontSize: 14,
               fontWeight: 600,
               color: "#f0f0f0",
-              marginBottom: 8,
+              marginBottom: 4,
             }}
           >
-            Passe à Pro pour initier une conversation
+            Tu as utilisé tes contacts gratuits
+          </p>
+          <p
+            style={{
+              fontSize: 12.5,
+              color: "#888",
+              lineHeight: 1.5,
+              marginBottom: 10,
+            }}
+          >
+            Tu peux toujours répondre dans tes conversations en cours. Passe à
+            Pro pour contacter de nouvelles personnes.
           </p>
           <Link
             href="/pro"
@@ -444,7 +458,7 @@ export default function ConversationPage({
         </div>
       )}
       {error &&
-        error !== "pro_required" &&
+        error !== "free_limit" &&
         error !== "daily_limit" &&
         error !== "coordinates" &&
         !error.startsWith("wait_reply:") && (
@@ -464,7 +478,7 @@ export default function ConversationPage({
         )}
 
       {/* ── Avertissement — uniquement avant le tout premier message ── */}
-      {error !== "pro_required" && isFirstMessage && (
+      {error !== "free_limit" && isFirstMessage && (
         <div
           style={{
             margin: "0 16px 8px",
@@ -480,8 +494,8 @@ export default function ConversationPage({
         </div>
       )}
 
-      {/* ── Input — hidden for pro_required, disabled for other blocks ── */}
-      {error !== "pro_required" && (
+      {/* ── Input — masqué si quota gratuit épuisé, désactivé pour les autres blocages ── */}
+      {error !== "free_limit" && (
         <div
           style={{
             padding: "12px 16px",
