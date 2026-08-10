@@ -47,11 +47,16 @@ CORE  AppShell (src/components/AppShell.tsx)
 CORE  SplashScreen (src/components/SplashScreen.tsx)
   Video /public/splash.mp4, une fois par session (sessionStorage).
 
-CORE  Middleware (src/middleware.ts)
+CORE  Proxy (src/proxy.ts, ex-middleware.ts — renomme 2026-08-10 via le codemod officiel
+  `npx @next/codemod middleware-to-proxy`, Next 16 deprecie la convention "middleware")
   Rafraichit la session Supabase + applique les redirections de garde.
-  [utilise] src/lib/supabase/middleware.ts
-  Logique : lit profiles.is_admin et profiles.is_suspended (ex. redirige vers /suspended).
-  NB : Next 16 deprecie "middleware" au profit de "proxy".
+  [utilise] src/lib/supabase/middleware.ts (nom de fichier inchange, ce n'est pas
+  le fichier de convention — seule la fonction exportee `updateSession` compte)
+  Logique : lit profiles.is_admin (fail-closed, service role) et profiles.is_suspended
+  (ex. redirige vers /suspended). Lecture de is_suspended (client utilisateur, RLS) :
+  transitoire (reseau/5xx/pool) → FAIL-OPEN + log ; PGRST116 (profil Auth orphelin,
+  permanent) → FAIL-CLOSED, redirige vers /compte-introuvable (pas /suspended, qui
+  mentirait sur la cause).
 
 CORE  Supabase Server Client (src/lib/supabase/server.ts)   — SSR/API (cookies)
 CORE  Supabase Browser Client (src/lib/supabase/client.ts)  — navigateur
@@ -144,6 +149,15 @@ CORE  Cron expiration Pro — /api/cron/pro-expiry (src/app/api/cron/pro-expiry/
 
 FEATURE  Suspendu — /suspended (src/app/(app)/suspended/)
   Ecran pour comptes is_suspended (lit suspended_reason).
+
+FEATURE  Compte introuvable — /compte-introuvable (src/app/(app)/compte-introuvable/,
+  ajoutee 2026-08-10) — cible du fail-closed PGRST116 du proxy (src/lib/supabase/middleware.ts)
+  sur un utilisateur Auth sans ligne `profiles` (orphelin, meme diagnostic que
+  lib/auth-guard.ts). Pas de fetch dynamique (aucune ligne a lire). Contact
+  pro@unkast.com (seule adresse avec un usage reel constate dans le code, mailto:
+  a 4 endroits — contact@unkast.com de /suspended n'a aucune trace de configuration,
+  pas de var d'env, pas de binding Resend, et n'est meme pas un lien cliquable).
+  Mentionne que Google se repare seul (auth/callback recree le profil au relogin).
 
 FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) depuis le 07/08/2026
   Espace structurellement separe de la vue client : pas d'AppShell, layout propre

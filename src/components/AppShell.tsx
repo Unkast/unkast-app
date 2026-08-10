@@ -162,12 +162,12 @@ export default function AppShell({
     // Les 4 router.prefetch("/feed" | "/recherche" | "/moi" | "/messages") ont ete
     // retires. Ils faisaient un prefetch COMPLET, mis en cache client 5 minutes
     // (staleTimes.static) : une navigation dans cette fenetre etait servie sans
-    // requete reseau, donc sans passer par le middleware — ni controle de
-    // suspension, ni garde /moi. Ces 4 routes sont deja des <Link> dans la tab bar
-    // et la sidebar : elles beneficient du prefetch PARTIEL au viewport, qui donne
-    // la meme sensation d'instantaneite tout en laissant la navigation reelle
-    // repasser par le middleware. Ne pas les remettre sans relire le matcher de
-    // src/middleware.ts.
+    // requete reseau, donc sans passer par le proxy (ex-middleware) — ni controle
+    // de suspension, ni garde /moi. Ces 4 routes sont deja des <Link> dans la tab
+    // bar et la sidebar : elles beneficient du prefetch PARTIEL au viewport, qui
+    // donne la meme sensation d'instantaneite tout en laissant la navigation
+    // reelle repasser par le proxy. Ne pas les remettre sans relire le matcher de
+    // src/proxy.ts.
 
     return () => {
       subscription.unsubscribe();

@@ -16,7 +16,7 @@
 | `AppShell` | [utilise] | `framer-motion` |
 | `SplashScreen` | [depend de] | `/public/splash.mp4` |
 | `SplashScreen` | [depend de] | `sessionStorage` |
-| `middleware.ts` | [utilise] | `supabase/middleware.ts` |
+| `proxy.ts` (ex-`middleware.ts`) | [utilise] | `supabase/middleware.ts` |
 | `supabase/middleware.ts` | [utilise] | `@supabase/ssr` |
 | `supabase/server.ts` | [utilise] | `@supabase/ssr` |
 | `supabase/server.ts` | [depend de] | `next/headers` (cookies) |
