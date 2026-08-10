@@ -37,7 +37,14 @@ const OWN_COLUMNS = [
   "is_recruiting", "recruiting_roles", "is_looking_for",
 ].join(", ");
 
-// Liste EXACTE des 14 colonnes revoquees pour anon/authenticated.
+// Liste EXACTE des 16 colonnes revoquees pour anon/authenticated LUES ICI.
+// (14 de la migration 20260731 + pro_grant_type/pro_grant_expires_at de
+// 20260810 -- ces deux derniers pour que /pro et MoiClient affichent
+// l'origine/echeance d'un Pro offert au proprietaire du profil. Les 3 AUTRES
+// colonnes pro_grant_* (granted_by, granted_at, reminder_sent_at) restent
+// VOLONTAIREMENT hors de cette liste : details d'audit admin (qui a accorde,
+// quand un rappel est parti), pas des informations que l'utilisateur doit
+// lire sur son propre profil.)
 const PRIVILEGED_COLUMNS = [
   "is_admin",
   "contact_email", "contact_phone",
@@ -45,6 +52,7 @@ const PRIVILEGED_COLUMNS = [
   "suspended_at", "suspended_reason",
   "pro_source",
   "stripe_customer_id", "stripe_subscription_id", "subscription_status", "current_period_end",
+  "pro_grant_type", "pro_grant_expires_at",
 ].join(", ");
 
 // GET: fetch current user's profile with roles

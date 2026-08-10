@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { isGrantValid } from "@/lib/pro-plan";
 
 const FREE_FEATURES = [
   { label: "Profil public", included: true },
@@ -39,6 +40,14 @@ export default function ProPage() {
   // Détection viewer (admin override + déjà Pro ?)
   const [isAdmin, setIsAdmin] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  // Pro offert (grant), independant de Stripe — chantier grants (2026-08-10).
+  const [grantType, setGrantType] = useState<string | null>(null);
+  const [grantExpiresAt, setGrantExpiresAt] = useState<string | null>(null);
+  // Presence d'un customer Stripe — PAS `isPro` — decide l'affichage du bloc
+  // "Gerer mon abonnement" (voir CORRECTION dans le commentaire de
+  // api/me/route.ts : un Pro par grant seul n'a pas de stripe_customer_id, et
+  // POST /api/billing/portal renvoie 400 sans lui).
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
   const [busy, setBusy] = useState<"monthly" | "yearly" | "portal" | null>(null);
 
   useEffect(() => {
@@ -46,15 +55,27 @@ export default function ProPage() {
       try {
         // is_admin et plan sont revoques pour anon/authenticated : plus de
         // lecture directe depuis le navigateur, on passe par la route serveur.
-        // 401 (visiteur non connecte) => on laisse les deux etats a false.
+        // 401 (visiteur non connecte) => on laisse tous les etats a false/null.
         const res = await fetch("/api/me");
         if (!res.ok) return;
         const data = await res.json();
         if (data.is_admin) setIsAdmin(true);
         if (data.plan === "pro") setIsPro(true);
+        setGrantType(data.pro_grant_type ?? null);
+        setGrantExpiresAt(data.pro_grant_expires_at ?? null);
+        setHasStripeCustomer(!!data.has_stripe_customer);
       } catch {}
     })();
   }, []);
+
+  // Bandeau "Pro offert" : decision produit (2026-08-10) — informer sans
+  // interdire, les boutons d'achat restent visibles meme avec un grant valide
+  // (ex. un VIP peut vouloir payer quand meme, ou juste comprendre pourquoi il
+  // est deja Pro).
+  const grantValid = isGrantValid(grantType, grantExpiresAt);
+  const grantExpiryLabel = grantExpiresAt
+    ? new Date(grantExpiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    : null;
 
   // Les boutons d'achat sont visibles si le billing public est activé, OU pour un
   // admin (test). En mode test (billing public OFF) on affiche un bandeau clair.
@@ -158,10 +179,25 @@ export default function ProPage() {
         </div>
       </div>
 
+      {/* Bandeau "Pro offert" : au-dessus du bloc d'achat/gestion, visible tant
+          que le grant reste valide, independamment de showCheckout/isPro. */}
+      {grantValid && (
+        <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: "#C8FF00", margin: 0, lineHeight: 1.5 }}>
+            Tu bénéficies déjà d&apos;un Pro offert{grantExpiryLabel ? ` — jusqu'au ${grantExpiryLabel}` : " — sans échéance"}.
+          </p>
+        </div>
+      )}
+
       {/* Bloc action : boutons d'achat (billing activé / admin) OU liste d'attente (public) */}
       {showCheckout ? (
         <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24 }}>
-          {isPro ? (
+          {/* isPro seul suffisait avant le chantier grants (une seule source de
+              Pro). Desormais isPro peut venir d'un grant SANS stripe_customer_id
+              (portal 400) ; hasStripeCustomer seul se tromperait en sens inverse
+              (un ex-abonne resilie garde son customer id a vie, cf. checkout/route.ts,
+              et se verrait "Tu es Pro" a tort). Les deux ensemble seulement. */}
+          {isPro && hasStripeCustomer ? (
             <>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Tu es Pro</h3>
               <p style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Gère ton abonnement (résiliation, carte, mensuel/annuel) via le portail sécurisé Stripe.</p>

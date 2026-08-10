@@ -11,6 +11,7 @@ import { normalizeUrl, formatInstagram } from "@/lib/profile";
 import RoleSelector from "@/components/RoleSelector";
 import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
+import { isGrantValid } from "@/lib/pro-plan";
 
 /* ---------- types ---------- */
 
@@ -118,6 +119,34 @@ export default function MoiClient() {
   const projectLimit = plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
   const isCreatorOrRecruiter = profile?.account_type === "creator" || profile?.account_type === "recruiter";
   const canRecruit = plan === "pro" && isCreatorOrRecruiter;
+
+  // Origine/echeance du Pro, affichees sous le badge "Actif" — chantier grants
+  // (2026-08-10). subscription_status/pro_grant_type/pro_grant_expires_at
+  // viennent des PRIVILEGED_COLUMNS de GET /api/dashboard/profile.
+  const proOrigin = (() => {
+    if (!profile || plan !== "pro") return null;
+    const p = profile as Profile;
+    const stripeActive = p.subscription_status
+      ? ["active", "trialing", "past_due"].includes(p.subscription_status)
+      : false;
+    const grantValid = isGrantValid(p.pro_grant_type ?? null, p.pro_grant_expires_at ?? null);
+    const fmt = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+    let grantLabel: string | null = null;
+    if (grantValid && p.pro_grant_type === "recruiter") grantLabel = "Pro lié à ton statut recruteur";
+    else if (grantValid && p.pro_grant_type === "vip") {
+      grantLabel = p.pro_grant_expires_at ? `Pro offert (VIP) jusqu'au ${fmt(p.pro_grant_expires_at)}` : "Pro offert (VIP), sans échéance";
+    } else if (grantValid && p.pro_grant_type === "launch") {
+      grantLabel = p.pro_grant_expires_at ? `Pro offert (lancement) jusqu'au ${fmt(p.pro_grant_expires_at)}` : "Pro offert (lancement)";
+    }
+
+    if (stripeActive && grantLabel) return `Abonnement Stripe actif + ${grantLabel}`;
+    if (stripeActive) return "Abonnement Stripe actif";
+    if (grantLabel) return grantLabel;
+    // plan='pro' sans signal Stripe/grant detectable ici : etat transitoire
+    // (juste avant un recompute_plan) ou profil a examiner manuellement.
+    return null;
+  })();
 
   function getDisplayName(): string {
     if (!profile) return "Utilisateur";
@@ -1145,6 +1174,10 @@ export default function MoiClient() {
                     {plan === "pro" ? "Actif" : "Free"}
                   </span>
                 </div>
+
+                {proOrigin && (
+                  <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>{proOrigin}</p>
+                )}
 
                 <p style={{ fontSize: 13, color: "#555", marginBottom: 4 }}>
                   Type de compte : {profile.account_type === "creator" ? "Créateur" : profile.account_type === "recruiter" ? "Recruteur" : "Talent"}
