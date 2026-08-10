@@ -645,7 +645,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />
                 </svg>
                 <h3 className="text-sm font-medium text-text-primary mb-1">Publie ton premier film</h3>
-                <p className="text-xs text-text-tertiary mb-4">Ajoute jusqu&apos;a 2 films gratuitement</p>
+                <p className="text-xs text-text-tertiary mb-4">Ajoute jusqu&apos;a {MAX_PROJECTS_FREE} films gratuitement</p>
                 <button onClick={() => setAddingProject(true)} className="px-5 py-2.5 bg-[#C8FF00] text-[#0d0d0d] font-semibold text-sm rounded-lg hover:brightness-110 transition">
                   + Ajouter un film
                 </button>
@@ -875,7 +875,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-text-primary mb-2">Tu as utilise tes 2 films gratuits</h3>
+                <h3 className="text-lg font-bold text-text-primary mb-2">Tu as utilise tes {MAX_PROJECTS_FREE} films gratuits</h3>
                 <p className="text-sm text-text-secondary mb-6 leading-relaxed">
                   Passe a Unkast Pro pour publier en illimite et booster ta visibilite.
                 </p>

@@ -1211,7 +1211,7 @@ export default function MoiClient() {
 
                 {plan === "free" && (
                   <p style={{ fontSize: 12, color: "#444", lineHeight: 1.5, marginTop: 8 }}>
-                    Version gratuite — 2 publications de films maximum.
+                    Version gratuite — {MAX_PROJECTS_FREE} publications de films maximum.
                   </p>
                 )}
               </div>
@@ -1288,7 +1288,7 @@ export default function MoiClient() {
                   <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#f0f0f0", marginBottom: 8 }}>Tu as utilise tes 2 films gratuits</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#f0f0f0", marginBottom: 8 }}>Tu as utilise tes {MAX_PROJECTS_FREE} films gratuits</h3>
               <p style={{ fontSize: 14, color: "#888", marginBottom: 24, lineHeight: 1.5 }}>Passe à Unkast Pro pour publier en illimité et booster ta visibilité.</p>
               <a
                 href="mailto:pro@unkast.com?subject=Liste attente Pro"

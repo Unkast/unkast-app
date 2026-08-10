@@ -23,6 +23,10 @@ type ProjectWithCredits = Project & {
 
 type ProfileData = Profile & {
   roles: ProfileRole[];
+  // Badge « recruteur verifie » deja arbitre cote serveur (recruiter_verified ET
+  // plan='pro') — voir page.tsx. Le client n'a pas le plan et ne rejoue pas la
+  // regle : il affiche ce booleen tel quel.
+  show_verified_badge: boolean;
   projects: ProjectWithCredits[];
 };
 
@@ -268,8 +272,9 @@ export default function ProfileClient({
               ))}
             </div>
 
-            {/* Badge "recruteur vérifié" — accordé par l'admin (chantier 2). */}
-            {(profile as Profile).recruiter_verified && (
+            {/* Badge "recruteur vérifié" — double condition (vérification admin +
+                Pro actif), arbitrée côté serveur dans page.tsx. */}
+            {profile.show_verified_badge && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)", borderRadius: 20, padding: "5px 12px", marginBottom: 10 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8" }}>Recruteur vérifié</span>

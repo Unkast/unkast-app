@@ -9,6 +9,11 @@ export const revalidate = 60; // Cache 1 minute
 
 type ProfileWithRelations = Profile & {
   roles: ProfileRole[];
+  // Badge « recruteur verifie » EFFECTIF, derive cote serveur : le toggle admin
+  // `recruiter_verified` ET un plan Pro actif (modele eco du 10/08/2026 — un
+  // recruteur qui resilie perd son badge). Derive ici pour que `plan` ne quitte
+  // jamais le serveur : voir getProfile.
+  show_verified_badge: boolean;
   projects: (Project & {
     credits: (ProjectCredit & {
       profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
@@ -22,6 +27,9 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   // Colonnes PUBLIQUES uniquement. On n'expose JAMAIS contact_email, contact_phone,
   // instagram_url, website_url, show_*_to, is_admin, is_suspended, recruiter_*, plan, etc.
   // (la page profil ne les affiche pas — le contact passe par la messagerie Pro).
+  // `plan` est LU (et seulement lu) : il entre dans le calcul du badge
+  // « recruteur vérifié » et il est retiré de l'objet avant qu'il n'atteigne le
+  // client — la règle « la page publique n'expose pas le plan » tient toujours.
   // Les projets imbriqués sont filtrés sur status=approved pour ne pas exposer
   // publiquement les projets pending/refused.
   const { data: profile } = await supabase
@@ -29,7 +37,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     .select(`
       id, full_name, slug, avatar_url, location, is_available, bio,
       first_name, last_name, stage_name, display_name_preference,
-      is_recruiting, recruiting_roles, recruiter_verified, status, created_at, updated_at,
+      is_recruiting, recruiting_roles, recruiter_verified, plan, status, created_at, updated_at,
       profile_roles ( * ),
       projects (
         id, profile_id, title, slug, description, category, year,
@@ -72,10 +80,17 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     } as unknown as ProfileWithRelations["projects"][0];
   });
 
+  // Badge « recruteur vérifié » : double condition depuis le 10/08/2026 — le
+  // toggle admin ET un plan Pro actif. `plan` est extrait de l'objet par cette
+  // destructuration : ce qui part au client (`publicColumns`) ne le contient
+  // plus, seul le booléen dérivé le traverse.
+  const { plan, ...publicColumns } = profile as typeof profile & { plan: string | null };
+
   return {
-    ...profile,
+    ...publicColumns,
     profile_roles: undefined,
     roles,
+    show_verified_badge: profile.recruiter_verified === true && plan === "pro",
     projects: projectsWithCredits,
   } as unknown as ProfileWithRelations;
 }

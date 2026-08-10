@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { isGrantValid } from "@/lib/pro-plan";
+import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
 
 const FREE_FEATURES = [
   { label: "Profil public", included: true },
-  { label: "2 publications de films max", included: true },
+  { label: `${MAX_PROJECTS_FREE} publications de films max`, included: true },
   { label: "Apparaitre dans les credits", included: true },
-  { label: "Jusqu'a 30 films", included: false },
+  { label: `Jusqu'a ${MAX_PROJECTS_PRO} films`, included: false },
   { label: "Messagerie directe", included: false },
   { label: "Contact talents", included: false },
   { label: "Badge Pro verifie", included: false },
@@ -17,7 +18,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   { label: "Profil public", included: true },
-  { label: "Jusqu'a 30 films (au lieu de 2)", included: true },
+  { label: `Jusqu'a ${MAX_PROJECTS_PRO} films (au lieu de ${MAX_PROJECTS_FREE})`, included: true },
   { label: "Apparaitre dans les credits", included: true },
   { label: "Messagerie directe", included: true },
   { label: "Contact talents", included: true },

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
   const user = guard.user;
 
-  // Plafond plan-aware : 2 films (free) / 30 films (pro). Plan lu cote serveur.
+  // Plafond plan-aware, valeurs dans lib/constants. Plan lu cote serveur.
   const { data: planRow } = await supabase
     .from("profiles")
     .select("plan")

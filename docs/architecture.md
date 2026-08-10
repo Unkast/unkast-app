@@ -63,7 +63,7 @@ CORE  Supabase Browser Client (src/lib/supabase/client.ts)  — navigateur
 CORE  Supabase Admin Client (src/lib/supabase/admin.ts)     — service role (bypass RLS, usage admin)
 
 CORE  Constants (src/lib/constants.ts)
-  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 2),
+  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 3),
   ACCOUNT_TYPES, ROLES_BY_CATEGORY, ALL_ROLES, ROLE_CATEGORIES, POPULAR_ROLES
 
 CORE  Types (src/types/database.ts) — SOURCE DE VERITE du schema (introspecte 13/06/2026)
@@ -193,4 +193,4 @@ UTILITY  skeletons/ (Feed, Profile, Project, Search)
 6. **Pas d'edit projet** — un projet se cree (POST) et se supprime (DELETE), pas d'UPDATE expose. *(confirme)*
 7. **`Navbar.tsx` n'existe plus** — le fichier a ete supprime (remplace par AppShell). *(ancienne entree ORPHELIN : obsolete)*
 8. **`database.ts` est desormais la source de verite** (15 tables, profiles 35 col., projects 12 col., introspecte). En revanche **`supabase/schema.sql` reste en retard** (5 tables seulement) et doit etre regenere — voir docs/database.md.
-9. **`account_type` (ROLE) et `plan` contraints par CHECK** — `account_type` ∈ {talent, creator, recruiter} (defaut talent, `member` supprime), `plan` ∈ {free, pro}. Regle `recruiter ⇒ pro` cote code. Restent NON contraints : `projects.status`, `recruiter_status`, `display_name_preference`, `show_*_to`, statuts invitations/credits/reports/waitlist (dette technique).
+9. **`account_type` (ROLE) et `plan` contraints par CHECK** — `account_type` ∈ {talent, creator, recruiter} (defaut talent, `member` supprime), `plan` ∈ {free, pro}. **Role et plan totalement independants depuis le 10/08/2026** : la regle `recruiter ⇒ pro` n'existe plus (`approve_recruiter` ne donne plus le Pro). Restent NON contraints : `projects.status`, `recruiter_status`, `display_name_preference`, `show_*_to`, statuts invitations/credits/reports/waitlist (dette technique).

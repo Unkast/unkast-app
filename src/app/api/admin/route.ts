@@ -22,13 +22,16 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     const { data: approved } = await admin.from("profiles")
-      .select("id, full_name, slug, recruiter_company, recruiter_role, recruiter_website, recruiter_status, recruiter_verified, is_suspended, created_at")
+      // `plan` : le badge « vérifié » est EFFECTIF seulement si le compte est Pro
+      // (modele eco du 10/08/2026). L'admin doit voir les deux etats separement —
+      // toggle pose vs badge reellement affiche au public (voir AdminClient).
+      .select("id, full_name, slug, recruiter_company, recruiter_role, recruiter_website, recruiter_status, recruiter_verified, plan, is_suspended, created_at")
       .eq("account_type", "recruiter").eq("recruiter_status", "approved")
       .order("created_at", { ascending: false }).limit(50);
 
     // Modifications sensibles (description pro) en attente de re-validation.
     const { data: edits } = await admin.from("profiles")
-      .select("id, full_name, slug, bio, bio_pending, recruiter_verified, recruiter_company, created_at")
+      .select("id, full_name, slug, bio, bio_pending, recruiter_verified, plan, recruiter_company, created_at")
       .eq("recruiter_review_status", "pending")
       .order("created_at", { ascending: false });
 
@@ -188,31 +191,20 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  // Approve recruiter — règle métier : un recruteur approuvé passe Pro.
-  // (La règle "recruiter ⇒ pro" vit ici, à la validation, pas à l'inscription :
-  // un recruteur en attente reste gratuit jusqu'à approbation.)
+  // Approve recruiter — approuve le STATUT, rien d'autre. La règle "recruiter ⇒
+  // pro" est morte le 2026-08-10 (nouveau modèle économique) : le Pro s'achète
+  // (9,99 €) ou s'offre explicitement (grant_pro), il ne se gagne plus en étant
+  // approuvé. Un recruteur approuvé mais free garde son statut et son
+  // éligibilité au badge « vérifié » — le badge ne s'affiche au public que s'il
+  // est AUSSI Pro (double condition, arbitrée à l'affichage : rien à recalculer
+  // ici, et une résiliation Stripe retire le badge sans action admin).
+  // Pas d'écriture de grant, donc pas de recomputePlan : `plan` ne dépend plus
+  // de cette action.
   if (action === "approve_recruiter") {
-    // Grant 'recruiter' (chantier grants, 2026-08-10) : jamais d'échéance —
-    // lié au statut recruteur, pas au temps. Ne touche pas les champs
-    // stripe_* ; c'est recompute_plan() ci-dessous qui décide `plan`.
     const { error } = await admin.from("profiles").update({
       recruiter_status: "approved",
-      pro_grant_type: "recruiter",
-      pro_grant_expires_at: null,
-      pro_grant_granted_by: adminId,
-      pro_grant_granted_at: new Date().toISOString(),
     }).eq("id", target_id);
-    if (error) {
-      return NextResponse.json({ error: `Échec de l'action approve_recruiter : ${error.message}` }, { status: 500 });
-    }
-    const { error: recomputeError } = await recomputePlan(admin, target_id);
-    if (recomputeError) {
-      return NextResponse.json(
-        { error: `Recruteur approuvé, mais recalcul du plan échoué : ${recomputeError.message}. Le compte peut ne pas encore refléter le Pro.` },
-        { status: 500 }
-      );
-    }
-    return finalize(null, "approve_recruiter", "profile");
+    return finalize(error, "approve_recruiter", "profile");
   }
 
   // Reject recruiter

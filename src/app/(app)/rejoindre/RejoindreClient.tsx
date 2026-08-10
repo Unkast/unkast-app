@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_LABELS, MAX_PROJECTS_FREE } from "@/lib/constants";
 import type { ProjectCategory, AccountType } from "@/types/database";
 import RoleSelector from "@/components/RoleSelector";
 
@@ -407,7 +407,7 @@ export default function RejoindreClient() {
                           Réalisateur, producteur.<br />Mets tes films en ligne.
                         </p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10 }}>
-                          {["2 films gratuits", "Gérer ton équipe", "Recevoir des messages"].map((t) => (
+                          {[`${MAX_PROJECTS_FREE} films gratuits`, "Gérer ton équipe", "Recevoir des messages"].map((t) => (
                             <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#777" }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 13l4 4L19 7" /></svg>
                               {t}
@@ -696,7 +696,7 @@ export default function RejoindreClient() {
                   <div className="mt-5 flex items-start gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5">
                     <span className="text-text-tertiary text-xs mt-0.5">i</span>
                     <p className="text-xs text-text-secondary leading-relaxed">
-                      Tu pourras publier 2 films maximum en version gratuite. Chaque film publié te permet d&apos;inviter ton équipe.
+                      Tu pourras publier {MAX_PROJECTS_FREE} films maximum en version gratuite. Chaque film publié te permet d&apos;inviter ton équipe.
                     </p>
                   </div>
                 </div>

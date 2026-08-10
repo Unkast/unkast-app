@@ -52,7 +52,7 @@ Composants / modules utilises par 3+ features.
 ## constants.ts
 
 - **Fichier** : `src/lib/constants.ts`
-- **Role** : Couleurs/labels de categories, `MAX_PROJECTS_FREE` (= 2), `ACCOUNT_TYPES`, listes de roles (`ROLES_BY_CATEGORY`, `ALL_ROLES`, `ROLE_CATEGORIES`, `POPULAR_ROLES`)
+- **Role** : Couleurs/labels de categories, `MAX_PROJECTS_FREE` (= 3), `ACCOUNT_TYPES`, listes de roles (`ROLES_BY_CATEGORY`, `ALL_ROLES`, `ROLE_CATEGORIES`, `POPULAR_ROLES`)
 - **Consommateurs** : feed, `ProfileClient`, `ProjetClient`, `RechercheClient`, `RejoindreClient`, `DashboardClient`, `RoleSelector`, `api/dashboard/projects`, `api/signup`
 - **Risque si modifie** : **CRITIQUE** — utilise dans quasiment tous les fichiers
 

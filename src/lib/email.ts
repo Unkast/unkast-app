@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { siteUrl } from "@/lib/stripe";
+import { MAX_PROJECTS_FREE } from "@/lib/constants";
 
 // Client email SERVEUR uniquement (clé via env, JAMAIS dans le code versionné).
 // Singleton paresseux, même esprit que lib/stripe.ts : on n'instancie qu'au
@@ -149,7 +150,7 @@ function proExpiryReminderText(p: { fullName: string; dateLabel: string }): stri
     `Ton accès Pro à Unkast expire le ${p.dateLabel}.`,
     ``,
     `Après cette date, ton compte repassera en version gratuite (messagerie et`,
-    `visibilité Pro désactivées, publications limitées à 2 films).`,
+    `visibilité Pro désactivées, publications limitées à ${MAX_PROJECTS_FREE} films).`,
     ``,
     `— Unkast`,
   ].join("\n");
@@ -175,7 +176,7 @@ function proExpiryReminderHtml(p: { fullName: string; dateLabel: string }): stri
                   Bonjour <strong style="color:#f0f0f0;">${escapeHtml(p.fullName)}</strong>, ton accès Pro à Unkast
                   expire le <strong style="color:#f0f0f0;">${escapeHtml(p.dateLabel)}</strong>. Après cette date, ton
                   compte repassera en version gratuite (messagerie et visibilité Pro désactivées, publications
-                  limitées à 2 films).
+                  limitées à ${MAX_PROJECTS_FREE} films).
                 </p>
                 <p style="margin:24px 0 0 0;font-size:12px;line-height:1.6;color:#666;">
                   Des questions ? Réponds simplement à cet email.

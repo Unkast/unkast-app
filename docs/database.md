@@ -29,9 +29,16 @@ contraints en base, independants l'un de l'autre.
 | `profiles.account_type` | `AccountType` | `talent` (defaut), `creator`, `recruiter` | ✅ `profiles_account_type_check` ; bascule **talent↔creator** par l'utilisateur (`api/dashboard/profile`), `recruiter` reserve a l'admin |
 | `profiles.plan` | `Plan` | `free` (defaut), `pro` | ✅ `profiles_plan_check` |
 
-> `member` a ete supprime du modele (migre vers `talent`). Regle metier **recruiter ⇒ plan `pro`**
-> appliquee **cote code** (souplesse essai gratuit / recruteur en cours de validation), volontairement
-> sans CHECK strict en base. `NULL` reste tolere par le CHECK (defaut applicatif `talent`).
+> `member` a ete supprime du modele (migre vers `talent`). `NULL` reste tolere par le CHECK (defaut
+> applicatif `talent`).
+>
+> ⚠️ **La regle « recruiter ⇒ plan `pro` » est MORTE (2026-08-10, nouveau modele economique).** Le
+> role et le plan sont desormais **totalement independants** : `approve_recruiter` n'accorde plus
+> aucun Pro, il ne pose que `recruiter_status='approved'`. Un recruteur approuve peut parfaitement
+> rester `free` — c'est l'etat par defaut attendu, pas une anomalie. Le Pro s'achete (Stripe) ou
+> s'offre explicitement (`grant_pro`), jamais en etant approuve. Ce que l'approbation donne :
+> le statut, et l'**eligibilite** au badge « verifie » (qui exige en plus `plan='pro'`, voir
+> [« Badge recruteur verifie »](#badge-verifie)).
 
 ### Colonnes TEXT libres (« pseudo-enums » — AUCUNE contrainte en base)
 
@@ -86,7 +93,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `recruiter_website` | TEXT | oui | ⚠️ null en prod |
 | `recruiter_document_url` | TEXT | oui | ⚠️ null en prod |
 | `bio_pending` | TEXT | oui | **chantier 2** — version EN ATTENTE de la description pro (recruteur). `null` = rien en attente |
-| `recruiter_verified` | BOOLEAN | non | **chantier 2** — defaut `false` ; badge « recruteur vérifié » (accordé par l'admin) |
+| `recruiter_verified` | BOOLEAN | non | **chantier 2** — defaut `false` ; verification d'identite accordee par l'admin. ⚠️ **Ne suffit plus a afficher le badge depuis le 10/08/2026** : le badge public exige `recruiter_verified` **ET** `plan='pro'` (voir [« Badge recruteur verifie »](#badge-verifie)) |
 | `recruiter_verified_at` | TIMESTAMPTZ | oui | **chantier 2** — date d'octroi du badge (audit) |
 | `recruiter_review_status` | TEXT (CHECK) | non | **chantier 2** — `none` (defaut) / `pending` / `rejected` — ✅ `profiles_recruiter_review_status_check` ; index partiel sur `pending` |
 | `is_suspended` | BOOLEAN | oui | defaut `false` — **chantier 3** : effectif côté serveur (garde `getActiveUser` sur les API sensibles) **et** retrait de la vue publique (recherche/feed/profil/projet via `is_suspended IS NOT TRUE`) |
@@ -107,7 +114,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `recruiting_roles` | TEXT[] | oui | defaut `'{}'` |
 | `is_looking_for` | TEXT | oui | ⚠️ null en prod |
 
-> **Workflow crédibilité recruteur (chantier 2, migration `20260614_recruiter_verification.sql`).** La description pro d'un recruteur est un **champ sensible** : à l'édition (`api/dashboard/profile` PATCH, `account_type='recruiter'`), la nouvelle valeur va dans `bio_pending` + `recruiter_review_status='pending'` ; le public continue de voir `bio`. L'admin approuve (`bio = bio_pending`, reset) ou refuse (`bio_pending=null`, `status='rejected'`, `bio` conservée) via `api/admin`. Le **badge « recruteur vérifié »** (`recruiter_verified`) est accordé/retiré par l'admin ; une modif en attente **ne le met pas en pause** (le public ne voit que la version validée). Champs **anodins** (avatar, localisation, liens, coordonnées) : publication directe, hors workflow.
+> **Workflow crédibilité recruteur (chantier 2, migration `20260614_recruiter_verification.sql`).** La description pro d'un recruteur est un **champ sensible** : à l'édition (`api/dashboard/profile` PATCH, `account_type='recruiter'`), la nouvelle valeur va dans `bio_pending` + `recruiter_review_status='pending'` ; le public continue de voir `bio`. L'admin approuve (`bio = bio_pending`, reset) ou refuse (`bio_pending=null`, `status='rejected'`, `bio` conservée) via `api/admin`. La **vérification** (`recruiter_verified`) est accordée/retirée par l'admin ; une modif en attente **ne la met pas en pause** (le public ne voit que la version validée). Depuis le 10/08/2026, cette vérification ne suffit plus à faire apparaître le badge — voir [« Badge recruteur vérifié »](#badge-verifie). Champs **anodins** (avatar, localisation, liens, coordonnées) : publication directe, hors workflow.
 >
 > **Motif de refus (07/08/2026, migration `20260807_recruiter_review_reason.sql`).** `recruiter_review_reason` (TEXT nullable) porte le motif du dernier refus : écrit par `reject_recruiter_edit`, nettoyé par `approve_recruiter_edit` et par toute nouvelle soumission. Lisible par le recruteur via GET `api/dashboard/profile` uniquement (colonne **jamais accordée** à anon/authenticated — créée après le retrait du SELECT table-level, donc service role seul ; les colonnes révoquées passent de 14 à **15**). MoiClient affiche un bandeau « Modification refusée » avec ce motif. À la soumission, les admins sont notifiés par **push FCM** (`sendPushToUser`, best-effort).
 
@@ -201,7 +208,7 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 
 > **Workflow Stripe (chantier 7, mode TEST) — modèle grant, livré 2026-08-10.** Souscription : `/pro` → `POST /api/billing/checkout` (Stripe Checkout hébergé) → **webhook** `POST /api/billing/webhook` (seule source de vérité pour la comptabilité Stripe, signature vérifiée sur raw body) écrit `stripe_subscription_id`, `subscription_status`, `current_period_end`, puis appelle `recompute_plan()`. Le webhook ne consulte **plus jamais** `pro_grant_*` avant d'écrire — il est souverain sur ses propres colonnes dans tous les cas, y compris un profil qui a par ailleurs un grant offert actif. Auto-gestion via `POST /api/billing/portal` (Stripe Customer Portal). Le webhook ne retrouve un profil que par `stripe_customer_id` (un profil sans customer n'est jamais touché). Aucune donnée de carte stockée.
 >
-> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()` ; refuse (400) d'écraser un grant `'recruiter'` existant. `approve_recruiter` pose un grant `'recruiter'` (jamais d'échéance) au lieu de `pro_source='admin'`. Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant (refuse sur un grant `'recruiter'` — même garde-fou) ; `revoke_recruiter_approval` retire le statut recruteur **et** le grant `recruiter` (uniquement s'il est toujours du type `'recruiter'`). Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte). Cron quotidien `GET /api/cron/pro-expiry` (voir [api-routes.md](api-routes.md)) : recompute les grants `'launch'` échus, envoie le rappel J-7. Le propriétaire du profil voit l'origine/l'échéance de son Pro via `GET /api/me` et `GET /api/dashboard/profile` (`/pro` et `/moi`).
+> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()` ; refuse (400) d'écraser un grant `'recruiter'` existant. ⚠️ `approve_recruiter` **n'accorde plus aucun Pro depuis le 10/08/2026** (nouveau modèle économique) : il ne pose que `recruiter_status='approved'`, n'écrit aucun `pro_grant_*` et n'appelle plus `recompute_plan()`. Plus aucun chemin de code ne crée de grant `'recruiter'` — voir [« Les trois types de grant »](#types-de-grant). Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant (refuse sur un grant `'recruiter'` — même garde-fou) ; `revoke_recruiter_approval` retire le statut recruteur **et** le grant `recruiter` (uniquement s'il est toujours du type `'recruiter'`). Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte). Cron quotidien `GET /api/cron/pro-expiry` (voir [api-routes.md](api-routes.md)) : recompute les grants `'launch'` échus, envoie le rappel J-7. Le propriétaire du profil voit l'origine/l'échéance de son Pro via `GET /api/me` et `GET /api/dashboard/profile` (`/pro` et `/moi`).
 >
 > **Vue d'ensemble complète du modèle** : voir la section [« Modèle Pro — deux sources, une dérivation »](#modele-pro) plus bas dans ce document.
 
@@ -278,6 +285,38 @@ d'un 500 brut), et le même import côté `AdminClient.tsx` (désactive le bouto
 Aucune route n'annule un abonnement Stripe actif (pas de `cancel_subscription` côté admin) : la
 résiliation passe exclusivement par le Customer Portal (`api/billing/portal`), y compris pour un
 admin sur son propre compte.
+
+<a id="badge-verifie"></a>
+## Badge « recruteur vérifié » — double condition *(10/08/2026)*
+
+Le badge public exige **deux** conditions, jamais une seule :
+
+```
+badge affiché := recruiter_verified = true  ET  plan = 'pro'
+```
+
+`recruiter_verified` reste la **vérification d'identité** accordée par l'admin
+(`grant_recruiter_verified` / `revoke_recruiter_verified`) ; `plan` vient de Stripe ou d'un grant.
+Conséquence voulue : **un recruteur vérifié qui résilie perd son badge**, et le récupère s'il
+resouscrit — sans aucune action admin.
+
+**Rien n'est stocké ni synchronisé.** La condition est évaluée **à l'affichage**, ce qui évite tout
+hook sur le webhook Stripe et tout risque de badge fantôme après une rétrogradation. Aucune écriture
+n'est déclenchée par un changement de plan.
+
+| Site | Fichier | Comment |
+|---|---|---|
+| **Profil public** | `app/(app)/profil/[slug]/page.tsx` → `ProfileClient.tsx` | Dérivé **côté serveur** : `plan` est lu par le select puis **retiré de l'objet** (destructuration) ; seul le booléen `show_verified_badge` atteint le client. La règle « la page publique n'expose pas le plan » tient toujours — le client ne rejoue pas la condition, il affiche le booléen |
+| **Admin — recruteurs approuvés** | `app/admin/AdminClient.tsx` (`VerifiedPill`) | Affiche les **deux** états : « Vérifié » (bleu) si le badge est réellement public, « Vérifié · masqué (Free) » (gris, pointillés + tooltip) si le toggle est posé mais le compte est free |
+| **Admin — modifs en attente** | `app/admin/AdminClient.tsx` (`VerifiedPill`) | Idem, même composant |
+
+Le bouton **Vérifier / Retirer vérif.** reste piloté par `recruiter_verified` **seul** : c'est la
+seule chose que l'admin contrôle, le Pro venant de Stripe ou d'un grant. `api/admin` GET
+`tab=recruiters` sélectionne `plan` pour les deux listes.
+
+⚠️ **La recherche et la messagerie n'affichent aucun badge** (vérifié le 10/08/2026 : `plan` et
+`recruiter_verified` sont absents du select de `app/(app)/recherche/page.tsx`). Si un badge y est
+ajouté un jour, il devra porter la même double condition.
 
 ## Row Level Security (RLS)
 
@@ -359,7 +398,7 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 
 | Limite | Valeur | Source |
 |---|---|---|
-| Films / compte (free) | **2** | `lib/constants.ts` (`MAX_PROJECTS_FREE`) |
+| Films / compte (free) | **3** | `lib/constants.ts` (`MAX_PROJECTS_FREE`) — 2 → 3 le 10/08/2026. Tous les textes qui annoncent la limite l'**interpolent** depuis cette constante (`/pro`, `/rejoindre`, dashboard, `/moi`, email d'expiration) : ne jamais réécrire le nombre en dur |
 | Films / compte (pro) | **30** | `lib/constants.ts` (`MAX_PROJECTS_PRO`) — plafond plan-aware (`api/dashboard/projects` POST) |
 | Nouvelles conversations / jour | 5 | `api/messages/route.ts:63` |
 | Blocage coordonnees (1ers messages) | < 3 messages | `api/messages/route.ts:136` |
@@ -372,6 +411,6 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 ## Dette technique (notee dans le type)
 
 1. **Colonnes TEXT libres restantes** (recruiter_status, display_name_preference, show_*_to, statuts invitations/credits/reports/waitlist, projects.status) — aucune contrainte base. Convertir en enums Postgres ou ajouter des `CHECK`. *(account_type et plan : desormais contraints par CHECK — fait.)*
-2. ✅ **`account_type` tranche** (decision produit, migration faite) : ROLE = `talent`/`creator`/`recruiter`, defaut `talent` ; `member` supprime. `plan` = `free`/`pro`, independant. Regle `recruiter ⇒ pro` cote code.
+2. ✅ **`account_type` tranche** (decision produit, migration faite) : ROLE = `talent`/`creator`/`recruiter`, defaut `talent` ; `member` supprime. `plan` = `free`/`pro`, **totalement independant du role** depuis le 10/08/2026 (la regle `recruiter ⇒ pro` n'existe plus, ni en base ni cote code).
 3. **`is_looking_for`, `recruiter_*`** : colonnes creees mais jamais alimentees en prod. Verifier si le code les ecrit.
 4. **`schema.sql` a regenerer** depuis la base (10 tables + colonnes manquantes + RLS des nouvelles tables).

@@ -22,7 +22,10 @@ export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
   "scene-extrait": "Scène / Extrait",
 };
 
-export const MAX_PROJECTS_FREE = 2;
+// 2 -> 3 le 2026-08-10 (nouveau modele economique). Les textes qui annoncent
+// la limite l'interpolent depuis ces constantes : ne jamais reecrire le nombre
+// en dur, il a deja diverge une fois.
+export const MAX_PROJECTS_FREE = 3;
 export const MAX_PROJECTS_PRO = 30;
 
 export const ACCOUNT_TYPES = {

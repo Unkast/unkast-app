@@ -6,8 +6,10 @@ import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-
 
 type Tab = "recruiters" | "reports" | "users" | "films";
 
-interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; recruiter_verified?: boolean; is_suspended?: boolean; created_at: string; }
-interface RecruiterEdit { id: string; full_name: string; slug: string; bio: string | null; bio_pending: string | null; recruiter_verified: boolean; recruiter_company: string | null; created_at: string; }
+// `plan` (2026-08-10) : le badge « verifie » n'est affiche au public que si le
+// toggle est pose ET le compte Pro. L'admin doit voir les deux — voir VerifiedPill.
+interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; recruiter_verified?: boolean; plan?: string | null; is_suspended?: boolean; created_at: string; }
+interface RecruiterEdit { id: string; full_name: string; slug: string; bio: string | null; bio_pending: string | null; recruiter_verified: boolean; plan?: string | null; recruiter_company: string | null; created_at: string; }
 interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; target_owner_id: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; }
 // pro_grant_type / pro_grant_expires_at / subscription_status : chantier grants
 // (2026-08-10) — necessaires pour afficher l'ORIGINE du Pro (Stripe / offert /
@@ -55,6 +57,37 @@ function proBadge(u: User): ProBadge {
     return { label: `Free · ex-${(grantLabel ?? u.pro_grant_type).toLowerCase()} (expiré le ${d})`, tone: "expired" };
   }
   return { label: "Free", tone: "muted" };
+}
+
+// Pastille « verifie » de l'onglet recruteurs. Deux etats a ne PAS confondre :
+// le toggle est pose et le compte est Pro (le public voit le badge), ou le
+// toggle est pose mais le compte est Free (le public ne voit rien). Le bouton
+// Verifier/Retirer verif. reste pilote par le toggle seul — c'est la seule
+// chose que l'admin controle ; le Pro, lui, vient de Stripe ou d'un grant.
+function VerifiedPill({ verified, plan }: { verified?: boolean; plan?: string | null }) {
+  if (!verified) return null;
+  const active = plan === "pro";
+  return (
+    <span
+      title={
+        active
+          ? "Vérification accordée + compte Pro : le badge est affiché sur le profil public."
+          : "Vérification accordée, mais compte Free : le badge n'est PAS affiché au public. Il réapparaît si le compte redevient Pro."
+      }
+      style={{
+        fontSize: 10,
+        padding: "2px 6px",
+        borderRadius: 4,
+        fontWeight: 600,
+        background: active ? "rgba(56,189,248,0.12)" : "rgba(255,255,255,0.04)",
+        color: active ? "#38bdf8" : "#777",
+        border: active ? "1px solid transparent" : "1px dashed rgba(255,255,255,0.2)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {active ? "Vérifié" : "Vérifié · masqué (Free)"}
+    </span>
+  );
 }
 
 export default function AdminClient() {
@@ -258,7 +291,7 @@ export default function AdminClient() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <Link href={`/profil/${e.slug}`} target="_blank" style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", textDecoration: "none" }}>{e.full_name}</Link>
-                        {e.recruiter_verified && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(56,189,248,0.12)", color: "#38bdf8", fontWeight: 600 }}>Vérifié</span>}
+                        <VerifiedPill verified={e.recruiter_verified} plan={e.plan} />
                       </div>
                       {e.recruiter_company && <p style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{e.recruiter_company}</p>}
                     </div>
@@ -293,7 +326,7 @@ export default function AdminClient() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.full_name}</p>
-                      {r.recruiter_verified && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(56,189,248,0.12)", color: "#38bdf8", fontWeight: 600 }}>Vérifié</span>}
+                      <VerifiedPill verified={r.recruiter_verified} plan={r.plan} />
                     </div>
                     <p style={{ fontSize: 11, color: "#555" }}>{r.recruiter_company}</p>
                   </div>
@@ -304,8 +337,11 @@ export default function AdminClient() {
                     }
                     <button onClick={() => confirmAction("suspend_user", r.id, `Suspendre ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12 }}>Suspendre</button>
                     {/* Distinct de "Refuser" (candidature pending) : retire un statut
-                        DEJA approuve — ex. fraude decouverte apres coup. Retire aussi
-                        le grant 'recruiter' cote serveur (revoke_recruiter_approval). */}
+                        DEJA approuve — ex. fraude decouverte apres coup. Depuis le
+                        2026-08-10 l'approbation ne donne plus le Pro : cette action
+                        ne fait donc plus que retirer le statut (elle nettoie encore
+                        un grant 'recruiter' pour les profils approuves AVANT ce
+                        changement — voir revoke_recruiter_approval). */}
                     <button onClick={() => confirmAction("revoke_recruiter_approval", r.id, `Révoquer le statut recruteur de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Révoquer statut</button>
                   </div>
                 </div>
