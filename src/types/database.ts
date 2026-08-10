@@ -39,9 +39,32 @@ export type AccountType = 'talent' | 'creator' | 'recruiter'
 // plan : 'free'/'pro'. 'pro' accordable manuellement (admin) ou par abonnement Stripe.
 export type Plan = 'free' | 'pro' | (string & {})
 
-// pro_source : origine du Pro. 'admin' = manuel (a vie, jamais retrograde par le
-// webhook Stripe) ; 'stripe' = abonnement paye ; null = pas Pro / inconnu.
+// pro_source : GELEE (2026-08-10, chantier grants). Plus jamais ecrite ni lue
+// par le code applicatif — remplacee par pro_grant_type (Pro offert admin,
+// independant de Stripe) + subscription_status (Stripe). Colonne conservee en
+// base (pas de DROP), `DROP` prevu dans un commit dedie post-lancement. Type
+// garde ici pour la lecture d'anciennes lignes admin_logs/donnees, pas pour
+// une ecriture nouvelle.
 export type ProSource = 'stripe' | 'admin' | (string & {})
+
+// pro_grant_type : nature du Pro OFFERT par l'admin, independant de Stripe
+// (colonnes stripe_*/subscription_status). CHECK strict en base
+// (profiles_pro_grant_type_check) — contrairement a la plupart des colonnes
+// TEXT libres de ce fichier, une valeur hors union ne PEUT PAS exister.
+// 'launch' = cadeau de lancement, echeance obligatoire. 'vip' = choix
+// explicite, echeance libre (null = a vie). 'recruiter' = lie au statut
+// recruteur approuve, jamais d'echeance ; ne se pose jamais a la main
+// (uniquement via approve_recruiter / revoke_recruiter_approval). null =
+// aucun grant. Regles d'echeance imposees par le CHECK
+// profiles_pro_grant_expiry_check (migration 20260810_pro_grants.sql) et
+// dupliquees cote TS dans lib/pro-plan.ts (validateGrantExpiry) — ce dernier
+// fichier definit sa PROPRE union 'launch'|'vip'|'recruiter' (sans null),
+// utilisee pour typer un grant present, distincte de ce type-ci qui couvre
+// aussi son absence. `plan` reste la porte effective lue partout dans le
+// code ; elle est desormais DERIVEE (plan='pro' <=> abonnement Stripe actif
+// OU grant valide), calculee par la RPC recompute_plan — plus jamais ecrite
+// directement par le webhook ni les actions admin.
+export type ProGrantType = 'launch' | 'vip' | 'recruiter' | null
 
 // recruiter_status : toujours null en prod. Valeurs probables cote code admin.
 export type RecruiterStatus = 'pending' | 'approved' | 'rejected' | null
@@ -92,13 +115,22 @@ export interface Profile {
   pro_since: string | null
   is_admin: boolean | null           // defaut false
 
-  // --- Abonnement Stripe (chantier 7). plan/pro_since restent la porte effective ;
-  // ces colonnes ne font que relier a Stripe. Aucune donnee de carte. ---
+  // --- Abonnement Stripe (chantier 7). Souverain sur ces 4 colonnes ; plan/
+  // pro_since sont desormais DERIVEES (voir pro_grant_type ci-dessous et RPC
+  // recompute_plan). Aucune donnee de carte. ---
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   subscription_status: string | null   // statut Stripe brut (active/canceled/past_due...)
   current_period_end: string | null
-  pro_source: ProSource | null         // 'stripe' | 'admin' | null
+  pro_source: ProSource | null         // GELEE (2026-08-10) — voir commentaire du type ProSource
+
+  // --- Pro offert (grant admin), independant de Stripe — chantier grants,
+  // migration 20260810_pro_grants.sql. Voir commentaire du type ProGrantType. ---
+  pro_grant_type: ProGrantType
+  pro_grant_expires_at: string | null
+  pro_grant_granted_by: string | null        // FK -> profiles(id), ON DELETE SET NULL
+  pro_grant_granted_at: string | null
+  pro_grant_reminder_sent_at: string | null  // rappel J-7 envoye avec succes (cron, chantier ulterieur)
 
   // --- Recruteur (workflow d'approbation) ---
   recruiter_status: RecruiterStatus

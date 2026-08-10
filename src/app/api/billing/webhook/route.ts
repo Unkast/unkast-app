@@ -1,16 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
+import { recomputePlan } from "@/lib/pro-plan";
 import type Stripe from "stripe";
 
-// Webhook Stripe — SEULE source de vérité pour accorder/retirer le Pro.
+// Webhook Stripe — SEULE source de vérité pour la comptabilité Stripe
+// (stripe_subscription_id / subscription_status / current_period_end).
 // Vérifie la signature sur le RAW body. Met à jour profiles par stripe_customer_id.
 //
-// Garde-fou : un profil pro_source='admin' (Pro accordé manuellement = à vie)
-// n'est JAMAIS rétrogradé ; le webhook ne met à jour que la comptabilité Stripe.
+// Chantier grants (2026-08-10, migration 20260810_pro_grants.sql) : le webhook
+// est redevenu SOUVERAIN sur ses propres colonnes, dans TOUS les cas — il ne
+// consulte plus jamais pro_source ni aucun grant admin avant d'écrire. C'est
+// la RPC recompute_plan() qui arbitre ensuite `plan` à partir de deux sources
+// indépendantes (abonnement Stripe actif OU grant offert valide). Un profil
+// avec un grant actif qui souscrit puis résilie voit donc bien ses colonnes
+// Stripe mises à jour à chaque étape ; s'il redescend en free côté Stripe,
+// recompute_plan() le laisse Pro tant que son grant reste valide, et le
+// repasse free si le grant a lui aussi expiré/été révoqué — sans plus jamais
+// nécessiter l'ancien garde-fou "pro_source==='admin' => ne rien toucher".
 // Un profil sans stripe_customer_id n'est jamais retrouvé => jamais touché.
 
 // Statuts Stripe considérés comme "Pro actif" (past_due = période de grâce).
+// Recopiés par recompute_plan() côté SQL (même liste) — la RPC, pas cette
+// constante, décide désormais de `plan`. Conservée ici pour référence/lecture.
 const PRO_STATUSES = ["active", "trialing", "past_due"];
 
 export async function POST(request: NextRequest) {
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
     // client_reference_id (et on rattache alors le customer au profil).
     let { data: profile, error: readError } = await admin
       .from("profiles")
-      .select("id, plan, pro_since, pro_source")
+      .select("id")
       .eq("stripe_customer_id", customerId)
       .maybeSingle();
     if (readError) throw new Error(`lecture profil par customer ${customerId}: ${readError.message}`);
@@ -94,7 +106,7 @@ export async function POST(request: NextRequest) {
     if (!profile && fallbackUserId) {
       const { data: p, error: fallbackError } = await admin
         .from("profiles")
-        .select("id, plan, pro_since, pro_source")
+        .select("id")
         .eq("id", fallbackUserId)
         .maybeSingle();
       if (fallbackError) throw new Error(`lecture profil ${fallbackUserId}: ${fallbackError.message}`);
@@ -110,28 +122,22 @@ export async function POST(request: NextRequest) {
     if (!profile) return; // customer inconnu => on ignore
 
     const status = sub.status;
-    const isPro = PRO_STATUSES.includes(status);
     const periodEndUnix = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
 
+    // Écriture limitée à la comptabilité Stripe — plus aucune écriture de
+    // `plan`/`pro_since`/`pro_source` ici (pro_source est gelée, cf. commentaire
+    // en tête de fichier). C'est recompute_plan() ci-dessous qui décide `plan`.
     const updates: Record<string, unknown> = {
       stripe_subscription_id: sub.id,
       subscription_status: status,
       current_period_end: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
     };
 
-    if (profile.pro_source === "admin") {
-      // Pro manuel = à vie : on ne touche NI plan NI pro_source.
-    } else if (isPro) {
-      updates.plan = "pro";
-      updates.pro_source = "stripe";
-      if (!profile.pro_since) updates.pro_since = new Date().toISOString();
-    } else {
-      // canceled / unpaid / incomplete_expired ... => retrait du Pro.
-      updates.plan = "free";
-    }
-
     const { error: updateError } = await admin.from("profiles").update(updates).eq("id", profile.id);
     if (updateError) throw new Error(`update profil ${profile.id}: ${updateError.message}`);
+
+    const { error: recomputeError } = await recomputePlan(admin, profile.id);
+    if (recomputeError) throw new Error(`recompute_plan ${profile.id}: ${recomputeError.message}`);
   }
 
   try {
