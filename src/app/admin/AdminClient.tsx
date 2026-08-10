@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { isGrantValid, type ProGrantType } from "@/lib/pro-plan";
+import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-plan";
 
 type Tab = "recruiters" | "reports" | "users" | "films";
 
@@ -66,14 +66,14 @@ export default function AdminClient() {
   const [toast, setToast] = useState("");
 
   // Modal "Offrir Pro…" — distinct du modal reason ci-dessus : porte un type
-  // de grant + une echeance optionnelle, pas une simple raison texte.
+  // de grant + une echeance, pas une simple raison texte.
   const [grantModal, setGrantModal] = useState<{ targetId: string; label: string } | null>(null);
-  // 'launch' existe dans le type mais n'est volontairement JAMAIS selectionne
-  // ici (voir le radio desactive plus bas) : le cron d'expiration (commit 5,
-  // route /api/cron/pro-expiry) n'existe pas encore, un launch accorde
-  // aujourd'hui n'expirerait jamais et serait un VIP deguise sous un autre nom.
+  // 'launch' debloque le 2026-08-10 (commit 5) : le cron d'expiration
+  // (/api/cron/pro-expiry, vercel.json) existe desormais et recompute les
+  // launch echus chaque jour — un launch accorde ici n'est plus un VIP
+  // deguise. Reste par defaut sur 'vip' a l'ouverture (voir openGrantModal).
   const [grantType, setGrantType] = useState<Extract<ProGrantType, "vip" | "launch">>("vip");
-  const [grantExpiresAt, setGrantExpiresAt] = useState(""); // input type="date" (yyyy-mm-dd), vide = sans echeance
+  const [grantExpiresAt, setGrantExpiresAt] = useState(""); // input type="date" (yyyy-mm-dd), vide = sans echeance (interdit pour 'launch', voir validateGrantExpiry)
 
   // Data
   const [pendingRecruiters, setPendingRecruiters] = useState<Recruiter[]>([]);
@@ -133,6 +133,18 @@ export default function AdminClient() {
     setGrantModal({ targetId, label });
     setGrantType("vip");
     setGrantExpiresAt("");
+  }
+
+  // 'launch' impose une echeance (profiles_pro_grant_expiry_check) : prefiller
+  // a +1 an au choix du type, editable ensuite. Repasser sur 'vip' ne vide pas
+  // la date deja saisie (elle redevient simplement optionnelle).
+  function selectGrantType(type: Extract<ProGrantType, "vip" | "launch">) {
+    setGrantType(type);
+    if (type === "launch" && !grantExpiresAt) {
+      const oneYearOut = new Date();
+      oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
+      setGrantExpiresAt(oneYearOut.toISOString().slice(0, 10));
+    }
   }
 
   // Distinct de doAction() : grant_pro porte grant_type/expires_at, pas une
@@ -435,7 +447,13 @@ export default function AdminClient() {
       )}
 
       {/* ===== GRANT PRO MODAL ("Offrir Pro…") ===== */}
-      {grantModal && (
+      {grantModal && (() => {
+        // Miroir client de la regle serveur (profiles_pro_grant_expiry_check /
+        // validateGrantExpiry) : 'launch' impose une echeance, 'vip' non. Ne
+        // remplace pas la validation serveur, evite juste un aller-retour 400.
+        const grantExpiresIso = grantExpiresAt ? new Date(grantExpiresAt).toISOString() : null;
+        const grantValidationError = validateGrantExpiry(grantType, grantExpiresIso);
+        return (
         <div onClick={() => setGrantModal(null)} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 16 }}>{grantModal.label}</h3>
@@ -443,34 +461,38 @@ export default function AdminClient() {
             <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Nature du grant</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#f0f0f0", cursor: "pointer" }}>
-                <input type="radio" name="grant_type" checked={grantType === "vip"} onChange={() => setGrantType("vip")} />
+                <input type="radio" name="grant_type" checked={grantType === "vip"} onChange={() => selectGrantType("vip")} />
                 VIP — sans échéance par défaut, une date reste possible
               </label>
-              {/* Lancement desactive : voir commentaire sur le state grantType
-                  plus haut. Condition de deblocage : le cron d'expiration
-                  (/api/cron/pro-expiry, commit 5) doit exister avant d'offrir
-                  ce choix, sinon un launch accorde ici n'expirerait jamais. */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#444", cursor: "not-allowed" }} title="Indisponible tant que le cron d'expiration n'est pas livré">
-                <input type="radio" name="grant_type" disabled checked={false} onChange={() => {}} />
-                Lancement — indisponible pour l&apos;instant (cron d&apos;expiration à venir)
+              {/* Debloque le 2026-08-10 (commit 5) : le cron d'expiration
+                  (/api/cron/pro-expiry, vercel.json) existe desormais et
+                  recompute chaque jour les launch echus — voir commentaire sur
+                  le state grantType plus haut. */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#f0f0f0", cursor: "pointer" }}>
+                <input type="radio" name="grant_type" checked={grantType === "launch"} onChange={() => selectGrantType("launch")} />
+                Lancement — échéance obligatoire (pré-remplie à +1 an, modifiable)
               </label>
             </div>
 
-            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Échéance (optionnelle pour VIP)</p>
+            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Échéance {grantType === "launch" ? "(obligatoire)" : "(optionnelle)"}</p>
             <input
               type="date"
               value={grantExpiresAt}
               onChange={(e) => setGrantExpiresAt(e.target.value)}
-              style={{ width: "100%", padding: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", outline: "none", marginBottom: 16 }}
+              style={{ width: "100%", padding: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", outline: "none", marginBottom: grantValidationError ? 6 : 16 }}
             />
+            {grantValidationError && (
+              <p style={{ fontSize: 11, color: "#ef4444", marginBottom: 16 }}>{grantValidationError}</p>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={executeGrant} disabled={actionLoading === grantModal.targetId} style={{ ...btnApprove, flex: 1, opacity: actionLoading === grantModal.targetId ? 0.5 : 1 }}>Confirmer</button>
+              <button onClick={executeGrant} disabled={actionLoading === grantModal.targetId || !!grantValidationError} style={{ ...btnApprove, flex: 1, opacity: (actionLoading === grantModal.targetId || grantValidationError) ? 0.5 : 1 }}>Confirmer</button>
               <button onClick={() => setGrantModal(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

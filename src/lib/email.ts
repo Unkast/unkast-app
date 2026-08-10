@@ -101,6 +101,102 @@ export async function sendConfirmationEmail(
   }
 }
 
+// --- Email de rappel J-7 avant expiration d'un Pro offert (chantier grants,
+// cron /api/cron/pro-expiry, commit 5) ------------------------------------
+
+export interface SendProExpiryReminderParams {
+  to: string;
+  fullName: string;
+  expiresAt: string; // ISO
+}
+
+export async function sendProExpiryReminderEmail(
+  params: SendProExpiryReminderParams
+): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) {
+    // Pas de clé (dev/test, ou pas encore branchée en prod) : on saute
+    // proprement l'envoi. Le cron NE DOIT PAS marquer pro_grant_reminder_sent_at
+    // sur ce résultat — voir app/api/cron/pro-expiry/route.ts.
+    return { sent: false, reason: "no_api_key" };
+  }
+
+  const { to, fullName, expiresAt } = params;
+  const dateLabel = new Date(expiresAt).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  try {
+    await resend.emails.send({
+      from: authFromAddress(),
+      to,
+      subject: "Ton Pro Unkast expire bientôt",
+      html: proExpiryReminderHtml({ fullName, dateLabel }),
+      text: proExpiryReminderText({ fullName, dateLabel }),
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}
+
+function proExpiryReminderText(p: { fullName: string; dateLabel: string }): string {
+  return [
+    `Bonjour ${p.fullName},`,
+    ``,
+    `Ton accès Pro à Unkast expire le ${p.dateLabel}.`,
+    ``,
+    `Après cette date, ton compte repassera en version gratuite (messagerie et`,
+    `visibilité Pro désactivées, publications limitées à 2 films).`,
+    ``,
+    `— Unkast`,
+  ].join("\n");
+}
+
+function proExpiryReminderHtml(p: { fullName: string; dateLabel: string }): string {
+  return `<!DOCTYPE html>
+<html lang="fr">
+  <body style="margin:0;padding:0;background:#0d0d0d;font-family:'DM Sans',Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d0d;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#141414;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="padding:32px 32px 8px 32px;">
+                <div style="font-weight:700;font-size:20px;letter-spacing:-0.5px;color:#C8FF00;">Unkast</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 32px 0 32px;">
+                <h1 style="margin:0 0 12px 0;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#f0f0f0;">Ton Pro expire bientôt</h1>
+                <p style="margin:0 0 24px 0;font-size:15px;line-height:1.6;color:#aaa;">
+                  Bonjour <strong style="color:#f0f0f0;">${escapeHtml(p.fullName)}</strong>, ton accès Pro à Unkast
+                  expire le <strong style="color:#f0f0f0;">${escapeHtml(p.dateLabel)}</strong>. Après cette date, ton
+                  compte repassera en version gratuite (messagerie et visibilité Pro désactivées, publications
+                  limitées à 2 films).
+                </p>
+                <p style="margin:24px 0 0 0;font-size:12px;line-height:1.6;color:#666;">
+                  Des questions ? Réponds simplement à cet email.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 32px 32px;">
+                <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;font-size:11px;color:#555;">
+                  Unkast — la plateforme des professionnels du cinéma et de l'audiovisuel.
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
 function confirmationText(confirmUrl: string): string {
   return [
     `Bienvenue sur Unkast !`,
