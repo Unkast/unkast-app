@@ -197,9 +197,85 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 - **migration `20260614_recruiter_verification.sql`** : `profiles_recruiter_review_pending_idx` (index **partiel** sur `recruiter_review_status = 'pending'`) + CHECK `profiles_recruiter_review_status_check`.
 - **migration `20260614_stripe_billing.sql`** : `profiles_stripe_customer_id_idx` (**unique**, partiel) + `profiles_stripe_subscription_id_idx` (partiel).
 
-> **Workflow Stripe (chantier 7, mode TEST) — modèle grant, migration schéma le 2026-08-10.** ⚠️ Ce paragraphe décrit l'état **cible** une fois le code applicatif migré (commit 3 du chantier grants). Tant que ce commit n'est pas livré, `src/app/api/billing/webhook/route.ts` et `src/app/api/admin/route.ts` fonctionnent encore selon l'ancien modèle documenté par le commentaire `pro_source` ci-dessus — vérifier le code avant de s'y fier. Souscription : `/pro` → `POST /api/billing/checkout` (Stripe Checkout hébergé) → **webhook** `POST /api/billing/webhook` (seule source de vérité pour la comptabilité Stripe, signature vérifiée sur raw body) écrit `stripe_subscription_id`, `subscription_status`, `current_period_end`, puis appelle `recompute_plan()`. Le webhook ne consulte **plus jamais** `pro_grant_*` avant d'écrire — il redevient souverain sur ses propres colonnes dans tous les cas, y compris un profil qui a par ailleurs un grant offert actif. Auto-gestion via `POST /api/billing/portal` (Stripe Customer Portal). Le webhook ne retrouve un profil que par `stripe_customer_id` (un profil sans customer n'est jamais touché). Aucune donnée de carte stockée.
+> **Workflow Stripe (chantier 7, mode TEST) — modèle grant, livré 2026-08-10.** Souscription : `/pro` → `POST /api/billing/checkout` (Stripe Checkout hébergé) → **webhook** `POST /api/billing/webhook` (seule source de vérité pour la comptabilité Stripe, signature vérifiée sur raw body) écrit `stripe_subscription_id`, `subscription_status`, `current_period_end`, puis appelle `recompute_plan()`. Le webhook ne consulte **plus jamais** `pro_grant_*` avant d'écrire — il est souverain sur ses propres colonnes dans tous les cas, y compris un profil qui a par ailleurs un grant offert actif. Auto-gestion via `POST /api/billing/portal` (Stripe Customer Portal). Le webhook ne retrouve un profil que par `stripe_customer_id` (un profil sans customer n'est jamais touché). Aucune donnée de carte stockée.
 >
-> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()`. `approve_recruiter` pose un grant `'recruiter'` (jamais d'échéance) au lieu de `pro_source='admin'`. Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant ; `revoke_recruiter_approval` retire le statut recruteur **et** le grant `recruiter`. Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte).
+> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()` ; refuse (400) d'écraser un grant `'recruiter'` existant. `approve_recruiter` pose un grant `'recruiter'` (jamais d'échéance) au lieu de `pro_source='admin'`. Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant (refuse sur un grant `'recruiter'` — même garde-fou) ; `revoke_recruiter_approval` retire le statut recruteur **et** le grant `recruiter` (uniquement s'il est toujours du type `'recruiter'`). Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte). Cron quotidien `GET /api/cron/pro-expiry` (voir [api-routes.md](api-routes.md)) : recompute les grants `'launch'` échus, envoie le rappel J-7. Le propriétaire du profil voit l'origine/l'échéance de son Pro via `GET /api/me` et `GET /api/dashboard/profile` (`/pro` et `/moi`).
+>
+> **Vue d'ensemble complète du modèle** : voir la section [« Modèle Pro — deux sources, une dérivation »](#modele-pro) plus bas dans ce document.
+
+<a id="modele-pro"></a>
+## Modèle Pro — deux sources, une dérivation *(chantier grants, 2026-08-10)*
+
+> Ce qu'il faut savoir pour toucher au Pro sans redécouvrir l'historique. Contexte complet (pourquoi
+> ce modèle a remplacé l'ancien) : voir les commentaires en tête de
+> [`20260810_pro_grants.sql`](../supabase/migrations/20260810_pro_grants.sql). En résumé, l'ancien
+> modèle (`pro_source='admin'|'stripe'`) mélangeait *pourquoi*, *jusqu'à quand* et *qui* dans une seule
+> colonne, et son garde-fou webhook (« si `pro_source='admin'`, ne jamais toucher `plan` ») était
+> **inconditionnel** : un profil offert par l'admin qui souscrivait ensuite payait mais restait
+> Pro à vie même après résiliation, et un clic accidentel sur un abonné payant l'immunisait pour
+> toujours contre toute rétrogradation.
+
+### Les deux sources
+
+`plan` n'est plus écrit directement nulle part (sauf par la RPC ci-dessous) : c'est une valeur
+**dérivée** de deux sources indépendantes et cumulables.
+
+| Source | Colonnes | Souverain | Ne connaît jamais l'autre source |
+|---|---|---|---|
+| **Abonnement Stripe** | `stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `current_period_end` | `POST /api/billing/webhook` | ✅ n'inspecte plus `pro_grant_*` avant d'écrire |
+| **Pro offert (grant admin)** | `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at` | `POST /api/admin` (`grant_pro`/`revoke_pro_grant`/`approve_recruiter`/`revoke_recruiter_approval`) + `GET /api/cron/pro-expiry` (lecture seule sur ces colonnes, sauf `pro_grant_reminder_sent_at`) | ✅ n'inspecte jamais les colonnes Stripe |
+
+Un profil peut cumuler les deux (ex. un VIP qui souscrit quand même — décision produit : on laisse
+faire, `/pro` l'informe via un bandeau sans bloquer l'achat). Aucune des deux sources n'écrit jamais
+`plan`/`pro_since` directement.
+
+### La règle de dérivation
+
+Une seule fonction est autorisée à écrire `plan`/`pro_since` : la RPC Postgres
+`recompute_plan(p_profile_id uuid)` (SECURITY DEFINER, `service_role` uniquement — détail complet
+dans la table `rate_limits` ci-dessus). Appelée par le webhook après chaque écriture Stripe, par
+chaque action admin qui touche un grant, et par le cron après chaque expiration traitée.
+
+```
+stripe_actif  := subscription_status ∈ {active, trialing, past_due}
+grant_valide  := pro_grant_type IS NOT NULL
+              AND (pro_grant_expires_at IS NULL OR pro_grant_expires_at > now())
+
+plan := 'pro'  SI (stripe_actif OU grant_valide)  SINON 'free'
+pro_since := première acquisition, jamais réinitialisée tant que plan reste 'pro' en continu
+```
+
+Un grant expiré ne compte plus dans `grant_valide`, mais ses colonnes **ne sont jamais nettoyées** —
+elles restent en base comme témoin (« Free · ex-lancement, expiré le X », visible côté admin et,
+pour l'intéressé, tant qu'il n'a pas un nouveau grant, dans l'historique `admin_logs`).
+
+### Les trois types de grant
+
+| Type | Échéance | Qui peut le poser | Comment il se retire |
+|---|---|---|---|
+| `launch` | **Obligatoire** (CHECK) — cadeau de lancement, pas de Pro à vie non voulu par oubli | Admin, via `grant_pro` (modal « Offrir Pro… », AdminClient) | Expire seul (cron), ou `revoke_pro_grant` |
+| `vip` | **Libre** — `null` = à vie, une date reste possible pour une durée longue déterminée | Admin, via `grant_pro` | `revoke_pro_grant`, ou expire si une échéance avait été posée |
+| `recruiter` | **Interdite** (CHECK `NULL` strict) — lié au *statut* recruteur approuvé, jamais au temps | **Jamais à la main** — uniquement `approve_recruiter` | **Uniquement** `revoke_recruiter_approval` (retire aussi `recruiter_status`) — `revoke_pro_grant` et `grant_pro` refusent tous deux d'y toucher (400 explicite) |
+
+Ces règles sont appliquées à trois niveaux redondants, du plus au moins strict : le CHECK Postgres
+`profiles_pro_grant_expiry_check` (dernier rempart, ne peut pas être contourné même par un accès
+direct à la base), `validateGrantExpiry()` côté serveur (`lib/pro-plan.ts`, message clair au lieu
+d'un 500 brut), et le même import côté `AdminClient.tsx` (désactive le bouton avant l'envoi).
+
+### Qui a le droit d'écrire quoi
+
+| Colonnes | Écrivain(s) autorisé(s) |
+|---|---|
+| `plan`, `pro_since` | **Uniquement** `recompute_plan()` (RPC) |
+| `stripe_customer_id` | `api/billing/checkout` (création), `api/billing/webhook` (rattachement `client_reference_id`) |
+| `stripe_subscription_id`, `subscription_status`, `current_period_end` | **Uniquement** `api/billing/webhook` |
+| `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at` | `api/admin` : `grant_pro` (launch/vip), `approve_recruiter` (recruiter), `revoke_pro_grant`/`revoke_recruiter_approval` (remise à `null`) |
+| `pro_grant_reminder_sent_at` | **Uniquement** `api/cron/pro-expiry`, et seulement si l'email est **réellement parti** (`sendProExpiryReminderEmail` → `{sent:true}`) |
+| `pro_source` | **Personne** — colonne gelée, conservée pour compat historique, `DROP` prévu post-lancement |
+
+Aucune route n'annule un abonnement Stripe actif (pas de `cancel_subscription` côté admin) : la
+résiliation passe exclusivement par le Customer Portal (`api/billing/portal`), y compris pour un
+admin sur son propre compte.
 
 ## Row Level Security (RLS)
 
@@ -240,9 +316,15 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 > repond 204 sans `RETURNING` et n'exerce aucun privilege de lecture sur ce qu'on ecrit. Chainer un
 > `.select()` sur cet update declencherait un 403 sur les colonnes retournees.
 >
-> **Regle a tenir** : `OWN_COLUMNS` + `PRIVILEGED_COLUMNS` dans `api/dashboard/profile/route.ts` doivent
-> couvrir exactement les 49 colonnes de `profiles`. Toute colonne nouvellement revoquee doit passer de
-> la premiere liste a la seconde, sinon PostgREST renvoie `permission denied` et /moi casse.
+> **Regle a tenir (assouplie le 10/08/2026)** : `OWN_COLUMNS` + `PRIVILEGED_COLUMNS` dans
+> `api/dashboard/profile/route.ts` couvraient jusque-la exactement les colonnes de `profiles` (invariant
+> « contrat complet »). Depuis le chantier grants, **3 colonnes en sont exclues expres** :
+> `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at` — details d'audit admin
+> (qui a accorde le grant, quand un rappel est parti), pas des informations que l'utilisateur doit lire
+> sur son propre profil via cette route. `OWN_COLUMNS` (31) + `PRIVILEGED_COLUMNS` (16) = 47 colonnes
+> sur 49 ; les 3 manquantes sont un choix documente, pas un oubli. Toute AUTRE colonne nouvellement
+> revoquee doit toujours passer de la premiere liste a la seconde (sinon PostgREST renvoie
+> `permission denied` et /moi casse) — l'exception ci-dessus ne s'applique qu'aux 3 colonnes nommees.
 >
 > Les `GRANT` par defaut restent en revanche sans danger sur les autres tables, dont aucune ligne n'est
 > lisible publiquement (scope participants, proprietaire ou admin).

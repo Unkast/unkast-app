@@ -128,8 +128,19 @@ FEATURE  Messagerie — /messages, /messages/[id] (src/app/(app)/messages/)
   [declenche] /api/messages*  [persiste dans] conversations, messages
 
 FEATURE  Pro / Freemium — /pro (src/app/(app)/pro/)
-  Page offre Pro. NB : aucun paiement (Stripe absent), prix 9,99€ non present en code.
-  [utilise] useUserStatus
+  Page offre Pro. Deux sources cumulables (chantier grants, 10/08/2026) : abonnement Stripe
+  (api/billing/checkout+webhook+portal) et Pro OFFERT par l'admin (grant, voir CRON ci-dessous).
+  Bandeau "Pro offert" si grant valide ; boutons d'achat visibles si NEXT_PUBLIC_BILLING_ENABLED
+  ou is_admin ; "Gerer mon abonnement" visible seulement si has_stripe_customer (pas juste isPro).
+  Detail complet : docs/database.md section "Modele Pro".
+  [utilise] useUserStatus, /api/me (plan, pro_grant_type, pro_grant_expires_at, has_stripe_customer)
+
+CORE  Cron expiration Pro — /api/cron/pro-expiry (src/app/api/cron/pro-expiry/)
+  Vercel Cron quotidien (vercel.json, 0 6 * * *), secouru par CRON_SECRET (header Authorization).
+  Recompute les grants 'launch' echus (RPC recompute_plan) + envoie le rappel J-7 avant echeance
+  (lib/email.ts -> sendProExpiryReminderEmail). Jamais de balayage global sur profiles (index
+  partiel profiles_pro_grant_expiry_idx).
+  [persiste dans] profiles (plan via recompute_plan, pro_grant_reminder_sent_at)
 
 FEATURE  Suspendu — /suspended (src/app/(app)/suspended/)
   Ecran pour comptes is_suspended (lit suspended_reason).
@@ -141,7 +152,9 @@ FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) d
   lien « Administration » dans le menu utilisateur desktop d'AppShell (visible si
   is_admin via fetch /api/me).
   Back-office : recruteurs, reports, users, films. [declenche] GET/PATCH /api/admin
-  Onglets : approbation recruteur, moderation reports, suspension, set_pro, approbation films.
+  Onglets : approbation/revocation recruteur (approve_recruiter, revoke_recruiter_approval),
+  moderation reports, suspension + Pro offert (grant_pro/revoke_pro_grant, badge d'origine
+  Stripe/offert/recruteur), approbation films. Voir docs/database.md "Modele Pro".
 ```
 
 ## Composants transverses (UTILITY / partages)
