@@ -5,6 +5,9 @@ import { getActiveUser } from "@/lib/auth-guard";
 import {
   countConversationsInitiatedToday,
   countPeopleContacted,
+  createOrReuseConversation,
+  findConversationBetween,
+  isUuid,
   DAILY_CONVERSATION_LIMIT,
   DAILY_LIMIT_MESSAGE,
   FREE_CONTACT_LIMIT,
@@ -33,23 +36,37 @@ export async function POST(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { recipient_id } = body;
   if (!recipient_id) return NextResponse.json({ error: "recipient_id requis." }, { status: 400 });
+  if (!isUuid(recipient_id)) {
+    return NextResponse.json({ error: "recipient_id invalide." }, { status: 400 });
+  }
+  if (recipient_id === user.id) {
+    return NextResponse.json({ error: "Impossible de se contacter soi-même." }, { status: 400 });
+  }
+
+  // Comptage impossible => on bloque (fail-closed).
+  const countUnavailable = () =>
+    NextResponse.json(
+      {
+        error: "count_unavailable",
+        message: "Vérification de ton quota impossible pour le moment. Réessaie dans un instant.",
+      },
+      { status: 503 }
+    );
 
   // Conversation déjà ouverte avec cette personne : on la rend telle quelle.
   // Aucun quota à vérifier — elle est soit déjà comptée, soit ouverte par
   // l'autre (y répondre est libre). Un compte au-delà du quota garde donc
   // l'accès à tous ses échanges en cours.
-  const { data: existing } = await admin.from("conversations")
-    .select("id")
-    .or(`and(participant_1.eq.${user.id},participant_2.eq.${recipient_id}),and(participant_1.eq.${recipient_id},participant_2.eq.${user.id})`)
-    .single();
-
+  const { data: existing, error: lookupError } = await findConversationBetween(admin, user.id, recipient_id);
+  if (lookupError) return countUnavailable();
   if (existing) {
     return NextResponse.json({ conversation_id: existing.id });
   }
 
   // ── Pré-vérification du quota gratuit (2 personnes contactées, à vie) ──
   if (guard.profile.plan !== "pro") {
-    const count = await countPeopleContacted(admin, user.id);
+    const { count, error } = await countPeopleContacted(admin, user.id);
+    if (error || count === null) return countUnavailable();
 
     if (count >= FREE_CONTACT_LIMIT) {
       return NextResponse.json({
@@ -62,18 +79,17 @@ export async function POST(request: NextRequest) {
   }
 
   // Meme quota journalier que api/messages POST (helper partage).
-  const dailyConvs = await countConversationsInitiatedToday(admin, user.id);
+  const { count: dailyConvs, error: dailyError } = await countConversationsInitiatedToday(admin, user.id);
+  if (dailyError || dailyConvs === null) return countUnavailable();
   if (dailyConvs >= DAILY_CONVERSATION_LIMIT) {
     return NextResponse.json({ error: "daily_limit_reached", message: DAILY_LIMIT_MESSAGE }, { status: 429 });
   }
 
-  // Create new conversation
-  const { data: newConv, error } = await admin.from("conversations")
-    .insert({ participant_1: user.id, participant_2: recipient_id })
-    .select("id")
-    .single();
+  // Création (ou réutilisation si une requête concurrente a gagné la course).
+  const { data: newConv, error } = await createOrReuseConversation(admin, user.id, recipient_id);
+  if (error || !newConv) {
+    return NextResponse.json({ error: "Erreur création conversation." }, { status: 500 });
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ conversation_id: newConv!.id }, { status: 201 });
+  return NextResponse.json({ conversation_id: newConv.id }, { status: 201 });
 }

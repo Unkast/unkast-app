@@ -189,6 +189,8 @@ Envoi de message / creation de conversation. Regles metier code-verifiees :
 - Max **5** nouvelles conversations / jour pour l'initiateur — quota factorise dans **`lib/messaging.ts`** (`DAILY_CONVERSATION_LIMIT` + `countConversationsInitiatedToday`), consomme par cette route, par `/api/messages/conversation` POST et par `/api/messages/daily-count` (une seule source de verite). S'applique a **tous les plans** ; pour un compte gratuit il est inatteignable (2 a vie < 5 par jour).
 - Blocage des coordonnees (regex) tant que `< 3` messages echanges.
 - Relance impossible avant **48 h** si pas de reponse.
+- **Fail-closed** : tout comptage en echec renvoie **503 `count_unavailable`** au lieu de laisser passer. Vaut aussi pour le lookup de conversation (sans lecture fiable, impossible de savoir si le message ouvrirait un nouveau contact).
+- `recipient_id`/`conversation_id` valides en UUID (400 sinon) ; `recipient_id = soi-meme` refuse (400).
 
 > **Ce qui consomme un contact gratuit** (`countPeopleContacted`, `lib/messaging.ts`) : avoir envoye **au moins un message** dans une conversation qu'on a **initiee** (`participant_1`). Repondre dans un fil ouvert par quelqu'un d'autre ne consomme rien ; un fil ouvert puis **abandonne** (aucun message envoye) ne consomme rien non plus — le bouton « Contacter » cree deja la ligne, il serait injuste de bruler un contact sur deux pour un fil vide. Valeur **derivee** a chaque appel, jamais un compteur incremente : une course ne peut pas la corrompre. Quota **a vie**, sans remise a zero : un ex-Pro qui a initie 20 conversations reste au-dessus du quota apres resiliation (il peut toujours **repondre** dans ses echanges en cours, mais plus en initier).
 

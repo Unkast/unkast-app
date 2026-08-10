@@ -1,5 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export type ConversationRow = {
+  id: string;
+  participant_1: string;
+  participant_2: string;
+};
+
+// Resultat d'un comptage. `count === null` signifie que le comptage a ECHOUE,
+// jamais « zero » : tout appelant qui garde un quota doit alors BLOQUER
+// (fail-closed). Un echec de lecture traite comme un zero rendrait le quota
+// contournable en provoquant une erreur — c'est precisement le defaut qu'avait
+// countConversationsInitiatedToday avant le 2026-08-10 (`count ?? 0` ignorait
+// l'erreur renvoyee par PostgREST).
+type CountResult = { count: number | null; error: { message: string } | null };
+
+const COUNT_FAILED = { message: "Comptage indisponible." };
+
 // ---------------------------------------------------------------------------
 // Quota anti-spam : nouvelles conversations sur 24h glissantes
 // ---------------------------------------------------------------------------
@@ -11,20 +27,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const DAILY_CONVERSATION_LIMIT = 5;
 
 export const DAILY_LIMIT_MESSAGE = `Tu as atteint ta limite de ${DAILY_CONVERSATION_LIMIT} nouveaux contacts par jour. Réessaie demain.`;
-
-/** Conversations initiees (participant_1) par `userId` sur les dernieres 24h. */
-export async function countConversationsInitiatedToday(
-  admin: SupabaseClient,
-  userId: string
-): Promise<number> {
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count } = await admin
-    .from("conversations")
-    .select("id", { count: "exact", head: true })
-    .eq("participant_1", userId)
-    .gte("created_at", dayAgo);
-  return count ?? 0;
-}
 
 // ---------------------------------------------------------------------------
 // Quota A VIE du plan gratuit (2026-08-10, nouveau modele economique)
@@ -44,6 +46,83 @@ export const FREE_CONTACT_LIMIT = 2;
 export const FREE_CONTACT_LIMIT_MESSAGE = `Tu as utilisé tes ${FREE_CONTACT_LIMIT} contacts gratuits. Passe à Pro pour contacter d'autres personnes.`;
 
 /**
+ * Valide le format UUID canonique. Les identifiants de profil arrivent du corps
+ * de la requete et sont interpoles dans un filtre PostgREST `.or(...)` par
+ * findConversationBetween : sans cette validation, une chaine forgee pourrait
+ * alterer le filtre. Sert aussi a renvoyer un 400 lisible plutot qu'une erreur
+ * Postgres 22P02 sur un id mal forme.
+ */
+export function isUuid(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  );
+}
+
+/** Conversation entre deux profils, dans un ordre ou dans l'autre. */
+export async function findConversationBetween(
+  admin: SupabaseClient,
+  profileA: string,
+  profileB: string
+): Promise<{ data: ConversationRow | null; error: { message: string } | null }> {
+  const { data, error } = await admin
+    .from("conversations")
+    .select("id, participant_1, participant_2")
+    .or(
+      `and(participant_1.eq.${profileA},participant_2.eq.${profileB}),` +
+        `and(participant_1.eq.${profileB},participant_2.eq.${profileA})`
+    )
+    // maybeSingle et non single : `single()` renvoie une ERREUR quand il n'y a
+    // aucune ligne, ce qui obligeait l'appelant a ignorer `error` en bloc et
+    // rendait indistinguables « pas de conversation » et « lecture en echec ».
+    .maybeSingle();
+
+  return { data: (data as ConversationRow | null) ?? null, error };
+}
+
+/**
+ * Cree la conversation, ou reutilise celle qui existe deja si une requete
+ * concurrente l'a creee entretemps (code Postgres 23505 sur l'index unique
+ * conversations_pair_unique, migration 20260810_conversations_pair_unique.sql).
+ * La course se resout donc en REUTILISATION silencieuse, pas en erreur : c'est
+ * bien la meme conversation que les deux appels voulaient obtenir.
+ */
+export async function createOrReuseConversation(
+  admin: SupabaseClient,
+  initiatorId: string,
+  recipientId: string
+): Promise<{ data: ConversationRow | null; error: { message: string } | null }> {
+  const { data, error } = await admin
+    .from("conversations")
+    .insert({ participant_1: initiatorId, participant_2: recipientId })
+    .select("id, participant_1, participant_2")
+    .single();
+
+  if (error && (error as { code?: string }).code === "23505") {
+    return findConversationBetween(admin, initiatorId, recipientId);
+  }
+
+  return { data: (data as ConversationRow | null) ?? null, error };
+}
+
+/** Conversations initiees (participant_1) par `userId` sur les dernieres 24h. */
+export async function countConversationsInitiatedToday(
+  admin: SupabaseClient,
+  userId: string
+): Promise<CountResult> {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await admin
+    .from("conversations")
+    .select("id", { count: "exact", head: true })
+    .eq("participant_1", userId)
+    .gte("created_at", dayAgo);
+
+  if (error) return { count: null, error };
+  if (count === null) return { count: null, error: COUNT_FAILED };
+  return { count, error: null };
+}
+
+/**
  * Personnes DISTINCTES deja contactees par `userId`, au sens du quota gratuit :
  * conversations qu'il a INITIEES (participant_1) **et** dans lesquelles il a
  * effectivement envoye au moins un message.
@@ -54,19 +133,24 @@ export const FREE_CONTACT_LIMIT_MESSAGE = `Tu as utilisé tes ${FREE_CONTACT_LIM
  *   - les fils qu'il a ouverts sans jamais rien ecrire : cliquer « Contacter »
  *     cree deja la ligne (POST /api/messages/conversation), il serait injuste
  *     de bruler un contact sur deux pour un fil abandonne.
+ *
+ * Valeur DERIVEE a chaque appel, jamais un compteur incremente : une course sur
+ * la creation d'une conversation ne peut donc pas la corrompre.
  */
 export async function countPeopleContacted(
   admin: SupabaseClient,
   userId: string
-): Promise<number> {
-  const { data: initiated } = await admin
+): Promise<CountResult> {
+  const { data: initiated, error: initiatedError } = await admin
     .from("conversations")
     .select("id")
     .eq("participant_1", userId);
 
-  if (!initiated || initiated.length === 0) return 0;
+  if (initiatedError) return { count: null, error: initiatedError };
+  if (!initiated) return { count: null, error: COUNT_FAILED };
+  if (initiated.length === 0) return { count: 0, error: null };
 
-  const { data: sent } = await admin
+  const { data: sent, error: sentError } = await admin
     .from("messages")
     .select("conversation_id")
     .eq("sender_id", userId)
@@ -75,9 +159,11 @@ export async function countPeopleContacted(
       initiated.map((c) => c.id as string)
     );
 
-  if (!sent) return 0;
+  if (sentError) return { count: null, error: sentError };
+  if (!sent) return { count: null, error: COUNT_FAILED };
 
-  return new Set(sent.map((m) => m.conversation_id as string)).size;
+  const distinct = new Set(sent.map((m) => m.conversation_id as string));
+  return { count: distinct.size, error: null };
 }
 
 /**
@@ -89,11 +175,14 @@ export async function hasSentMessageIn(
   admin: SupabaseClient,
   conversationId: string,
   userId: string
-): Promise<boolean> {
-  const { count } = await admin
+): Promise<{ sent: boolean | null; error: { message: string } | null }> {
+  const { count, error } = await admin
     .from("messages")
     .select("id", { count: "exact", head: true })
     .eq("conversation_id", conversationId)
     .eq("sender_id", userId);
-  return (count ?? 0) > 0;
+
+  if (error) return { sent: null, error };
+  if (count === null) return { sent: null, error: COUNT_FAILED };
+  return { sent: count > 0, error: null };
 }

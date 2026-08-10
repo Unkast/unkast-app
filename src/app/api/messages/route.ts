@@ -6,11 +6,15 @@ import { sendPushToUser } from "@/lib/push";
 import {
   countConversationsInitiatedToday,
   countPeopleContacted,
+  createOrReuseConversation,
+  findConversationBetween,
   hasSentMessageIn,
+  isUuid,
   DAILY_CONVERSATION_LIMIT,
   DAILY_LIMIT_MESSAGE,
   FREE_CONTACT_LIMIT,
   FREE_CONTACT_LIMIT_MESSAGE,
+  type ConversationRow,
 } from "@/lib/messaging";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
@@ -28,6 +32,18 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 // comme unité de compte laisserait un trou béant : ouvrir 5 fils vides via
 // POST /api/messages/conversation, puis écrire dans les 5, chaque envoi
 // empruntant le chemin « conversation existante » qui ne testait rien.
+
+// Comptage impossible (lecture en échec) => on BLOQUE. Un quota qui s'ouvre
+// quand la base tousse n'est pas un quota.
+function countUnavailable() {
+  return NextResponse.json(
+    {
+      error: "count_unavailable",
+      message: "Vérification de ton quota impossible pour le moment. Réessaie dans un instant.",
+    },
+    { status: 503 }
+  );
+}
 
 const CONTACT_REGEX = /(\b06|\b07|\+33|@\w+\.\w+|https?:\/\/|www\.)/i;
 
@@ -49,16 +65,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message vide." }, { status: 400 });
   }
 
-  let convId = conversation_id;
-  let conv: { participant_1: string; participant_2: string } | null = null;
+  let convId: string | null = conversation_id ?? null;
+  let conv: ConversationRow | null = null;
   let isNewConversation = false;
 
+  if (convId && !isUuid(convId)) {
+    return NextResponse.json({ error: "conversation_id invalide." }, { status: 400 });
+  }
+
   // Try to find existing conversation
-  if (!convId && recipient_id) {
-    const { data: existing } = await admin.from("conversations")
-      .select("id, participant_1, participant_2")
-      .or(`and(participant_1.eq.${user.id},participant_2.eq.${recipient_id}),and(participant_1.eq.${recipient_id},participant_2.eq.${user.id})`)
-      .single();
+  if (!convId && recipient_id !== undefined) {
+    if (!isUuid(recipient_id)) {
+      return NextResponse.json({ error: "recipient_id invalide." }, { status: 400 });
+    }
+    if (recipient_id === user.id) {
+      return NextResponse.json({ error: "Impossible de se contacter soi-même." }, { status: 400 });
+    }
+
+    const { data: existing, error: lookupError } = await findConversationBetween(admin, user.id, recipient_id);
+    // Fail-closed : sans lecture fiable, impossible de savoir si ce message
+    // ouvrirait un nouveau contact. On refuse plutôt que de risquer un doublon
+    // de conversation ou un quota contourné.
+    if (lookupError) return countUnavailable();
 
     if (existing) {
       convId = existing.id;
@@ -75,10 +103,11 @@ export async function POST(request: NextRequest) {
   // Conversation désignée par son id : lue MAINTENANT, ses participants étant
   // nécessaires au contrôle d'appartenance comme au quota gratuit ci-dessous.
   if (convId && !conv) {
-    const { data } = await admin.from("conversations")
-      .select("participant_1, participant_2").eq("id", convId).single();
+    const { data, error } = await admin.from("conversations")
+      .select("id, participant_1, participant_2").eq("id", convId).maybeSingle();
+    if (error) return countUnavailable();
     if (!data) return NextResponse.json({ error: "Conversation introuvable." }, { status: 404 });
-    conv = data;
+    conv = data as ConversationRow;
   }
 
   // SÉCURITÉ : interdire d'écrire dans une conversation dont on n'est pas participant
@@ -95,11 +124,14 @@ export async function POST(request: NextRequest) {
     let opensNewContact = isNewConversation;
 
     if (!opensNewContact && conv && conv.participant_1 === user.id) {
-      opensNewContact = !(await hasSentMessageIn(admin, convId, user.id));
+      const { sent, error } = await hasSentMessageIn(admin, conv.id, user.id);
+      if (error || sent === null) return countUnavailable();
+      opensNewContact = !sent;
     }
 
     if (opensNewContact) {
-      const count = await countPeopleContacted(admin, user.id);
+      const { count, error } = await countPeopleContacted(admin, user.id);
+      if (error || count === null) return countUnavailable();
 
       if (count >= FREE_CONTACT_LIMIT) {
         return NextResponse.json({
@@ -115,7 +147,9 @@ export async function POST(request: NextRequest) {
   // ── RÈGLE 3 : Max 5 nouvelles conversations/jour (helper partagé avec
   // api/messages/conversation POST — aucune des deux routes ne peut diverger) ──
   if (isNewConversation) {
-    const dailyConvs = await countConversationsInitiatedToday(admin, user.id);
+    const { count: dailyConvs, error: dailyError } = await countConversationsInitiatedToday(admin, user.id);
+    if (dailyError || dailyConvs === null) return countUnavailable();
+
     if (dailyConvs >= DAILY_CONVERSATION_LIMIT) {
       return NextResponse.json({
         error: "daily_limit_reached",
@@ -123,11 +157,11 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    // Create the conversation
-    const { data: newConv } = await admin.from("conversations")
-      .insert({ participant_1: user.id, participant_2: recipient_id })
-      .select("id, participant_1, participant_2").single();
-    if (!newConv) return NextResponse.json({ error: "Erreur création conversation." }, { status: 500 });
+    // Création (ou réutilisation si une requête concurrente a gagné la course).
+    const { data: newConv, error: createError } = await createOrReuseConversation(admin, user.id, recipient_id);
+    if (createError || !newConv) {
+      return NextResponse.json({ error: "Erreur création conversation." }, { status: 500 });
+    }
     convId = newConv.id;
     conv = newConv;
   }

@@ -155,6 +155,8 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 >
 > **Unicité de la paire (migration `20260810_conversations_pair_unique.sql`, ⚠️ à exécuter).** Index **unique sur expression** `conversations_pair_unique` sur `(least(participant_1, participant_2), greatest(participant_1, participant_2))` : une paire de profils ne peut avoir qu'une conversation, quel que soit l'ordre des colonnes. Une contrainte `UNIQUE` de table ne pouvant pas porter sur une expression, c'est nécessairement un index. Sans lui, un doublon ferait compter la même personne deux fois dans le quota gratuit et casserait le lookup applicatif. Plus un CHECK `conversations_distinct_participants` (`participant_1 <> participant_2`), une auto-conversation gonflant le quota d'une personne inexistante. **État vérifié avant écriture de la migration (lecture seule, 10/08/2026) : 4 conversations, 4 paires distinctes, 0 doublon, 0 auto-conversation** — les deux contraintes passent sans nettoyage.
 >
+> Effet de bord **déjà géré côté code** : une insertion concurrente sur la même paire renvoie désormais `23505`. `createOrReuseConversation()` (`lib/messaging.ts`) l'attrape, relit la conversation existante et la **réutilise silencieusement** — la course se résout en réutilisation, pas en erreur (contrairement à l'anti-doublon vidéo, qui renvoie un 409 : ici les deux appels voulaient bien la même conversation).
+
 ### 7. messages
 `id`, `conversation_id` (→ conversations), `sender_id` (→ profiles), `content` (TEXT), `is_read` (BOOLEAN, nullable), `created_at`.
 
@@ -417,10 +419,10 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 |---|---|---|
 | Films / compte (free) | **3** | `lib/constants.ts` (`MAX_PROJECTS_FREE`) — 2 → 3 le 10/08/2026. Tous les textes qui annoncent la limite l'**interpolent** depuis cette constante (`/pro`, `/rejoindre`, dashboard, `/moi`, email d'expiration) : ne jamais réécrire le nombre en dur |
 | Films / compte (pro) | **30** | `lib/constants.ts` (`MAX_PROJECTS_PRO`) — plafond plan-aware (`api/dashboard/projects` POST) |
-| **Personnes contactées (free, à vie)** | **2** | `lib/constants` non concerné — `lib/messaging.ts` (`FREE_CONTACT_LIMIT`, 10/08/2026). Compte les conversations **initiées** dans lesquelles on a **envoyé au moins un message**. Garde serveur au **premier message** (`api/messages` POST), pré-vérification au clic (`api/messages/conversation` POST). Le Pro est illimité |
+| **Personnes contactées (free, à vie)** | **2** | `lib/constants` non concerné — `lib/messaging.ts` (`FREE_CONTACT_LIMIT`, 10/08/2026). Compte les conversations **initiées** dans lesquelles on a **envoyé au moins un message**. Garde serveur au **premier message** (`api/messages` POST), pré-vérification au clic (`api/messages/conversation` POST). Fail-closed (503 `count_unavailable`). Le Pro est illimité |
 | Nouvelles conversations / jour | 5 | `lib/messaging.ts` (`DAILY_CONVERSATION_LIMIT`) — tous plans ; inatteignable en free (2 à vie < 5 par jour) |
-| Blocage coordonnees (1ers messages) | < 3 messages | `api/messages/route.ts:136` |
-| Relance si non-reponse | 48 h | `api/messages/route.ts:119` |
+| Blocage coordonnees (1ers messages) | < 3 messages | `api/messages/route.ts`, RÈGLE 5 *(numéro de ligne non fixé — la restructuration du 10/08/2026 l'a déjà déplacé une fois)* |
+| Relance si non-reponse | 48 h | `api/messages/route.ts`, RÈGLE 4 |
 | Rate limit signup | 5 / IP / heure | `api/signup/route.ts:10` |
 | Rate limit waitlist | 5 / IP / heure | `api/waitlist/route.ts:8` |
 

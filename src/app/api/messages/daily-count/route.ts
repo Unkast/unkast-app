@@ -30,13 +30,17 @@ export async function GET() {
     .single();
   const isPro = profile?.plan === "pro";
 
-  const daily = await countConversationsInitiatedToday(admin, user.id);
+  const { count: daily } = await countConversationsInitiatedToday(admin, user.id);
 
   let contactsUsed: number | null = null;
   if (!isPro) {
-    contactsUsed = await countPeopleContacted(admin, user.id);
+    const { count } = await countPeopleContacted(admin, user.id);
+    contactsUsed = count;
   }
 
+  // Un comptage en échec renvoie null : le bandeau s'efface plutôt que
+  // d'afficher un chiffre faux. Aucun risque de contournement, cette route
+  // n'autorise rien.
   return NextResponse.json({
     count: daily,
     limit: DAILY_CONVERSATION_LIMIT,
