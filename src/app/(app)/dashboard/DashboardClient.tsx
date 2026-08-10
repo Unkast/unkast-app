@@ -8,6 +8,7 @@ import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram } from "@/lib/profile";
 import { motion, AnimatePresence } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { PHONE_CODES } from "@/lib/phone-codes";
 import type {
   Profile,
   ProfileRole,
@@ -464,21 +465,9 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                       onChange={(e) => setEditPhonePrefix(e.target.value)}
                       style={{ width: 100, padding: "12px 8px", background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, color: "#f0f0f0", fontSize: 14, outline: "none", flexShrink: 0 }}
                     >
-                      <option value="+33">🇫🇷 +33</option>
-                      <option value="+32">🇧🇪 +32</option>
-                      <option value="+41">🇨🇭 +41</option>
-                      <option value="+1">🇺🇸 +1</option>
-                      <option value="+44">🇬🇧 +44</option>
-                      <option value="+49">🇩🇪 +49</option>
-                      <option value="+34">🇪🇸 +34</option>
-                      <option value="+39">🇮🇹 +39</option>
-                      <option value="+351">🇵🇹 +351</option>
-                      <option value="+212">🇲🇦 +212</option>
-                      <option value="+216">🇹🇳 +216</option>
-                      <option value="+213">🇩🇿 +213</option>
-                      <option value="+225">🇨🇮 +225</option>
-                      <option value="+221">🇸🇳 +221</option>
-                      <option value="+237">🇨🇲 +237</option>
+                      {PHONE_CODES.map((c) => (
+                        <option key={c.label} value={c.dial}>{c.label}</option>
+                      ))}
                     </select>
                     <input type="tel" inputMode="tel" autoComplete="tel" value={editContactPhone} onChange={(e) => setEditContactPhone(e.target.value)} style={{ flex: 1, padding: "12px 14px", background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, color: "#f0f0f0", fontSize: 16, outline: "none" }} placeholder="6 12 34 56 78" />
                   </div>
