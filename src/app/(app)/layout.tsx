@@ -1,5 +1,6 @@
 import AppShell from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // On résout l'utilisateur + son profil + le compteur de non-lus CÔTÉ SERVEUR,
 // puis on les passe à AppShell en props. Évite le waterfall client au montage
@@ -17,7 +18,13 @@ export default async function AppLayout({
   let initialUnread = 0;
 
   if (user) {
-    const [{ data: profile }, { data: roles }, { count }] = await Promise.all([
+    // is_admin est revoque en SELECT pour `authenticated` (migration
+    // 20260731_profiles_column_grants.sql) : l'ajouter au select() ci-dessous
+    // ferait echouer toute la requete (colonne non couverte par le grant).
+    // On la lit donc via le client de confiance (service role), scope sur
+    // l'utilisateur courant — meme pattern que /api/me et lib/adminGuard.ts.
+    const admin = createAdminClient();
+    const [{ data: profile }, { data: roles }, { count }, { data: adminRow }] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, slug, account_type, avatar_url")
@@ -29,6 +36,7 @@ export default async function AppLayout({
         .select("id", { count: "exact", head: true })
         .neq("sender_id", user.id)
         .eq("is_read", false),
+      admin.from("profiles").select("is_admin").eq("id", user.id).single(),
     ]);
 
     if (profile) {
@@ -38,6 +46,7 @@ export default async function AppLayout({
         account_type: profile.account_type || "talent",
         avatar_url: profile.avatar_url,
         role_name: roles?.[0]?.role_name,
+        is_admin: adminRow?.is_admin === true,
       };
     }
     initialUnread = count ?? 0;

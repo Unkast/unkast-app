@@ -68,6 +68,7 @@ interface UserProfile {
   account_type: string;
   avatar_url: string | null;
   role_name?: string;
+  is_admin?: boolean;
 }
 
 // Pages that don't show a back button
@@ -102,7 +103,7 @@ export default function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnread);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = user?.is_admin === true;
 
   const showBack = !ROOT_PAGES.includes(pathname);
   const pageTitle = getPageTitle(pathname);
@@ -110,20 +111,6 @@ export default function AppShell({
 
   // Register push notifications when logged in
   usePushNotifications(!!user);
-
-  // is_admin est revoque cote navigateur : seule /api/me l'expose (service role,
-  // scope sur soi). Un fetch au montage quand connecte — pilote uniquement
-  // l'affichage du lien Administration, la vraie garde est serveur (layout /admin).
-  useEffect(() => {
-    if (!user) { setIsAdmin(false); return; }
-    let cancelled = false;
-    fetch("/api/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d) setIsAdmin(d.is_admin === true); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!user]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -136,13 +123,17 @@ export default function AppShell({
       if (res.ok) {
         const data = await res.json();
         if (data.profile) {
-          setUser({
+          // /api/dashboard/profile ne renvoie pas is_admin (colonne privilegiee,
+          // hors perimetre de cette route). On la preserve depuis l'etat
+          // precedent plutot que de la perdre a chaque re-sync post-connexion.
+          setUser((prev) => ({
             full_name: data.profile.full_name,
             slug: data.profile.slug,
             account_type: data.profile.account_type || "talent",
             avatar_url: data.profile.avatar_url,
             role_name: data.roles?.[0]?.role_name,
-          });
+            is_admin: prev?.is_admin,
+          }));
         }
       }
     } catch {
