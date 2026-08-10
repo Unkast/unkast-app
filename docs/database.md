@@ -52,7 +52,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 
 ## Tables (15)
 
-### 1. profiles — 44 colonnes
+### 1. profiles — 49 colonnes
 
 | Colonne | Type | Nullable | Note |
 |---|---|---|---|
@@ -74,7 +74,12 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `stripe_subscription_id` | TEXT | oui | **chantier 7** — ID de l'abonnement Stripe |
 | `subscription_status` | TEXT | oui | **chantier 7** — statut Stripe brut (`active`/`trialing`/`past_due`/`canceled`/`unpaid`…) |
 | `current_period_end` | TIMESTAMPTZ | oui | **chantier 7** — fin de période payée |
-| `pro_source` | TEXT | oui | **chantier 7** — `'admin'` (manuel, à vie) / `'stripe'` (abonnement) / `null`. **Garde-fou** : un `'admin'` n'est jamais rétrogradé par le webhook |
+| `pro_source` | TEXT | oui | **GELÉE (2026-08-10)** — `'admin'` / `'stripe'` / `null`. Plus jamais écrite ni lue par le code depuis le passage au modèle grant (`pro_grant_*` ci-dessous). Conservée en base, `DROP` prévu dans un commit dédié post-lancement |
+| `pro_grant_type` | TEXT (CHECK) | oui | **2026-08-10** — nature du Pro **offert par l'admin**, indépendant de Stripe : `'launch'` (cadeau de lancement) / `'vip'` (choix explicite) / `'recruiter'` (lié au statut recruteur approuvé) / `null` (aucun grant). ✅ `profiles_pro_grant_type_check` |
+| `pro_grant_expires_at` | TIMESTAMPTZ | oui | **2026-08-10** — échéance du grant. Règle par nature (✅ `profiles_pro_grant_expiry_check`) : `launch` ⇒ **obligatoire** (pas de Pro à vie non voulu par oubli) ; `vip` ⇒ libre (`null` = à vie, une date reste possible pour une durée longue déterminée) ; `recruiter` ⇒ **interdite** (`null` strict, lié au statut, pas au temps). Un grant expiré **n'est pas nettoyé** : les colonnes restent en base comme témoin, lues par `recompute_plan()` qui les ignore simplement |
+| `pro_grant_granted_by` | UUID | oui | **2026-08-10** — FK → `profiles(id)`, admin ayant accordé le grant. `admin_logs` reste la source d'audit complète |
+| `pro_grant_granted_at` | TIMESTAMPTZ | oui | **2026-08-10** — date d'octroi du grant (distincte de `pro_since`, qui marque la première acquisition Pro toutes sources confondues et n'est jamais réinitialisée) |
+| `pro_grant_reminder_sent_at` | TIMESTAMPTZ | oui | **2026-08-10** — horodatage du dernier rappel J-7 envoyé **avec succès**. Ne doit être posée que si l'envoi Resend a réellement réussi — sinon le rappel est marqué envoyé sans l'avoir été et ne repart jamais. ✅ `profiles_pro_grant_reminder_check` (n'a de sens que si `pro_grant_expires_at` est renseignée) |
 | `recruiter_status` | TEXT libre | oui | ⚠️ null en prod |
 | `recruiter_company` | TEXT | oui | ⚠️ null en prod |
 | `recruiter_role` | TEXT | oui | ⚠️ null en prod |
@@ -159,6 +164,8 @@ Tokens de notifications push par profil. `id`, `profile_id` (→ profiles), `tok
 ### 13. rate_limits
 Compteur de limitation de debit. `key` (TEXT PK, ex. `signup:<ip>`), `count` (INTEGER, defaut 0), `window_start` (TIMESTAMPTZ). Manipulee via la RPC `check_rate_limit(p_key, p_max, p_window_seconds)` (SECURITY DEFINER, `service_role` uniquement). Voir migration `supabase/migrations/20260610_rate_limits.sql`.
 
+> **RPC `recompute_plan(p_profile_id uuid)` (2026-08-10)** — calcule et ecrit `profiles.plan`/`pro_since` a partir de deux sources independantes : abonnement Stripe actif (`subscription_status` dans `active`/`trialing`/`past_due`) OU grant offert valide (`pro_grant_type` non null et `pro_grant_expires_at` null ou future). `plan='pro'` si l'une ou l'autre est vraie. SECURITY DEFINER (ecrit malgre RLS), `service_role` uniquement — meme posture que `check_rate_limit`. Ne lit aucune donnee liee a l'appelant (pas de `current_user`/`auth.uid()`), uniquement la ligne `profiles` designee par le parametre : verrouillee en lecture (`for update`) pour serialiser un webhook et une action admin concurrents sur le meme profil. Seule fonction autorisee a ecrire `plan`/`pro_since` depuis ce commit — le webhook et les actions admin l'appellent, ils n'ecrivent plus ces deux colonnes directement. Voir migration `supabase/migrations/20260810_pro_grants.sql`.
+
 ### 14. reports
 Signalements moderes. `id`, `reporter_id` (→ profiles), `target_type` (TEXT — `profile`/`project`/`message`), `target_id` (UUID), `reason` (TEXT), `description` (nullable), `status` (TEXT libre ⚠️, defaut `pending`), `reviewed_by` (→ profiles, nullable), `reviewed_at` (nullable), `created_at`.
 
@@ -190,7 +197,9 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 - **migration `20260614_recruiter_verification.sql`** : `profiles_recruiter_review_pending_idx` (index **partiel** sur `recruiter_review_status = 'pending'`) + CHECK `profiles_recruiter_review_status_check`.
 - **migration `20260614_stripe_billing.sql`** : `profiles_stripe_customer_id_idx` (**unique**, partiel) + `profiles_stripe_subscription_id_idx` (partiel).
 
-> **Workflow Stripe (chantier 7, mode TEST).** Souscription : `/pro` → `POST /api/billing/checkout` (Stripe Checkout hébergé) → **webhook** `POST /api/billing/webhook` (seule source de vérité, signature vérifiée sur raw body) pose `plan='pro'`, `pro_since`, `subscription_status`, `current_period_end`, `pro_source='stripe'`. Retrait à l'annulation/expiration (`subscription.deleted`/`updated`) → `plan='free'`. Auto-gestion via `POST /api/billing/portal` (Stripe Customer Portal). **Garde-fou** : le webhook ne retrouve un profil que par `stripe_customer_id` (un Pro manuel sans customer n'est jamais touché) **et** ne rétrograde jamais `pro_source='admin'`. `set_pro`/`approve_recruiter` posent `pro_source='admin'` sans toucher les `stripe_*`. Aucune donnée de carte stockée.
+> **Workflow Stripe (chantier 7, mode TEST) — modèle grant, migration schéma le 2026-08-10.** ⚠️ Ce paragraphe décrit l'état **cible** une fois le code applicatif migré (commit 3 du chantier grants). Tant que ce commit n'est pas livré, `src/app/api/billing/webhook/route.ts` et `src/app/api/admin/route.ts` fonctionnent encore selon l'ancien modèle documenté par le commentaire `pro_source` ci-dessus — vérifier le code avant de s'y fier. Souscription : `/pro` → `POST /api/billing/checkout` (Stripe Checkout hébergé) → **webhook** `POST /api/billing/webhook` (seule source de vérité pour la comptabilité Stripe, signature vérifiée sur raw body) écrit `stripe_subscription_id`, `subscription_status`, `current_period_end`, puis appelle `recompute_plan()`. Le webhook ne consulte **plus jamais** `pro_grant_*` avant d'écrire — il redevient souverain sur ses propres colonnes dans tous les cas, y compris un profil qui a par ailleurs un grant offert actif. Auto-gestion via `POST /api/billing/portal` (Stripe Customer Portal). Le webhook ne retrouve un profil que par `stripe_customer_id` (un profil sans customer n'est jamais touché). Aucune donnée de carte stockée.
+>
+> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()`. `approve_recruiter` pose un grant `'recruiter'` (jamais d'échéance) au lieu de `pro_source='admin'`. Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant ; `revoke_recruiter_approval` retire le statut recruteur **et** le grant `recruiter`. Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte).
 
 ## Row Level Security (RLS)
 
@@ -204,21 +213,25 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 `schema.sql` (a inclure lors de la regeneration ; pour le recrutement, source =
 `supabase/migrations/20260614_recruitment.sql`).
 
-> ⚠️ **Correction du 31/07/2026.** Cette section affirmait auparavant que les `GRANT` larges a
-> `anon`/`authenticated` etaient « neutralises par la RLS active, pas un risque ». **C'est faux pour
-> `profiles`** : la RLS filtre les LIGNES, jamais les COLONNES. Une ligne de profil etant lisible
-> publiquement (`status='approved'`), n'importe qui pouvait lire `contact_email`, `is_admin` ou
-> `stripe_customer_id` en interrogeant PostgREST avec la cle anon. **14 colonnes de `profiles` ont
-> donc ete revoquees** pour `anon` et `authenticated` : `is_admin`, `contact_email`, `contact_phone`,
+> ⚠️ **Correction du 31/07/2026, mise a jour le 10/08/2026 (chantier grants).** Cette section
+> affirmait auparavant que les `GRANT` larges a `anon`/`authenticated` etaient « neutralises par la
+> RLS active, pas un risque ». **C'est faux pour `profiles`** : la RLS filtre les LIGNES, jamais les
+> COLONNES. Une ligne de profil etant lisible publiquement (`status='approved'`), n'importe qui
+> pouvait lire `contact_email`, `is_admin` ou `stripe_customer_id` en interrogeant PostgREST avec la
+> cle anon. **19 colonnes de `profiles` sont aujourd'hui revoquees** pour `anon` et `authenticated`
+> (14 d'origine + 5 le 10/08) : `is_admin`, `contact_email`, `contact_phone`,
 > `recruiter_status`, `recruiter_document_url`, `recruiter_review_status`, `bio_pending`,
 > `suspended_at`, `suspended_reason`, `pro_source`, `stripe_customer_id`, `stripe_subscription_id`,
-> `subscription_status`, `current_period_end`.
+> `subscription_status`, `current_period_end`, `pro_grant_type`,
+> `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at`.
 >
-> Migration : [`20260731_profiles_column_grants.sql`](../supabase/migrations/20260731_profiles_column_grants.sql)
-> (retro-documentee, la regle avait ete posee a la main). Cote code : elles ne sont lues **que** par le
-> service role (`api/dashboard/profile` GET via `PRIVILEGED_COLUMNS`, `api/me`, `lib/supabase/middleware.ts`,
-> `api/billing/*`, `api/admin`). **`plan` n'est PAS revoque** : `hooks/useUserStatus.ts` le lit depuis le
-> navigateur pour le gating Pro.
+> Migrations : [`20260731_profiles_column_grants.sql`](../supabase/migrations/20260731_profiles_column_grants.sql)
+> (retro-documentee, la regle avait ete posee a la main) + [`20260810_pro_grants.sql`](../supabase/migrations/20260810_pro_grants.sql)
+> (les 5 colonnes `pro_grant_*` naissent directement hors du GRANT table-level, aucun REVOKE explicite
+> necessaire — voir le commentaire de cette derniere migration). Cote code : elles ne sont lues **que**
+> par le service role (`api/dashboard/profile` GET via `PRIVILEGED_COLUMNS`, `api/me`,
+> `lib/supabase/middleware.ts`, `api/billing/*`, `api/admin`). **`plan` n'est PAS revoque** :
+> `hooks/useUserStatus.ts` le lit depuis le navigateur pour le gating Pro.
 >
 > **La revocation porte sur le SELECT, pas sur l'UPDATE.** `contact_email` et `contact_phone` sont
 > accordees en UPDATE a `authenticated` et restent donc **ecrites par le client utilisateur** dans le
@@ -228,7 +241,7 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 > `.select()` sur cet update declencherait un 403 sur les colonnes retournees.
 >
 > **Regle a tenir** : `OWN_COLUMNS` + `PRIVILEGED_COLUMNS` dans `api/dashboard/profile/route.ts` doivent
-> couvrir exactement les 45 colonnes de `profiles`. Toute colonne nouvellement revoquee doit passer de
+> couvrir exactement les 49 colonnes de `profiles`. Toute colonne nouvellement revoquee doit passer de
 > la premiere liste a la seconde, sinon PostgREST renvoie `permission denied` et /moi casse.
 >
 > Les `GRANT` par defaut restent en revanche sans danger sur les autres tables, dont aucune ligne n'est
