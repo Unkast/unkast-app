@@ -416,15 +416,20 @@ export async function PATCH(request: NextRequest) {
       bio: target.bio_pending ?? null,
       bio_pending: null,
       recruiter_review_status: "none",
+      recruiter_review_reason: null,
     }).eq("id", target_id);
     return finalize(error, "approve_recruiter_edit", "profile");
   }
 
   // Refuser la modif : on garde l'ancienne version publique, on jette le brouillon.
+  // Le motif est stocke sur le profil (recruiter_review_reason) pour etre lisible
+  // par le recruteur via GET /api/dashboard/profile — admin_logs ne lui est pas
+  // accessible. Nettoye a l'approbation et a toute nouvelle soumission.
   if (action === "reject_recruiter_edit") {
     const { error } = await admin.from("profiles").update({
       bio_pending: null,
       recruiter_review_status: "rejected",
+      recruiter_review_reason: reason || null,
     }).eq("id", target_id);
     return finalize(error, "reject_recruiter_edit", "profile", { reason });
   }

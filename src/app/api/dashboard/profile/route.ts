@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
+import { sendPushToUser } from "@/lib/push";
 import { ALL_ROLES } from "@/lib/constants";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
@@ -37,18 +38,20 @@ const OWN_COLUMNS = [
   "is_recruiting", "recruiting_roles", "is_looking_for",
 ].join(", ");
 
-// Liste EXACTE des 16 colonnes revoquees pour anon/authenticated LUES ICI.
-// (14 de la migration 20260731 + pro_grant_type/pro_grant_expires_at de
-// 20260810 -- ces deux derniers pour que /pro et MoiClient affichent
-// l'origine/echeance d'un Pro offert au proprietaire du profil. Les 3 AUTRES
-// colonnes pro_grant_* (granted_by, granted_at, reminder_sent_at) restent
-// VOLONTAIREMENT hors de cette liste : details d'audit admin (qui a accorde,
-// quand un rappel est parti), pas des informations que l'utilisateur doit
-// lire sur son propre profil.)
+// Liste EXACTE des 17 colonnes revoquees pour anon/authenticated LUES ICI.
+// (14 de la migration 20260731 + recruiter_review_reason (20260807) +
+// pro_grant_type/pro_grant_expires_at (20260810) — ces deux derniers pour que
+// /pro et MoiClient affichent l'origine/echeance d'un Pro offert au proprietaire
+// du profil. Les 3 AUTRES colonnes pro_grant_* (granted_by, granted_at,
+// reminder_sent_at) restent VOLONTAIREMENT hors de cette liste : details
+// d'audit admin (qui a accorde, quand un rappel est parti), pas des
+// informations que l'utilisateur doit lire sur son propre profil — l'objet
+// renvoye ne porte donc plus les 51 colonnes de `profiles`, seulement 48.)
 const PRIVILEGED_COLUMNS = [
   "is_admin",
   "contact_email", "contact_phone",
   "recruiter_status", "recruiter_document_url", "recruiter_review_status", "bio_pending",
+  "recruiter_review_reason",
   "suspended_at", "suspended_reason",
   "pro_source",
   "stripe_customer_id", "stripe_subscription_id", "subscription_status", "current_period_end",
@@ -168,6 +171,8 @@ export async function PATCH(request: NextRequest) {
     if (isRecruiter && (bio ?? null) !== (me?.bio ?? null)) {
       systemUpdates.bio_pending = bio;
       systemUpdates.recruiter_review_status = "pending";
+      // Nouvelle soumission : le motif d'un eventuel refus precedent est perime.
+      systemUpdates.recruiter_review_reason = null;
       pendingReview = true;
     } else {
       updates.bio = bio;
@@ -246,6 +251,20 @@ export async function PATCH(request: NextRequest) {
         { error: `Echec de la mise a jour du statut du compte : ${error.message}` },
         { status: 500 }
       );
+    }
+
+    // Notifier les admins qu'une description recruteur attend validation.
+    // Best-effort (pattern signup) : sans token push, rien ne part et rien ne
+    // casse — le badge de comptage sur /admin reste le filet de securite.
+    if (pendingReview) {
+      const { data: admins } = await admin.from("profiles").select("id").eq("is_admin", true);
+      for (const a of admins ?? []) {
+        sendPushToUser(a.id, {
+          title: "Description recruteur à valider",
+          body: `${me?.bio ? "Modification" : "Nouvelle description"} en attente de validation.`,
+          url: "/admin",
+        }).catch(() => {});
+      }
     }
   }
 

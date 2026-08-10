@@ -722,6 +722,21 @@ export default function MoiClient() {
                 </div>
               )}
 
+              {/* Recruteur : derniere modification de description refusee */}
+              {isRecruiter && (profile as any).recruiter_review_status === "rejected" && (
+                <div style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#ef4444", margin: 0, marginBottom: 6 }}>Modification refusée</p>
+                  <p style={{ fontSize: 12, color: "#888", margin: 0, lineHeight: 1.5 }}>
+                    Ta nouvelle description n'a pas été validée. Le public voit toujours ta version actuelle. Tu peux modifier ton profil pour soumettre une autre version.
+                  </p>
+                  {(profile as any).recruiter_review_reason && (
+                    <p style={{ fontSize: 12, color: "#aaa", margin: "10px 0 0", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.6 }}>
+                      Motif : {(profile as any).recruiter_review_reason}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Rendu profil public */}
               {/* Avatar */}
               <div style={{ marginBottom: 16 }}>

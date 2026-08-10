@@ -52,7 +52,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 
 ## Tables (15)
 
-### 1. profiles — 49 colonnes
+### 1. profiles — 51 colonnes
 
 | Colonne | Type | Nullable | Note |
 |---|---|---|---|
@@ -108,6 +108,8 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `is_looking_for` | TEXT | oui | ⚠️ null en prod |
 
 > **Workflow crédibilité recruteur (chantier 2, migration `20260614_recruiter_verification.sql`).** La description pro d'un recruteur est un **champ sensible** : à l'édition (`api/dashboard/profile` PATCH, `account_type='recruiter'`), la nouvelle valeur va dans `bio_pending` + `recruiter_review_status='pending'` ; le public continue de voir `bio`. L'admin approuve (`bio = bio_pending`, reset) ou refuse (`bio_pending=null`, `status='rejected'`, `bio` conservée) via `api/admin`. Le **badge « recruteur vérifié »** (`recruiter_verified`) est accordé/retiré par l'admin ; une modif en attente **ne le met pas en pause** (le public ne voit que la version validée). Champs **anodins** (avatar, localisation, liens, coordonnées) : publication directe, hors workflow.
+>
+> **Motif de refus (07/08/2026, migration `20260807_recruiter_review_reason.sql`).** `recruiter_review_reason` (TEXT nullable) porte le motif du dernier refus : écrit par `reject_recruiter_edit`, nettoyé par `approve_recruiter_edit` et par toute nouvelle soumission. Lisible par le recruteur via GET `api/dashboard/profile` uniquement (colonne **jamais accordée** à anon/authenticated — créée après le retrait du SELECT table-level, donc service role seul ; les colonnes révoquées passent de 14 à **15**). MoiClient affiche un bandeau « Modification refusée » avec ce motif. À la soumission, les admins sont notifiés par **push FCM** (`sendPushToUser`, best-effort).
 
 ### 2. profile_roles
 `id` (UUID PK), `profile_id` (UUID → profiles), `role_name` (TEXT). Roles multiples par profil.
@@ -294,19 +296,20 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 > RLS active, pas un risque ». **C'est faux pour `profiles`** : la RLS filtre les LIGNES, jamais les
 > COLONNES. Une ligne de profil etant lisible publiquement (`status='approved'`), n'importe qui
 > pouvait lire `contact_email`, `is_admin` ou `stripe_customer_id` en interrogeant PostgREST avec la
-> cle anon. **19 colonnes de `profiles` sont aujourd'hui revoquees** pour `anon` et `authenticated`
-> (14 d'origine + 5 le 10/08) : `is_admin`, `contact_email`, `contact_phone`,
+> cle anon. **20 colonnes de `profiles` sont aujourd'hui revoquees** pour `anon` et `authenticated`
+> (14 d'origine + 1 ajoutee le 07/08 + 5 le 10/08) : `is_admin`, `contact_email`, `contact_phone`,
 > `recruiter_status`, `recruiter_document_url`, `recruiter_review_status`, `bio_pending`,
 > `suspended_at`, `suspended_reason`, `pro_source`, `stripe_customer_id`, `stripe_subscription_id`,
-> `subscription_status`, `current_period_end`, `pro_grant_type`,
+> `subscription_status`, `current_period_end`, `recruiter_review_reason`, `pro_grant_type`,
 > `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at`.
 >
 > Migrations : [`20260731_profiles_column_grants.sql`](../supabase/migrations/20260731_profiles_column_grants.sql)
-> (retro-documentee, la regle avait ete posee a la main) + [`20260810_pro_grants.sql`](../supabase/migrations/20260810_pro_grants.sql)
-> (les 5 colonnes `pro_grant_*` naissent directement hors du GRANT table-level, aucun REVOKE explicite
-> necessaire — voir le commentaire de cette derniere migration). Cote code : elles ne sont lues **que**
-> par le service role (`api/dashboard/profile` GET via `PRIVILEGED_COLUMNS`, `api/me`,
-> `lib/supabase/middleware.ts`, `api/billing/*`, `api/admin`). **`plan` n'est PAS revoque** :
+> (retro-documentee, la regle avait ete posee a la main) + [`20260807_recruiter_review_reason.sql`](../supabase/migrations/20260807_recruiter_review_reason.sql)
+> + [`20260810_pro_grants.sql`](../supabase/migrations/20260810_pro_grants.sql) (les 5 colonnes
+> `pro_grant_*` naissent directement hors du GRANT table-level, aucun REVOKE explicite necessaire — voir
+> le commentaire de cette derniere migration). Cote code : elles ne sont lues **que** par le service
+> role (`api/dashboard/profile` GET via `PRIVILEGED_COLUMNS`, `api/me`, `lib/supabase/middleware.ts`,
+> `api/billing/*`, `api/admin`, `api/cron/pro-expiry`). **`plan` n'est PAS revoque** :
 > `hooks/useUserStatus.ts` le lit depuis le navigateur pour le gating Pro.
 >
 > **La revocation porte sur le SELECT, pas sur l'UPDATE.** `contact_email` et `contact_phone` sont
@@ -321,8 +324,8 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 > « contrat complet »). Depuis le chantier grants, **3 colonnes en sont exclues expres** :
 > `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at` — details d'audit admin
 > (qui a accorde le grant, quand un rappel est parti), pas des informations que l'utilisateur doit lire
-> sur son propre profil via cette route. `OWN_COLUMNS` (31) + `PRIVILEGED_COLUMNS` (16) = 47 colonnes
-> sur 49 ; les 3 manquantes sont un choix documente, pas un oubli. Toute AUTRE colonne nouvellement
+> sur son propre profil via cette route. `OWN_COLUMNS` (31) + `PRIVILEGED_COLUMNS` (17) = 48 colonnes
+> sur 51 ; les 3 manquantes sont un choix documente, pas un oubli. Toute AUTRE colonne nouvellement
 > revoquee doit toujours passer de la premiere liste a la seconde (sinon PostgREST renvoie
 > `permission denied` et /moi casse) — l'exception ci-dessus ne s'applique qu'aux 3 colonnes nommees.
 >

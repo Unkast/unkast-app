@@ -145,6 +145,7 @@ export interface Profile {
   recruiter_verified: boolean | null              // defaut false — badge "verifie"
   recruiter_verified_at: string | null
   recruiter_review_status: RecruiterReviewStatus | null  // defaut 'none'
+  recruiter_review_reason: string | null  // motif du dernier refus (admin) ; null hors etat 'rejected'
 
   // --- Suspension (moderation) ---
   is_suspended: boolean | null       // defaut false
