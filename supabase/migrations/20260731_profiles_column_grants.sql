@@ -42,6 +42,18 @@
 -- Note : `plan` reste volontairement LISIBLE (hooks/useUserStatus.ts le lit depuis
 -- le navigateur pour le gating Pro). Ce n'est pas un secret, seulement un statut.
 --
+-- COUPLAGE DE SECURITE AVEC src/app/api/search/route.ts (audit 2026-08-10) :
+-- cette route publique concatene le parametre `q` dans un `.or()` PostgREST,
+-- sanitize cote code (sanitizeSearchTerm) mais sans garantie absolue contre
+-- toute forme de sortie de motif. Le seul filet qui empeche une injection
+-- residuelle de fuiter une colonne sensible est CE GRANT : toute reference a
+-- une colonne hors de la liste ci-dessous fait echouer la requete PostgREST
+-- entiere plutot que de renvoyer la valeur. La RLS ne rattrape rien (elle
+-- filtre les LIGNES, pas les COLONNES, et une ligne `profiles` approuvee est
+-- deja publique). Reaccorder une colonne sensible ici SANS relire
+-- api/search/route.ts rendrait cette route exfiltrante, sans aucun autre
+-- garde-fou en place.
+--
 -- =============================================================================
 -- VERIFICATION AVANT EXECUTION (a passer d'abord, pour comparer a l'etat reel)
 -- =============================================================================

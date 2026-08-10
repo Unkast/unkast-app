@@ -1,7 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
+// Echappe les wildcards ILIKE (`%`, `_`, antislash) pour un matching
+// litteral : sans ca, un `%`/`_` saisi par l'utilisateur agit comme
+// wildcard Postgres et gonfle le cout de calcul d'une recherche substring
+// en scan quasi-total. Utilisee seule (sans strip) pour `location`, qui
+// passe par `.ilike()` (valeur opaque, pas de risque de sortie de motif).
+function escapeLikeWildcards(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/[%_]/g, (c) => `\\${c}`);
+}
+
+// Pour `q`, concatene dans `.or()` (voir commentaire de tete de fichier) :
+// retire en plus `,` `.` `(` `)`, les caracteres de syntaxe du filtre
+// PostgREST qui permettent de sortir du motif `colonne.ilike.%valeur%`
+// (separateur de conditions, separateur operateur/valeur, groupement
+// and()/or()). Un `q` qui ne contient plus que ces caracteres retombe sur
+// une recherche vide, geree par l'appelant.
+function sanitizeSearchTerm(value: string): string {
+  return escapeLikeWildcards(value.replace(/[,.()]/g, ""));
+}
+
+// Route PUBLIQUE, non authentifiee. `q` est concatene dans un `.or()`
+// PostgREST (postgrest-js ne l'echappe pas — le package le documente comme
+// "utilise tel quel, a sanitizer par l'appelant"), donc sanitizeSearchTerm()
+// est le seul rempart cote code contre une sortie du motif ilike.
+//
+// COUPLAGE DE SECURITE (a ne pas casser sans le relire) : meme avec cette
+// sanitization, l'innocuite d'une injection residuelle sur `q` depend
+// entierement du GRANT colonne de
+// supabase/migrations/20260731_profiles_column_grants.sql. Ce GRANT limite
+// anon/authenticated a 31 colonnes non sensibles sur `profiles` ; toute
+// reference a une colonne hors de cette liste (ex. is_admin, contact_email,
+// stripe_customer_id) fait echouer la requete PostgREST entiere plutot que
+// de fuiter la valeur. La RLS ne rattrape rien ici : elle filtre les LIGNES
+// (une ligne approuvee est deja publique), pas les COLONNES. Si une colonne
+// sensible est un jour reaccordee dans ce GRANT, cette route redevient
+// exfiltrante sans qu'aucun filet ne l'empeche. Voir l'audit du 2026-08-10.
 export async function GET(request: NextRequest) {
+  // Anti-abus : route publique sans auth, cle = IP (fail-closed, meme
+  // posture que signup/waitlist/resend-confirmation).
+  const ip = getClientIp(request);
+  if (!(await checkRateLimit(`search:${ip}`, 60, 60))) {
+    return NextResponse.json(
+      { error: "Trop de requêtes. Réessaie dans un instant." },
+      { status: 429 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
   const type = searchParams.get("type") ?? "all"; // all | talents | projets
@@ -9,6 +55,16 @@ export async function GET(request: NextRequest) {
   const location = searchParams.get("location") ?? "";
   const role = searchParams.get("role") ?? "";
   const sort = searchParams.get("sort") ?? "pertinence"; // pertinence | date | projets
+
+  const MAX_PARAM_LENGTH = 100;
+  for (const [name, value] of Object.entries({ q, type, category, location, role, sort })) {
+    if (value.length > MAX_PARAM_LENGTH) {
+      return NextResponse.json(
+        { error: `Paramètre "${name}" trop long.` },
+        { status: 400 }
+      );
+    }
+  }
 
   const supabase = await createClient();
 
@@ -28,10 +84,13 @@ export async function GET(request: NextRequest) {
       .not("is_suspended", "is", true); // chantier 3 : suspendus hors vue publique
 
     if (q) {
-      query = query.or(`full_name.ilike.%${q}%,bio.ilike.%${q}%`);
+      const term = sanitizeSearchTerm(q);
+      if (term) {
+        query = query.or(`full_name.ilike.%${term}%,bio.ilike.%${term}%`);
+      }
     }
     if (location) {
-      query = query.ilike("location", `%${location}%`);
+      query = query.ilike("location", `%${escapeLikeWildcards(location)}%`);
     }
 
     if (sort === "date") {
@@ -100,7 +159,10 @@ export async function GET(request: NextRequest) {
       .eq("status", "approved");
 
     if (q) {
-      query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+      const term = sanitizeSearchTerm(q);
+      if (term) {
+        query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`);
+      }
     }
     if (category) {
       query = query.eq("category", category);
