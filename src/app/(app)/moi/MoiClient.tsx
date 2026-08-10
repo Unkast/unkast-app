@@ -134,8 +134,7 @@ export default function MoiClient() {
     const fmt = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
     let grantLabel: string | null = null;
-    if (grantValid && p.pro_grant_type === "recruiter") grantLabel = "Pro lié à ton statut recruteur";
-    else if (grantValid && p.pro_grant_type === "vip") {
+    if (grantValid && p.pro_grant_type === "vip") {
       grantLabel = p.pro_grant_expires_at ? `Pro offert (VIP) jusqu'au ${fmt(p.pro_grant_expires_at)}` : "Pro offert (VIP), sans échéance";
     } else if (grantValid && p.pro_grant_type === "launch") {
       grantLabel = p.pro_grant_expires_at ? `Pro offert (lancement) jusqu'au ${fmt(p.pro_grant_expires_at)}` : "Pro offert (lancement)";

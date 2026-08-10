@@ -227,8 +227,13 @@ export async function PATCH(request: NextRequest) {
 
   // Accorder un Pro offert (ex-set_pro, renomme le 2026-08-10 — le nom
   // different dans admin_logs date volontairement le passage au modele
-  // grant). Types posables a la main : launch, vip (pas recruiter, qui ne
-  // naît que de approve_recruiter — voir ADMIN_GRANTABLE_TYPES).
+  // grant). Types posables a la main : launch, vip — voir ADMIN_GRANTABLE_TYPES.
+  // ⚠️ Jusqu'au 2026-08-10 (meme jour), un troisieme type 'recruiter' existait
+  // et cette action refusait explicitement de l'ecraser (garde-fou 400). Ce
+  // type a ete retire du modele (approve_recruiter ne le pose plus, stock
+  // purge, CHECK Postgres resserre — voir 20260810_pro_grants_type_cleanup.sql)
+  // : isProGrantType()/ADMIN_GRANTABLE_TYPES rejettent deja toute valeur hors
+  // {launch, vip} en amont, le garde-fou dedie n'a donc plus d'objet.
   if (action === "grant_pro") {
     const { grant_type, expires_at } = body;
 
@@ -257,26 +262,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    // Meme garde-fou que revoke_pro_grant (2026-08-10) : un grant 'recruiter'
-    // existant ne doit jamais etre ecrase silencieusement par cette action.
-    // Le commit precedent avait masque le bouton correspondant cote UI
-    // (AdminClient.tsx), mais un appel API direct contournait ce garde
-    // purement visuel — la verification doit vivre ici, cote serveur.
-    const { data: current, error: readError } = await admin
-      .from("profiles")
-      .select("pro_grant_type")
-      .eq("id", target_id)
-      .single();
-    if (readError || !current) {
-      return NextResponse.json({ error: "Profil cible introuvable ou illisible." }, { status: 404 });
-    }
-    if (current.pro_grant_type === "recruiter") {
-      return NextResponse.json(
-        { error: "Ce profil a un Pro lié au statut recruteur approuvé — utilise \"Révoquer le statut recruteur\" (revoke_recruiter_approval) plutôt que cette action." },
-        { status: 400 }
-      );
-    }
-
     const { error } = await admin.from("profiles").update({
       pro_grant_type: grant_type,
       pro_grant_expires_at: normalizedExpiresAt,
@@ -298,28 +283,12 @@ export async function PATCH(request: NextRequest) {
     return finalize(null, "grant_pro", "profile", { grant_type, expires_at: normalizedExpiresAt });
   }
 
-  // Retirer un Pro offert (launch/vip). Le grant 'recruiter' est EXCLU de
-  // cette action — il est structurellement lie au statut recruteur approuve
-  // et ne se retire que via revoke_recruiter_approval, qui retire les deux
-  // ensemble. Sans ce garde-fou, un clic ici sur un recruteur approuve le
-  // laisserait "approuve" sans Pro : plus de messagerie, plus moyen de
-  // recruter, sans que rien d'autre ne l'indique.
+  // Retirer un Pro offert (launch/vip). ⚠️ Jusqu'au 2026-08-10, le grant
+  // 'recruiter' etait EXCLU de cette action (garde-fou 400 : il ne se retirait
+  // que via revoke_recruiter_approval). Ce type n'existe plus dans le modele
+  // (voir grant_pro ci-dessus) — plus aucun profil ne peut porter cette
+  // valeur, le garde-fou dedie n'a donc plus d'objet.
   if (action === "revoke_pro_grant") {
-    const { data: current, error: readError } = await admin
-      .from("profiles")
-      .select("pro_grant_type")
-      .eq("id", target_id)
-      .single();
-    if (readError || !current) {
-      return NextResponse.json({ error: "Profil cible introuvable ou illisible." }, { status: 404 });
-    }
-    if (current.pro_grant_type === "recruiter") {
-      return NextResponse.json(
-        { error: "Ce Pro est lié au statut recruteur approuvé — utilise \"Révoquer le statut recruteur\" plutôt que cette action." },
-        { status: 400 }
-      );
-    }
-
     const { error } = await admin.from("profiles").update({
       pro_grant_type: null,
       pro_grant_expires_at: null,
@@ -344,42 +313,17 @@ export async function PATCH(request: NextRequest) {
 
   // Révoquer un statut recruteur préalablement approuvé (ex. fraude détectée
   // après coup) — distinct de reject_recruiter, qui ne s'applique qu'à une
-  // candidature encore pending. Retire le statut ET le grant 'recruiter' (s'il
-  // est toujours présent — un admin a pu le remplacer entretemps par un autre
-  // type, auquel cas on ne touche pas à ce grant sans rapport).
+  // candidature encore pending. ⚠️ Jusqu'au 2026-08-10, cette action retirait
+  // aussi le grant 'recruiter' que approve_recruiter posait à l'approbation
+  // (les deux se retiraient ensemble, sinon le profil restait "approuvé" mais
+  // Pro à vie sans grant valide). Depuis le nouveau modèle économique,
+  // approve_recruiter ne pose plus aucun grant — il n'y a donc plus rien à
+  // nettoyer ici. Un recruteur dont on révoque l'approbation était déjà free
+  // ou Pro par une source indépendante (Stripe, ou un grant launch/vip posé
+  // séparément) ; cette action ne touche à aucune des deux.
   if (action === "revoke_recruiter_approval") {
-    const { data: current, error: readError } = await admin
-      .from("profiles")
-      .select("pro_grant_type")
-      .eq("id", target_id)
-      .single();
-    if (readError || !current) {
-      return NextResponse.json({ error: "Profil cible introuvable ou illisible." }, { status: 404 });
-    }
-
-    const updates: Record<string, unknown> = { recruiter_status: "rejected" };
-    if (current.pro_grant_type === "recruiter") {
-      updates.pro_grant_type = null;
-      updates.pro_grant_expires_at = null;
-      updates.pro_grant_granted_by = null;
-      updates.pro_grant_granted_at = null;
-      updates.pro_grant_reminder_sent_at = null;
-    }
-
-    const { error } = await admin.from("profiles").update(updates).eq("id", target_id);
-    if (error) {
-      return NextResponse.json({ error: `Échec de l'action revoke_recruiter_approval : ${error.message}` }, { status: 500 });
-    }
-
-    const { error: recomputeError } = await recomputePlan(admin, target_id);
-    if (recomputeError) {
-      return NextResponse.json(
-        { error: `Statut recruteur révoqué, mais recalcul du plan échoué : ${recomputeError.message}. Le compte peut rester Pro à tort.` },
-        { status: 500 }
-      );
-    }
-
-    return finalize(null, "revoke_recruiter_approval", "profile", { reason });
+    const { error } = await admin.from("profiles").update({ recruiter_status: "rejected" }).eq("id", target_id);
+    return finalize(error, "revoke_recruiter_approval", "profile", { reason });
   }
 
   // Approve film

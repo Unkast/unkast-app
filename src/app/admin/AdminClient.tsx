@@ -23,7 +23,7 @@ const REASON_LABELS: Record<string, string> = { spam: "Spam", inappropriate: "In
 // Statuts Stripe consideres "actif" — miroir de PRO_STATUSES (webhook) et de
 // la RPC recompute_plan, uniquement pour l'AFFICHAGE du badge composite.
 const STRIPE_ACTIVE_STATUSES = ["active", "trialing", "past_due"];
-const GRANT_TYPE_LABELS: Record<string, string> = { launch: "Lancement", vip: "VIP", recruiter: "Recruteur" };
+const GRANT_TYPE_LABELS: Record<string, string> = { launch: "Lancement", vip: "VIP" };
 
 interface ProBadge { label: string; tone: "pro" | "muted" | "expired"; }
 
@@ -42,7 +42,6 @@ function proBadge(u: User): ProBadge {
       const d = u.pro_grant_expires_at ? new Date(u.pro_grant_expires_at).toLocaleDateString("fr-FR") : "?";
       return { label: `Pro · Lancement → ${d}`, tone: "pro" };
     }
-    if (grantValid && u.pro_grant_type === "recruiter") return { label: "Pro · Recruteur", tone: "pro" };
     if (grantValid && u.pro_grant_type === "vip") return { label: "Pro · Offert VIP", tone: "pro" };
     // plan='pro' sans stripe actif NI grant valide detectable ici : etat
     // transitoire (juste avant le prochain recompute_plan) ou anomalie a
@@ -339,9 +338,9 @@ export default function AdminClient() {
                     {/* Distinct de "Refuser" (candidature pending) : retire un statut
                         DEJA approuve — ex. fraude decouverte apres coup. Depuis le
                         2026-08-10 l'approbation ne donne plus le Pro : cette action
-                        ne fait donc plus que retirer le statut (elle nettoie encore
-                        un grant 'recruiter' pour les profils approuves AVANT ce
-                        changement — voir revoke_recruiter_approval). */}
+                        ne fait plus que retirer le statut (le grant 'recruiter'
+                        qu'elle nettoyait par le passe a ete purge et retire du
+                        modele — voir revoke_recruiter_approval). */}
                     <button onClick={() => confirmAction("revoke_recruiter_approval", r.id, `Révoquer le statut recruteur de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Révoquer statut</button>
                   </div>
                 </div>
@@ -399,15 +398,11 @@ export default function AdminClient() {
                 : badge.tone === "expired"
                 ? { background: "rgba(249,115,22,0.08)", color: "#f97316" }
                 : { background: "rgba(255,255,255,0.05)", color: "#555" };
-            // "Offrir Pro…" masque sur un grant 'recruiter' : grant_pro ecrase
-            // pro_grant_type sans garde-fou cote serveur (contrairement a
-            // revoke_pro_grant, qui refuse d'agir dessus) — un clic ici
-            // remplacerait silencieusement le grant recruiter par vip/launch,
-            // decorrelant le Pro du statut recruteur approuve sans passer par
-            // revoke_recruiter_approval. Le seul garde-fou existant est ici,
-            // cote UI.
-            const canOfferPro = u.pro_grant_type !== "recruiter";
-            const canRevokeGrant = isGrantValid(u.pro_grant_type, u.pro_grant_expires_at) && u.pro_grant_type !== "recruiter";
+            // ⚠️ Jusqu'au 2026-08-10, "Offrir Pro…" etait masque sur un grant
+            // 'recruiter' (grant_pro l'aurait ecrase sans garde-fou serveur —
+            // le seul garde-fou existant etait ici, cote UI). Ce type n'existe
+            // plus dans le modele (lib/pro-plan.ts) : plus rien a exclure.
+            const canRevokeGrant = isGrantValid(u.pro_grant_type, u.pro_grant_expires_at);
             return (
               <div key={u.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <div>
@@ -420,7 +415,7 @@ export default function AdminClient() {
                   <p style={{ fontSize: 11, color: "#555" }}>{u.email} · {new Date(u.created_at).toLocaleDateString("fr-FR")}</p>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
-                  {canOfferPro && <button onClick={() => openGrantModal(u.id, `Offrir Pro à ${u.full_name}`)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Offrir Pro…</button>}
+                  <button onClick={() => openGrantModal(u.id, `Offrir Pro à ${u.full_name}`)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Offrir Pro…</button>
                   {canRevokeGrant && <button onClick={() => confirmAction("revoke_pro_grant", u.id, `Retirer le Pro offert de ${u.full_name}`)} style={{ ...btnDanger, padding: "6px 10px", fontSize: 11 }}>Retirer le Pro offert</button>}
                   {u.is_suspended
                     ? <button onClick={() => doAction("reactivate_user", u.id)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Reactiver</button>

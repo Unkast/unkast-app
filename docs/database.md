@@ -82,8 +82,8 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `subscription_status` | TEXT | oui | **chantier 7** — statut Stripe brut (`active`/`trialing`/`past_due`/`canceled`/`unpaid`…) |
 | `current_period_end` | TIMESTAMPTZ | oui | **chantier 7** — fin de période payée |
 | `pro_source` | TEXT | oui | **GELÉE (2026-08-10)** — `'admin'` / `'stripe'` / `null`. Plus jamais écrite ni lue par le code depuis le passage au modèle grant (`pro_grant_*` ci-dessous). Conservée en base, `DROP` prévu dans un commit dédié post-lancement |
-| `pro_grant_type` | TEXT (CHECK) | oui | **2026-08-10** — nature du Pro **offert par l'admin**, indépendant de Stripe : `'launch'` (cadeau de lancement) / `'vip'` (choix explicite) / `'recruiter'` (lié au statut recruteur approuvé) / `null` (aucun grant). ✅ `profiles_pro_grant_type_check` |
-| `pro_grant_expires_at` | TIMESTAMPTZ | oui | **2026-08-10** — échéance du grant. Règle par nature (✅ `profiles_pro_grant_expiry_check`) : `launch` ⇒ **obligatoire** (pas de Pro à vie non voulu par oubli) ; `vip` ⇒ libre (`null` = à vie, une date reste possible pour une durée longue déterminée) ; `recruiter` ⇒ **interdite** (`null` strict, lié au statut, pas au temps). Un grant expiré **n'est pas nettoyé** : les colonnes restent en base comme témoin, lues par `recompute_plan()` qui les ignore simplement |
+| `pro_grant_type` | TEXT (CHECK) | oui | **2026-08-10**, CHECK resserré **10/08/2026 (même jour)** — nature du Pro **offert par l'admin**, indépendant de Stripe : `'launch'` (cadeau de lancement) / `'vip'` (choix explicite) / `null` (aucun grant). ✅ `profiles_pro_grant_type_check`. Un troisième type, `'recruiter'`, a existé quelques heures le même jour puis a été retiré (voir [« Les types de grant »](#types-de-grant)) |
+| `pro_grant_expires_at` | TIMESTAMPTZ | oui | **2026-08-10** — échéance du grant. Règle par nature (✅ `profiles_pro_grant_expiry_check`) : `launch` ⇒ **obligatoire** (pas de Pro à vie non voulu par oubli) ; `vip` ⇒ libre (`null` = à vie, une date reste possible pour une durée longue déterminée). Un grant expiré **n'est pas nettoyé** : les colonnes restent en base comme témoin, lues par `recompute_plan()` qui les ignore simplement |
 | `pro_grant_granted_by` | UUID | oui | **2026-08-10** — FK → `profiles(id)`, admin ayant accordé le grant. `admin_logs` reste la source d'audit complète |
 | `pro_grant_granted_at` | TIMESTAMPTZ | oui | **2026-08-10** — date d'octroi du grant (distincte de `pro_since`, qui marque la première acquisition Pro toutes sources confondues et n'est jamais réinitialisée) |
 | `pro_grant_reminder_sent_at` | TIMESTAMPTZ | oui | **2026-08-10** — horodatage du dernier rappel J-7 envoyé **avec succès**. Ne doit être posée que si l'envoi Resend a réellement réussi — sinon le rappel est marqué envoyé sans l'avoir été et ne repart jamais. ✅ `profiles_pro_grant_reminder_check` (n'a de sens que si `pro_grant_expires_at` est renseignée) |
@@ -208,7 +208,7 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 
 > **Workflow Stripe (chantier 7, mode TEST) — modèle grant, livré 2026-08-10.** Souscription : `/pro` → `POST /api/billing/checkout` (Stripe Checkout hébergé) → **webhook** `POST /api/billing/webhook` (seule source de vérité pour la comptabilité Stripe, signature vérifiée sur raw body) écrit `stripe_subscription_id`, `subscription_status`, `current_period_end`, puis appelle `recompute_plan()`. Le webhook ne consulte **plus jamais** `pro_grant_*` avant d'écrire — il est souverain sur ses propres colonnes dans tous les cas, y compris un profil qui a par ailleurs un grant offert actif. Auto-gestion via `POST /api/billing/portal` (Stripe Customer Portal). Le webhook ne retrouve un profil que par `stripe_customer_id` (un profil sans customer n'est jamais touché). Aucune donnée de carte stockée.
 >
-> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()` ; refuse (400) d'écraser un grant `'recruiter'` existant. ⚠️ `approve_recruiter` **n'accorde plus aucun Pro depuis le 10/08/2026** (nouveau modèle économique) : il ne pose que `recruiter_status='approved'`, n'écrit aucun `pro_grant_*` et n'appelle plus `recompute_plan()`. Plus aucun chemin de code ne crée de grant `'recruiter'` — voir [« Les trois types de grant »](#types-de-grant). Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant (refuse sur un grant `'recruiter'` — même garde-fou) ; `revoke_recruiter_approval` retire le statut recruteur **et** le grant `recruiter` (uniquement s'il est toujours du type `'recruiter'`). Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte). Cron quotidien `GET /api/cron/pro-expiry` (voir [api-routes.md](api-routes.md)) : recompute les grants `'launch'` échus, envoie le rappel J-7. Le propriétaire du profil voit l'origine/l'échéance de son Pro via `GET /api/me` et `GET /api/dashboard/profile` (`/pro` et `/moi`).
+> **Pro offert (grant admin), indépendant de Stripe.** `grant_pro` (ex-`set_pro`, renommée le 2026-08-10 — la coexistence des deux noms dans `admin_logs` date volontairement le changement de modèle) pose `pro_grant_type`/`pro_grant_expires_at`/`pro_grant_granted_by`/`pro_grant_granted_at` puis appelle `recompute_plan()`. ⚠️ `approve_recruiter` **n'accorde plus aucun Pro depuis le 10/08/2026** (nouveau modèle économique) : il ne pose que `recruiter_status='approved'`, n'écrit aucun `pro_grant_*` et n'appelle plus `recompute_plan()`. Plus aucun chemin de code ne crée de grant `'recruiter'` — ce type a d'ailleurs été retiré du modèle le même jour, voir [« Les types de grant »](#types-de-grant). Les deux sources (Stripe et grant) **coexistent sans conflit** : un grant qui expire ou est révoqué ne touche jamais aux colonnes Stripe, et réciproquement — c'est `recompute_plan()` qui arbitre `plan` à partir des deux, jamais une écriture directe. `revoke_pro_grant` efface le grant. Aucune action admin n'annule un abonnement Stripe (le Customer Portal reste l'unique voie de résiliation, y compris pour un admin agissant sur son propre compte). Cron quotidien `GET /api/cron/pro-expiry` (voir [api-routes.md](api-routes.md)) : recompute les grants `'launch'` échus, envoie le rappel J-7. Le propriétaire du profil voit l'origine/l'échéance de son Pro via `GET /api/me` et `GET /api/dashboard/profile` (`/pro` et `/moi`).
 >
 > **Vue d'ensemble complète du modèle** : voir la section [« Modèle Pro — deux sources, une dérivation »](#modele-pro) plus bas dans ce document.
 
@@ -232,7 +232,7 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 | Source | Colonnes | Souverain | Ne connaît jamais l'autre source |
 |---|---|---|---|
 | **Abonnement Stripe** | `stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `current_period_end` | `POST /api/billing/webhook` | ✅ n'inspecte plus `pro_grant_*` avant d'écrire |
-| **Pro offert (grant admin)** | `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at` | `POST /api/admin` (`grant_pro`/`revoke_pro_grant`/`approve_recruiter`/`revoke_recruiter_approval`) + `GET /api/cron/pro-expiry` (lecture seule sur ces colonnes, sauf `pro_grant_reminder_sent_at`) | ✅ n'inspecte jamais les colonnes Stripe |
+| **Pro offert (grant admin)** | `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at`, `pro_grant_reminder_sent_at` | `POST /api/admin` (`grant_pro`/`revoke_pro_grant`) + `GET /api/cron/pro-expiry` (lecture seule sur ces colonnes, sauf `pro_grant_reminder_sent_at`) | ✅ n'inspecte jamais les colonnes Stripe |
 
 Un profil peut cumuler les deux (ex. un VIP qui souscrit quand même — décision produit : on laisse
 faire, `/pro` l'informe via un bandeau sans bloquer l'achat). Aucune des deux sources n'écrit jamais
@@ -258,13 +258,26 @@ Un grant expiré ne compte plus dans `grant_valide`, mais ses colonnes **ne sont
 elles restent en base comme témoin (« Free · ex-lancement, expiré le X », visible côté admin et,
 pour l'intéressé, tant qu'il n'a pas un nouveau grant, dans l'historique `admin_logs`).
 
-### Les trois types de grant
+<a id="types-de-grant"></a>
+### Les types de grant
 
 | Type | Échéance | Qui peut le poser | Comment il se retire |
 |---|---|---|---|
 | `launch` | **Obligatoire** (CHECK) — cadeau de lancement, pas de Pro à vie non voulu par oubli | Admin, via `grant_pro` (modal « Offrir Pro… », AdminClient) | Expire seul (cron), ou `revoke_pro_grant` |
 | `vip` | **Libre** — `null` = à vie, une date reste possible pour une durée longue déterminée | Admin, via `grant_pro` | `revoke_pro_grant`, ou expire si une échéance avait été posée |
-| `recruiter` | **Interdite** (CHECK `NULL` strict) — lié au *statut* recruteur approuvé, jamais au temps | **Jamais à la main** — uniquement `approve_recruiter` | **Uniquement** `revoke_recruiter_approval` (retire aussi `recruiter_status`) — `revoke_pro_grant` et `grant_pro` refusent tous deux d'y toucher (400 explicite) |
+
+> ⚰️ **Un troisième type, `recruiter`, a existé du 10/08/2026 (création, migration
+> `20260810_pro_grants.sql`) au même jour (retrait).** Il était posé uniquement par `approve_recruiter`
+> (jamais d'échéance, CHECK `NULL` strict) et ne se retirait que via `revoke_recruiter_approval`. Le
+> nouveau modèle économique a supprimé la règle « recruiter ⇒ pro » : `approve_recruiter` ne pose plus
+> aucun grant. Le seul profil qui portait ce type en base a été purgé manuellement (vérifié en SQL),
+> puis le CHECK `profiles_pro_grant_type_check` a été resserré à `('launch', 'vip')` par la migration
+> [`20260810_pro_grants_type_cleanup.sql`](../supabase/migrations/20260810_pro_grants_type_cleanup.sql)
+> — **aucune ligne ne peut plus porter cette valeur**, le type n'existe plus nulle part (base, CHECK,
+> `PRO_GRANT_TYPES`/`ProGrantType` côté TS, garde-fous de `api/admin`, badge admin `proBadge()`). Les
+> garde-fous qui empêchaient `grant_pro`/`revoke_pro_grant` d'écraser un grant `recruiter` ont été
+> retirés (devenus sans objet) ; `revoke_recruiter_approval` ne fait plus que retirer
+> `recruiter_status`, il n'y a plus rien à nettoyer côté grant.
 
 Ces règles sont appliquées à trois niveaux redondants, du plus au moins strict : le CHECK Postgres
 `profiles_pro_grant_expiry_check` (dernier rempart, ne peut pas être contourné même par un accès
@@ -278,7 +291,7 @@ d'un 500 brut), et le même import côté `AdminClient.tsx` (désactive le bouto
 | `plan`, `pro_since` | **Uniquement** `recompute_plan()` (RPC) |
 | `stripe_customer_id` | `api/billing/checkout` (création), `api/billing/webhook` (rattachement `client_reference_id`) |
 | `stripe_subscription_id`, `subscription_status`, `current_period_end` | **Uniquement** `api/billing/webhook` |
-| `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at` | `api/admin` : `grant_pro` (launch/vip), `approve_recruiter` (recruiter), `revoke_pro_grant`/`revoke_recruiter_approval` (remise à `null`) |
+| `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at` | `api/admin` : `grant_pro` (pose, launch/vip), `revoke_pro_grant` (remise à `null`). ⚠️ Ni `approve_recruiter` ni `revoke_recruiter_approval` n'écrivent ces colonnes depuis le 10/08/2026 — le premier ne pose plus de grant, le second n'a donc plus rien à nettoyer |
 | `pro_grant_reminder_sent_at` | **Uniquement** `api/cron/pro-expiry`, et seulement si l'email est **réellement parti** (`sendProExpiryReminderEmail` → `{sent:true}`) |
 | `pro_source` | **Personne** — colonne gelée, conservée pour compat historique, `DROP` prévu post-lancement |
 

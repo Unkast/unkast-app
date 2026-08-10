@@ -52,19 +52,23 @@ export type ProSource = 'stripe' | 'admin' | (string & {})
 // (profiles_pro_grant_type_check) — contrairement a la plupart des colonnes
 // TEXT libres de ce fichier, une valeur hors union ne PEUT PAS exister.
 // 'launch' = cadeau de lancement, echeance obligatoire. 'vip' = choix
-// explicite, echeance libre (null = a vie). 'recruiter' = lie au statut
-// recruteur approuve, jamais d'echeance ; ne se pose jamais a la main
-// (uniquement via approve_recruiter / revoke_recruiter_approval). null =
-// aucun grant. Regles d'echeance imposees par le CHECK
-// profiles_pro_grant_expiry_check (migration 20260810_pro_grants.sql) et
-// dupliquees cote TS dans lib/pro-plan.ts (validateGrantExpiry) — ce dernier
-// fichier definit sa PROPRE union 'launch'|'vip'|'recruiter' (sans null),
-// utilisee pour typer un grant present, distincte de ce type-ci qui couvre
-// aussi son absence. `plan` reste la porte effective lue partout dans le
-// code ; elle est desormais DERIVEE (plan='pro' <=> abonnement Stripe actif
-// OU grant valide), calculee par la RPC recompute_plan — plus jamais ecrite
-// directement par le webhook ni les actions admin.
-export type ProGrantType = 'launch' | 'vip' | 'recruiter' | null
+// explicite, echeance libre (null = a vie). null = aucun grant. Regles
+// d'echeance imposees par le CHECK profiles_pro_grant_expiry_check (migration
+// 20260810_pro_grants.sql) et dupliquees cote TS dans lib/pro-plan.ts
+// (validateGrantExpiry) — ce dernier fichier definit sa PROPRE union
+// 'launch'|'vip' (sans null), utilisee pour typer un grant present, distincte
+// de ce type-ci qui couvre aussi son absence. `plan` reste la porte effective
+// lue partout dans le code ; elle est desormais DERIVEE (plan='pro' <=>
+// abonnement Stripe actif OU grant valide), calculee par la RPC
+// recompute_plan — plus jamais ecrite directement par le webhook ni les
+// actions admin.
+//
+// ⚠️ Un troisieme type, 'recruiter' (lie au statut recruteur approuve, pose
+// uniquement par approve_recruiter, jamais d'echeance), a existe du
+// 2026-08-10 (creation) au meme jour (retrait, nouveau modele economique —
+// approve_recruiter ne donne plus le Pro). Stock purge, CHECK resserre —
+// voir supabase/migrations/20260810_pro_grants_type_cleanup.sql.
+export type ProGrantType = 'launch' | 'vip' | null
 
 // recruiter_status : toujours null en prod. Valeurs probables cote code admin.
 export type RecruiterStatus = 'pending' | 'approved' | 'rejected' | null

@@ -1,26 +1,31 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Pro offert par l'admin, INDEPENDANT de l'abonnement Stripe (chantier grants,
-// migration 20260810_pro_grants.sql). Trois natures, chacune avec sa propre
+// migration 20260810_pro_grants.sql). Deux natures, chacune avec sa propre
 // regle d'echeance imposee en base par le CHECK profiles_pro_grant_expiry_check :
-//   - launch    : cadeau de lancement, echeance OBLIGATOIRE (defaut 1 an,
-//                 pose par l'appelant — pas de valeur par defaut ici).
-//   - vip       : choix explicite de l'admin, echeance LIBRE (null = à vie,
-//                 une date reste possible pour une duree longue determinee).
-//   - recruiter : lie au statut recruteur approuve, echeance INTERDITE. Ne se
-//                 pose JAMAIS a la main (voir ADMIN_GRANTABLE_TYPES) —
-//                 uniquement via approve_recruiter / revoke_recruiter_approval.
-export const PRO_GRANT_TYPES = ["launch", "vip", "recruiter"] as const;
+//   - launch : cadeau de lancement, echeance OBLIGATOIRE (defaut 1 an,
+//              pose par l'appelant — pas de valeur par defaut ici).
+//   - vip    : choix explicite de l'admin, echeance LIBRE (null = à vie,
+//              une date reste possible pour une duree longue determinee).
+//
+// ⚠️ Un troisieme type, 'recruiter' (lie au statut recruteur approuve, jamais
+// d'echeance), a existe du 2026-08-10 (creation, migration 20260810_pro_grants.sql)
+// au meme jour (retrait, nouveau modele economique — approve_recruiter ne donne
+// plus le Pro). Le stock (1 profil) a ete purge et le CHECK Postgres resserre
+// par 20260810_pro_grants_type_cleanup.sql : aucune ligne ne peut plus porter
+// cette valeur. Ne pas le reintroduire ici sans repasser par une migration.
+export const PRO_GRANT_TYPES = ["launch", "vip"] as const;
 export type ProGrantType = (typeof PRO_GRANT_TYPES)[number];
 
 export function isProGrantType(value: unknown): value is ProGrantType {
   return typeof value === "string" && (PRO_GRANT_TYPES as readonly string[]).includes(value);
 }
 
-// Natures posables a la main par un admin via l'action grant_pro. 'recruiter'
-// est volontairement exclu : il ne naît que de approve_recruiter, pour rester
-// lie au statut recruteur (pas un cadeau discretionnaire comme les deux autres).
-export const ADMIN_GRANTABLE_TYPES: readonly ProGrantType[] = ["launch", "vip"];
+// Natures posables a la main par un admin via l'action grant_pro. Identique a
+// PRO_GRANT_TYPES depuis le retrait de 'recruiter' (qui etait le seul type
+// exclu — il ne naissait jamais d'un geste admin direct). Conserve comme alias
+// distinct pour ne pas re-toucher les imports existants (api/admin/route.ts).
+export const ADMIN_GRANTABLE_TYPES: readonly ProGrantType[] = PRO_GRANT_TYPES;
 
 // Valide la regle d'echeance AVANT d'ecrire, pour ne jamais laisser le CHECK
 // Postgres (profiles_pro_grant_expiry_check) renvoyer une erreur 500 brute a
@@ -29,9 +34,6 @@ export const ADMIN_GRANTABLE_TYPES: readonly ProGrantType[] = ["launch", "vip"];
 export function validateGrantExpiry(type: ProGrantType, expiresAt: string | null): string | null {
   if (type === "launch" && !expiresAt) {
     return "Un Pro de lancement doit avoir une échéance.";
-  }
-  if (type === "recruiter" && expiresAt) {
-    return "Un Pro recruteur ne peut pas avoir d'échéance (lié au statut, pas au temps).";
   }
   return null;
 }

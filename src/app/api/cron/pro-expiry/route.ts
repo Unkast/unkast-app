@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
   // --------------------------------------------------------------------------
   // 1. Grants 'launch' echus -> recompute_plan()
   // --------------------------------------------------------------------------
-  // Filtre STRICT sur pro_grant_type='launch' (pas 'vip', pas 'recruiter') :
-  // seule la nature dont l'echeance est OBLIGATOIRE est traitee ici. Les
+  // Filtre STRICT sur pro_grant_type='launch' (pas 'vip') : seule la nature
+  // dont l'echeance est OBLIGATOIRE est traitee ici. Les
   // colonnes du grant ne sont PAS nettoyees (temoin conserve en base — voir
   // commentaire pro_grant_expires_at dans la migration) ; recompute_plan()
   // se contente de reevaluer `plan` a partir de l'etat courant (grant expire
