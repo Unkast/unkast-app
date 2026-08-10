@@ -2,16 +2,60 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { isGrantValid, type ProGrantType } from "@/lib/pro-plan";
 
 type Tab = "recruiters" | "reports" | "users" | "films";
 
 interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; recruiter_verified?: boolean; is_suspended?: boolean; created_at: string; }
 interface RecruiterEdit { id: string; full_name: string; slug: string; bio: string | null; bio_pending: string | null; recruiter_verified: boolean; recruiter_company: string | null; created_at: string; }
 interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; target_owner_id: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; }
-interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; }
+// pro_grant_type / pro_grant_expires_at / subscription_status : chantier grants
+// (2026-08-10) — necessaires pour afficher l'ORIGINE du Pro (Stripe / offert /
+// recruteur), pas seulement le badge `plan` opaque. Voir GET tab=users
+// (src/app/api/admin/route.ts) qui les selectionne desormais.
+interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; pro_grant_type: string | null; pro_grant_expires_at: string | null; subscription_status: string | null; }
 interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; }
 
 const REASON_LABELS: Record<string, string> = { spam: "Spam", inappropriate: "Inapproprié", fake: "Faux profil", harassment: "Harcèlement", copyright: "Arnaque", other: "Autre" };
+
+// Statuts Stripe consideres "actif" — miroir de PRO_STATUSES (webhook) et de
+// la RPC recompute_plan, uniquement pour l'AFFICHAGE du badge composite.
+const STRIPE_ACTIVE_STATUSES = ["active", "trialing", "past_due"];
+const GRANT_TYPE_LABELS: Record<string, string> = { launch: "Lancement", vip: "VIP", recruiter: "Recruteur" };
+
+interface ProBadge { label: string; tone: "pro" | "muted" | "expired"; }
+
+// Badge composite remplaçant l'ancien badge `plan` opaque : distingue un Pro
+// Stripe d'un Pro offert (et sa nature), et signale un grant expire meme apres
+// retour en free (temoin conserve en base, voir migration 20260810_pro_grants).
+function proBadge(u: User): ProBadge {
+  const stripeActive = u.subscription_status !== null && STRIPE_ACTIVE_STATUSES.includes(u.subscription_status);
+  const grantValid = isGrantValid(u.pro_grant_type, u.pro_grant_expires_at);
+  const grantLabel = u.pro_grant_type ? (GRANT_TYPE_LABELS[u.pro_grant_type] ?? u.pro_grant_type) : null;
+
+  if (u.plan === "pro") {
+    if (stripeActive && grantValid) return { label: `Pro · Stripe + ${grantLabel}`, tone: "pro" };
+    if (stripeActive) return { label: "Pro · Stripe actif", tone: "pro" };
+    if (grantValid && u.pro_grant_type === "launch") {
+      const d = u.pro_grant_expires_at ? new Date(u.pro_grant_expires_at).toLocaleDateString("fr-FR") : "?";
+      return { label: `Pro · Lancement → ${d}`, tone: "pro" };
+    }
+    if (grantValid && u.pro_grant_type === "recruiter") return { label: "Pro · Recruteur", tone: "pro" };
+    if (grantValid && u.pro_grant_type === "vip") return { label: "Pro · Offert VIP", tone: "pro" };
+    // plan='pro' sans stripe actif NI grant valide detectable ici : etat
+    // transitoire (juste avant le prochain recompute_plan) ou anomalie a
+    // investiguer manuellement — pas un des 5 cas nommes, badge generique.
+    return { label: "Pro", tone: "pro" };
+  }
+
+  // plan === 'free' : un grant expire (colonnes conservees comme temoin,
+  // jamais nettoyees automatiquement) reste visible pour l'admin.
+  if (u.pro_grant_type && u.pro_grant_expires_at && !grantValid) {
+    const d = new Date(u.pro_grant_expires_at).toLocaleDateString("fr-FR");
+    return { label: `Free · ex-${(grantLabel ?? u.pro_grant_type).toLowerCase()} (expiré le ${d})`, tone: "expired" };
+  }
+  return { label: "Free", tone: "muted" };
+}
 
 export default function AdminClient() {
   const [tab, setTab] = useState<Tab>("recruiters");
@@ -20,6 +64,16 @@ export default function AdminClient() {
   const [modalAction, setModalAction] = useState<{ action: string; targetId: string; label: string } | null>(null);
   const [modalReason, setModalReason] = useState("");
   const [toast, setToast] = useState("");
+
+  // Modal "Offrir Pro…" — distinct du modal reason ci-dessus : porte un type
+  // de grant + une echeance optionnelle, pas une simple raison texte.
+  const [grantModal, setGrantModal] = useState<{ targetId: string; label: string } | null>(null);
+  // 'launch' existe dans le type mais n'est volontairement JAMAIS selectionne
+  // ici (voir le radio desactive plus bas) : le cron d'expiration (commit 5,
+  // route /api/cron/pro-expiry) n'existe pas encore, un launch accorde
+  // aujourd'hui n'expirerait jamais et serait un VIP deguise sous un autre nom.
+  const [grantType, setGrantType] = useState<Extract<ProGrantType, "vip" | "launch">>("vip");
+  const [grantExpiresAt, setGrantExpiresAt] = useState(""); // input type="date" (yyyy-mm-dd), vide = sans echeance
 
   // Data
   const [pendingRecruiters, setPendingRecruiters] = useState<Recruiter[]>([]);
@@ -73,6 +127,39 @@ export default function AdminClient() {
     if (!modalAction) return;
     await doAction(modalAction.action, modalAction.targetId, modalReason);
     setModalAction(null);
+  }
+
+  function openGrantModal(targetId: string, label: string) {
+    setGrantModal({ targetId, label });
+    setGrantType("vip");
+    setGrantExpiresAt("");
+  }
+
+  // Distinct de doAction() : grant_pro porte grant_type/expires_at, pas une
+  // simple raison texte. Meme gestion d'erreur que doAction (remonte
+  // l'erreur reelle renvoyee par la route, pas un message generique).
+  async function executeGrant() {
+    if (!grantModal) return;
+    setActionLoading(grantModal.targetId);
+    const res = await fetch("/api/admin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "grant_pro",
+        target_id: grantModal.targetId,
+        grant_type: grantType,
+        expires_at: grantExpiresAt ? new Date(grantExpiresAt).toISOString() : null,
+      }),
+    });
+    setActionLoading(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      showToast(data?.error || "Erreur inconnue");
+      return;
+    }
+    showToast("Pro offert accordé");
+    setGrantModal(null);
+    fetchData();
   }
 
   const totalPending = pendingRecruiters.length + recruiterEdits.length + reports.length + films.length;
@@ -204,6 +291,10 @@ export default function AdminClient() {
                       : <button onClick={() => doAction("grant_recruiter_verified", r.id)} disabled={actionLoading === r.id} style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Vérifier</button>
                     }
                     <button onClick={() => confirmAction("suspend_user", r.id, `Suspendre ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12 }}>Suspendre</button>
+                    {/* Distinct de "Refuser" (candidature pending) : retire un statut
+                        DEJA approuve — ex. fraude decouverte apres coup. Retire aussi
+                        le grant 'recruiter' cote serveur (revoke_recruiter_approval). */}
+                    <button onClick={() => confirmAction("revoke_recruiter_approval", r.id, `Révoquer le statut recruteur de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Révoquer statut</button>
                   </div>
                 </div>
               ))}
@@ -252,26 +343,45 @@ export default function AdminClient() {
             placeholder="Rechercher par nom..."
             style={{ width: "100%", padding: "12px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", marginBottom: 16, outline: "none" }}
           />
-          {users.map((u) => (
-            <div key={u.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{u.full_name}</p>
-                  <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#666", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{u.account_type}</span>
-                  <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: u.plan === "pro" ? "rgba(200,255,0,0.1)" : "rgba(255,255,255,0.05)", color: u.plan === "pro" ? "#C8FF00" : "#555" }}>{u.plan}</span>
-                  {u.is_suspended && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>Suspendu</span>}
+          {users.map((u) => {
+            const badge = proBadge(u);
+            const badgeStyle =
+              badge.tone === "pro"
+                ? { background: "rgba(200,255,0,0.1)", color: "#C8FF00" }
+                : badge.tone === "expired"
+                ? { background: "rgba(249,115,22,0.08)", color: "#f97316" }
+                : { background: "rgba(255,255,255,0.05)", color: "#555" };
+            // "Offrir Pro…" masque sur un grant 'recruiter' : grant_pro ecrase
+            // pro_grant_type sans garde-fou cote serveur (contrairement a
+            // revoke_pro_grant, qui refuse d'agir dessus) — un clic ici
+            // remplacerait silencieusement le grant recruiter par vip/launch,
+            // decorrelant le Pro du statut recruteur approuve sans passer par
+            // revoke_recruiter_approval. Le seul garde-fou existant est ici,
+            // cote UI.
+            const canOfferPro = u.pro_grant_type !== "recruiter";
+            const canRevokeGrant = isGrantValid(u.pro_grant_type, u.pro_grant_expires_at) && u.pro_grant_type !== "recruiter";
+            return (
+              <div key={u.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{u.full_name}</p>
+                    <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#666", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{u.account_type}</span>
+                    <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, ...badgeStyle }}>{badge.label}</span>
+                    {u.is_suspended && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>Suspendu</span>}
+                  </div>
+                  <p style={{ fontSize: 11, color: "#555" }}>{u.email} · {new Date(u.created_at).toLocaleDateString("fr-FR")}</p>
                 </div>
-                <p style={{ fontSize: 11, color: "#555" }}>{u.email} · {new Date(u.created_at).toLocaleDateString("fr-FR")}</p>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+                  {canOfferPro && <button onClick={() => openGrantModal(u.id, `Offrir Pro à ${u.full_name}`)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Offrir Pro…</button>}
+                  {canRevokeGrant && <button onClick={() => confirmAction("revoke_pro_grant", u.id, `Retirer le Pro offert de ${u.full_name}`)} style={{ ...btnDanger, padding: "6px 10px", fontSize: 11 }}>Retirer le Pro offert</button>}
+                  {u.is_suspended
+                    ? <button onClick={() => doAction("reactivate_user", u.id)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Reactiver</button>
+                    : <button onClick={() => confirmAction("suspend_user", u.id, `Suspendre ${u.full_name}`)} style={{ ...btnDanger, padding: "6px 10px", fontSize: 11 }}>Suspendre</button>
+                  }
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                {u.plan !== "pro" && <button onClick={() => doAction("set_pro", u.id)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Pro</button>}
-                {u.is_suspended
-                  ? <button onClick={() => doAction("reactivate_user", u.id)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Reactiver</button>
-                  : <button onClick={() => confirmAction("suspend_user", u.id, `Suspendre ${u.full_name}`)} style={{ ...btnDanger, padding: "6px 10px", fontSize: 11 }}>Suspendre</button>
-                }
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -319,6 +429,44 @@ export default function AdminClient() {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={executeModal} disabled={!modalReason.trim()} style={{ ...btnDanger, flex: 1, opacity: modalReason.trim() ? 1 : 0.4 }}>Confirmer</button>
               <button onClick={() => setModalAction(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== GRANT PRO MODAL ("Offrir Pro…") ===== */}
+      {grantModal && (
+        <div onClick={() => setGrantModal(null)} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 16 }}>{grantModal.label}</h3>
+
+            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Nature du grant</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#f0f0f0", cursor: "pointer" }}>
+                <input type="radio" name="grant_type" checked={grantType === "vip"} onChange={() => setGrantType("vip")} />
+                VIP — sans échéance par défaut, une date reste possible
+              </label>
+              {/* Lancement desactive : voir commentaire sur le state grantType
+                  plus haut. Condition de deblocage : le cron d'expiration
+                  (/api/cron/pro-expiry, commit 5) doit exister avant d'offrir
+                  ce choix, sinon un launch accorde ici n'expirerait jamais. */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#444", cursor: "not-allowed" }} title="Indisponible tant que le cron d'expiration n'est pas livré">
+                <input type="radio" name="grant_type" disabled checked={false} onChange={() => {}} />
+                Lancement — indisponible pour l&apos;instant (cron d&apos;expiration à venir)
+              </label>
+            </div>
+
+            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Échéance (optionnelle pour VIP)</p>
+            <input
+              type="date"
+              value={grantExpiresAt}
+              onChange={(e) => setGrantExpiresAt(e.target.value)}
+              style={{ width: "100%", padding: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", outline: "none", marginBottom: 16 }}
+            />
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={executeGrant} disabled={actionLoading === grantModal.targetId} style={{ ...btnApprove, flex: 1, opacity: actionLoading === grantModal.targetId ? 0.5 : 1 }}>Confirmer</button>
+              <button onClick={() => setGrantModal(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
             </div>
           </div>
         </div>
