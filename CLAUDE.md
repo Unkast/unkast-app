@@ -68,3 +68,10 @@ RISQUE ELEVE — migration Supabase, modification de RLS, suppression de fichier
 ## Mise a jour de la documentation
 
 Apres toute modification significative (nouvelle feature, nouveau hook, nouvelle route API, nouvelle table, modification d'un composant critique), mets a jour les fichiers docs/ impactes AVANT de considerer la tache terminee.
+
+## Documentation
+
+Destination des notes de session : `docs/sessions/`
+Destination des ADR : `docs/adr/`
+Langue : francais
+Les decisions structurantes et durables sont formalisees en ADR dans docs/adr/.

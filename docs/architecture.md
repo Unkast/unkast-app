@@ -63,7 +63,7 @@ CORE  Supabase Browser Client (src/lib/supabase/client.ts)  — navigateur
 CORE  Supabase Admin Client (src/lib/supabase/admin.ts)     — service role (bypass RLS, usage admin)
 
 CORE  Constants (src/lib/constants.ts)
-  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 3),
+  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 3), MAX_PROJECTS_PRO (= 30),
   ACCOUNT_TYPES, ROLES_BY_CATEGORY, ALL_ROLES, ROLE_CATEGORIES, POPULAR_ROLES
 
 CORE  Types (src/types/database.ts) — SOURCE DE VERITE du schema (introspecte 13/06/2026)
@@ -123,7 +123,7 @@ FEATURE  Connexion — /connexion (src/app/(app)/connexion/ + ConnexionClient)
   Login. Callback OAuth/magic-link : src/app/(app)/auth/callback/route.ts
 
 FEATURE  Dashboard — /dashboard, /dashboard/projets, /dashboard/contacts (+ DashboardClient)
-  Profil (view/edit), projets (CRUD, max 2 gratuit), contacts, credits.
+  Profil (view/edit), projets (CRUD, max 3 gratuit / 30 en Pro), contacts, credits.
   [declenche] /api/dashboard/{profile,projects,contacts,credits}, /api/avatar
 
 FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient)
