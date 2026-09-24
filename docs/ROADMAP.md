@@ -6,7 +6,7 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité ajouté au backlog)
+Dernière mise à jour : 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
 
 ---
 
@@ -17,6 +17,15 @@ Dernière mise à jour : 24 septembre 2026 (audit sécurité : migrations exécu
 - [x] `20260924_lock_direct_writes.sql` exécuté en prod : écritures PostgREST directes fermées sur `profiles` (INSERT), `projects` (UPDATE), `conversations` et `messages` (INSERT/UPDATE) (C1, C2, C4). Rollback : `20260924_lock_direct_writes_rollback.sql`.
 - [x] Vérifications OK ; parcours profil, messagerie et inscription testés OK.
 - [ ] *(reste ouvert)* INSERT direct sur `projects` : basculer l'insert de `api/dashboard/projects` sur le service role, puis `revoke insert on projects`.
+
+### Bug corrigé : suppression d'un utilisateur crédité impossible *(relevé et corrigé le 24 septembre 2026)*
+**Symptôme** : supprimer un utilisateur (dashboard Supabase ou `auth.admin.deleteUser`) échouait dès qu'il était crédité sur un film via `project_credits.profile_id`. Toute la suppression était annulée.
+**Cause** : `auth.users` → `profiles` en `ON DELETE CASCADE`, puis `project_credits.profile_id` en `ON DELETE SET NULL`. Un crédit lié à un compte a `ghost_name = NULL` (crédit propriétaire inséré sans `ghost_name` dans `api/dashboard/projects` et `api/signup` ; invitation acceptée qui passe `ghost_name` à `NULL` dans `api/signup`). Le SET NULL produisait une ligne sans `profile_id` ni `ghost_name` : le CHECK `credit_has_person` était violé.
+**Correction** : trigger `BEFORE DELETE` sur `profiles` qui remplit `ghost_name` sur les crédits de la personne avant le SET NULL. Le crédit redevient un crédit fantôme nommé, le film de l'autre membre garde son équipe. Aucune modification de schéma ni de code applicatif.
+- [x] **Décision produit** *(24 sept.)* : on garde le crédit avec le nom public, `stage_name` s'il est défini, sinon `full_name`.
+- [x] `20260924_credits_keep_name_on_delete.sql` exécuté en prod *(24 sept.)*. Rollback : `20260924_credits_keep_name_on_delete_rollback.sql`.
+- [x] Test de suppression d'un compte crédité OK (transaction annulée). `docs/database.md` à jour (section `project_credits`).
+- [ ] *(reste ouvert)* Lancer la requête 2 de vérification du fichier : confirmer qu'aucune autre FK vers `profiles` en `RESTRICT`/`NO ACTION` ne bloque la suppression d'un compte ayant d'autres données (messages, signalements, dossiers…).
 
 ### Durcissement base — colonnes sensibles de `profiles` *(31 juillet / 1er août 2026)*
 - [x] **14 colonnes révoquées** pour `anon`/`authenticated` (`is_admin`, `contact_*`, `recruiter_status`, `bio_pending`, `suspended_*`, `pro_source`, `stripe_*`, `subscription_status`, `current_period_end`). La RLS filtre les **lignes**, pas les **colonnes** : une ligne de profil étant lisible publiquement, ces champs étaient interrogeables avec la clé anon. *(31 juil.)*
@@ -61,14 +70,7 @@ Dernière mise à jour : 24 septembre 2026 (audit sécurité : migrations exécu
 
 ## 🐛 Bugs connus (backlog)
 
-### Suppression d'un utilisateur crédité impossible *(relevé le 24 septembre 2026)*
-**Symptôme** : supprimer un utilisateur (dashboard Supabase ou `auth.admin.deleteUser`) échoue dès qu'il est crédité sur un film via `project_credits.profile_id`. Toute la suppression est annulée.
-**Cause** : `auth.users` → `profiles` en `ON DELETE CASCADE`, puis `project_credits.profile_id` en `ON DELETE SET NULL`. Un crédit lié à un compte a `ghost_name = NULL` (crédit propriétaire inséré sans `ghost_name` dans `api/dashboard/projects` et `api/signup` ; invitation acceptée qui passe `ghost_name` à `NULL` dans `api/signup`). Le SET NULL produit donc une ligne sans `profile_id` ni `ghost_name` : le CHECK `credit_has_person` est violé.
-**Correction** : trigger `BEFORE DELETE` sur `profiles` qui remplit `ghost_name` sur les crédits de la personne avant le SET NULL. Fonction `security definer`, `set search_path = ''`. Le crédit redevient un crédit fantôme nommé, le film de l'autre membre garde son équipe. Aucune modification de schéma ni de code applicatif. Les triggers `BEFORE` de ligne s'exécutent aussi lors d'une suppression en cascade, avant l'action référentielle.
-- [x] **Décision produit** *(24 sept.)* : on garde le crédit avec le nom public, `stage_name` s'il est défini, sinon `full_name`.
-- [x] Migration rédigée *(24 sept., non exécutée)* : `supabase/migrations/20260924_credits_keep_name_on_delete.sql` + `_rollback.sql`. Contient les vérifications avant/après et un test en transaction annulée.
-- [ ] Exécution manuelle en prod (SQL Editor) + vérifications, puis mise à jour de `docs/database.md` (section `project_credits`).
-- [ ] Vérifier avec la requête du fichier qu'aucune autre FK vers `profiles` en `RESTRICT`/`NO ACTION` ne bloque encore la suppression.
+_Aucun bug ouvert._
 
 ---
 
