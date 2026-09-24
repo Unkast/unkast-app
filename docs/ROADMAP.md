@@ -6,11 +6,17 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 1er août 2026 (durcissement des colonnes `profiles` + passe de dette technique ; chantier 11 — deep-link Google mobile, toujours à faire avant l'APK)
+Dernière mise à jour : 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité ajouté au backlog)
 
 ---
 
 ## ✅ Terminé
+
+### Audit sécurité — écritures directes et comptes de démo *(24 septembre 2026)*
+- [x] `20260924_ban_demo_accounts.sql` exécuté en prod : les 6 comptes `*@demo.com` bannis, sessions et refresh tokens supprimés (C3).
+- [x] `20260924_lock_direct_writes.sql` exécuté en prod : écritures PostgREST directes fermées sur `profiles` (INSERT), `projects` (UPDATE), `conversations` et `messages` (INSERT/UPDATE) (C1, C2, C4). Rollback : `20260924_lock_direct_writes_rollback.sql`.
+- [x] Vérifications OK ; parcours profil, messagerie et inscription testés OK.
+- [ ] *(reste ouvert)* INSERT direct sur `projects` : basculer l'insert de `api/dashboard/projects` sur le service role, puis `revoke insert on projects`.
 
 ### Durcissement base — colonnes sensibles de `profiles` *(31 juillet / 1er août 2026)*
 - [x] **14 colonnes révoquées** pour `anon`/`authenticated` (`is_admin`, `contact_*`, `recruiter_status`, `bio_pending`, `suspended_*`, `pro_source`, `stripe_*`, `subscription_status`, `current_period_end`). La RLS filtre les **lignes**, pas les **colonnes** : une ligne de profil étant lisible publiquement, ces champs étaient interrogeables avec la clé anon. *(31 juil.)*
@@ -50,6 +56,19 @@ Dernière mise à jour : 1er août 2026 (durcissement des colonnes `profiles` + 
 - [x] **Profil desktop** — conteneur `max-w-[1600px]` (langage Feed, `lg:px-12 xl:px-16`, respiration `lg:py-10`), rail gauche sticky conservé, **grille de projets `xl:grid-cols-2`** (fini la colonne étirée), cartes au survol harmonisées (bord + ombre), bouton « Contacter » aligné Feed. Mobile préservé (espacement inclus). *(14 juin 2026)*
 - [x] **Projet desktop** — création d'une mise en page 2-colonnes (inexistante avant) : **bannière cinéma plein-bleed** (titre/année en surimpression) puis grille `max-w-[1280px]` `[1fr_360px]` ; **sidebar sticky** = fiche technique + Regarder (intrinsèque) + carte « Réalisé par » + CTA crédit ; « Du même réalisateur » repris en **cartes Feed** (16:9). Boutons larges corrigés. Mobile préservé via `lg:hidden`/`hidden lg:block`. *(14 juin 2026)*
 - [x] **Recherche, Dashboard, /Moi desktop** — pages-outils contenues : **/Moi** et **Dashboard** resserrés en colonne de lecture `max-w-2xl` (fin des champs `w-full` qui traversaient l'écran) ; **Recherche** en `max-w-[1600px]`, grille de catégories `md:grid-cols-3 lg:grid-cols-4`, champ+filtres en `lg:max-w-2xl`, **résultats en grille de cartes Feed** sur desktop (liste compacte conservée sur mobile). Boutons primaires alignés Feed. *(14 juin 2026)*
+
+---
+
+## 🐛 Bugs connus (backlog)
+
+### Suppression d'un utilisateur crédité impossible *(relevé le 24 septembre 2026)*
+**Symptôme** : supprimer un utilisateur (dashboard Supabase ou `auth.admin.deleteUser`) échoue dès qu'il est crédité sur un film via `project_credits.profile_id`. Toute la suppression est annulée.
+**Cause** : `auth.users` → `profiles` en `ON DELETE CASCADE`, puis `project_credits.profile_id` en `ON DELETE SET NULL`. Un crédit lié à un compte a `ghost_name = NULL` (crédit propriétaire inséré sans `ghost_name` dans `api/dashboard/projects` et `api/signup` ; invitation acceptée qui passe `ghost_name` à `NULL` dans `api/signup`). Le SET NULL produit donc une ligne sans `profile_id` ni `ghost_name` : le CHECK `credit_has_person` est violé.
+**Correction** : trigger `BEFORE DELETE` sur `profiles` qui remplit `ghost_name` sur les crédits de la personne avant le SET NULL. Fonction `security definer`, `set search_path = ''`. Le crédit redevient un crédit fantôme nommé, le film de l'autre membre garde son équipe. Aucune modification de schéma ni de code applicatif. Les triggers `BEFORE` de ligne s'exécutent aussi lors d'une suppression en cascade, avant l'action référentielle.
+- [x] **Décision produit** *(24 sept.)* : on garde le crédit avec le nom public, `stage_name` s'il est défini, sinon `full_name`.
+- [x] Migration rédigée *(24 sept., non exécutée)* : `supabase/migrations/20260924_credits_keep_name_on_delete.sql` + `_rollback.sql`. Contient les vérifications avant/après et un test en transaction annulée.
+- [ ] Exécution manuelle en prod (SQL Editor) + vérifications, puis mise à jour de `docs/database.md` (section `project_credits`).
+- [ ] Vérifier avec la requête du fichier qu'aucune autre FK vers `profiles` en `RESTRICT`/`NO ACTION` ne bloque encore la suppression.
 
 ---
 
