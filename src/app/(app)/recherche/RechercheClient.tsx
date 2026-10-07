@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import Avatar from "@/components/Avatar";
+import { EnterItem, EnterList } from "@/components/motion";
+import Badge from "@/components/ui/Badge";
+import Chip from "@/components/ui/Chip";
+import GlassCard from "@/components/ui/GlassCard";
 
 type Mode = "browse" | "search";
 type SearchFilter = "all" | "talents" | "projets";
@@ -178,6 +182,8 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
   const [searched, setSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Reduced motion : la bascule Parcourir / Rechercher se fait en fondu seul.
+  const shift = useReducedMotion() ? 0 : 8;
 
   useEffect(() => {
     if (mode === "search") {
@@ -220,7 +226,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
       <div className="mx-auto w-full max-w-[1600px] lg:px-12 xl:px-16">
       {/* Header */}
       <div className="px-5 pt-5">
-        <h1 className="text-[24px] font-semibold text-text-primary" style={{ letterSpacing: "-0.5px" }}>
+        <h1 className="text-sheen text-[30px] lg:text-[40px] font-semibold" style={{ letterSpacing: "-0.5px" }}>
           Explorer
         </h1>
       </div>
@@ -228,17 +234,9 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
       {/* Tabs */}
       <div className="flex gap-2 px-5 py-4">
         {(["browse", "search"] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className="px-5 py-2 rounded-[20px] text-sm font-medium transition-all duration-200"
-            style={mode === m
-              ? { background: "#C8FF00", color: "#0d0d0d", fontWeight: 600 }
-              : { background: "rgba(255,255,255,0.06)", color: "#666", border: "1px solid rgba(255,255,255,0.08)" }
-            }
-          >
+          <Chip key={m} selected={mode === m} onClick={() => setMode(m)}>
             {m === "browse" ? "Parcourir" : "Rechercher"}
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -247,67 +245,66 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
         {mode === "browse" && (
           <motion.div
             key="browse"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: shift }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            exit={{ opacity: 0, y: -shift }}
             transition={{ duration: 0.2 }}
           >
             {recruitingProfiles.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", padding: "0 20px", marginBottom: 12 }}>En recrutement</h2>
-                <div className="no-scrollbar" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 4px" }}>
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-text-primary px-5 mb-3">En recrutement</h2>
+                <div className="no-scrollbar flex gap-2.5 overflow-x-auto px-4 pb-1">
                   {recruitingProfiles.map((p: any) => (
-                    <Link key={p.id} href={`/profil/${p.slug}`} style={{ flexShrink: 0, width: 140, background: "#141414", border: "1px solid rgba(34,197,94,0.15)", borderRadius: 12, padding: 14, textAlign: "center", textDecoration: "none" }}>
-                      <Avatar url={p.avatar_url} name={p.full_name || ""} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)", margin: "0 auto 8px" }} />
-                      <p style={{ fontSize: 13, fontWeight: 500, color: "#f0f0f0", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.full_name}</p>
-                      <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.main_role}</p>
-                      {p.recruiting_roles?.length > 0 && (
-                        <p style={{ fontSize: 11, color: "#22c55e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>cherche {p.recruiting_roles[0]}</p>
-                      )}
+                    <Link key={p.id} href={`/profil/${p.slug}`} className="block shrink-0 w-[140px]">
+                      <GlassCard className="h-full border-green-500/20 p-3.5 text-center">
+                        <Avatar url={p.avatar_url} name={p.full_name || ""} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)", margin: "0 auto 8px" }} />
+                        <p className="text-[13px] font-medium text-text-primary mb-0.5 truncate">{p.full_name}</p>
+                        <p className="font-mono text-[11px] text-text-secondary mb-1 truncate">{p.main_role}</p>
+                        {p.recruiting_roles?.length > 0 && (
+                          <p className="text-[11px] text-green-500 truncate">cherche {p.recruiting_roles[0]}</p>
+                        )}
+                      </GlassCard>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 lg:gap-4 px-4 lg:px-1 pb-6">
+            <EnterList className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 lg:gap-4 px-4 lg:px-1">
               {CATEGORIES.map((cat) => (
-                <Link
-                  key={cat.key}
-                  href={`/categories/${cat.key}`}
-                  className="relative overflow-hidden block active:scale-[0.97] transition-transform duration-100"
-                  style={{ height: 140, borderRadius: 12, background: cat.gradient, border: "1px solid rgba(255,255,255,0.06)" }}
-                >
-                  {/* Fond image (si présent) + overlay ; sinon le dégradé ci-dessus reste visible */}
-                  <CategoryBg categoryKey={cat.key} />
-                  <svg className="absolute" style={{ top: -20, right: -20, opacity: 0.08 }} width="80" height="80" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="38" stroke={cat.accent} strokeWidth="2" fill="none" />
-                  </svg>
-                  <div className="absolute bottom-0 left-0 p-3.5">
-                    <svg className="w-5 h-5 mb-1.5" style={{ color: cat.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {cat.icon}
-                    </svg>
-                    <p className="text-[15px] font-semibold text-[#f0f0f0]" style={{ letterSpacing: "-0.3px" }}>{cat.label}</p>
-                    <p className="font-mono text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-                      {categoryCounts[cat.key] || 0} film{(categoryCounts[cat.key] || 0) !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <div className="px-5 pt-2 pb-6">
-              <h2 className="text-[15px] font-semibold text-text-primary mb-3">Métiers</h2>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
-                {ROLES_PILLS.map((role) => (
-                  <button
-                    key={role}
-                    onClick={() => switchToSearchWithRole(role)}
-                    className="flex-shrink-0 px-4 py-2 rounded-[20px] text-[13px] transition-colors"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#888" }}
+                <EnterItem key={cat.key}>
+                  <Link
+                    href={`/categories/${cat.key}`}
+                    className="relative overflow-hidden block rounded-panel border border-white/10 shadow-[0_14px_36px_rgba(0,0,0,0.45)] active:scale-[0.97] motion-safe:hover:-translate-y-1 transition-transform duration-base ease-glass"
+                    style={{ height: 140, background: cat.gradient }}
                   >
+                    {/* Fond image (si présent) + overlay ; sinon le dégradé ci-dessus reste visible */}
+                    <CategoryBg categoryKey={cat.key} />
+                    <svg className="absolute" style={{ top: -20, right: -20, opacity: 0.08 }} width="80" height="80" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="38" stroke={cat.accent} strokeWidth="2" fill="none" />
+                    </svg>
+                    <div className="absolute bottom-0 left-0 p-4">
+                      <svg className="w-5 h-5 mb-1.5" style={{ color: cat.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {cat.icon}
+                      </svg>
+                      <p className="text-[15px] font-semibold text-[#f0f0f0]" style={{ letterSpacing: "-0.3px" }}>{cat.label}</p>
+                      <p className="font-mono text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {categoryCounts[cat.key] || 0} film{(categoryCounts[cat.key] || 0) !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </Link>
+                </EnterItem>
+              ))}
+            </EnterList>
+
+            <div className="px-5 pt-8">
+              <h2 className="text-[15px] font-semibold text-text-primary mb-3">Métiers</h2>
+              {/* py-1 : laisse la place au contour de focus des Chip (overflow-x rogne aussi en vertical) */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 py-1">
+                {ROLES_PILLS.map((role) => (
+                  <Chip key={role} onClick={() => switchToSearchWithRole(role)}>
                     {role}
-                  </button>
+                  </Chip>
                 ))}
               </div>
             </div>
@@ -318,17 +315,16 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
         {mode === "search" && (
           <motion.div
             key="search"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: shift }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            exit={{ opacity: 0, y: -shift }}
             transition={{ duration: 0.2 }}
             className="px-4"
           >
             <div
-              className="flex items-center gap-3 px-4 py-3.5 rounded-xl mb-3 transition-colors lg:max-w-2xl"
-              style={{ background: "#1a1a1a", border: query ? "1px solid #C8FF00" : "1px solid rgba(255,255,255,0.1)" }}
+              className={`glass flex items-center gap-3 min-h-14 px-5 rounded-panel mb-3 transition-[border-color,box-shadow] duration-fast focus-within:ring-3 focus-within:ring-lime/30 lg:max-w-2xl ${query ? "border-lime" : ""}`}
             >
-              <svg className="w-4 h-4 flex-shrink-0" style={{ color: "#555" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 flex-shrink-0 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -337,10 +333,10 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Nom, métier, ville..."
-                className="flex-1 bg-transparent text-base text-[#f0f0f0] placeholder:text-[#444] outline-none"
+                className="flex-1 min-w-0 bg-transparent text-base text-text-primary placeholder:text-text-tertiary outline-none"
               />
               {query && (
-                <button onClick={() => { setQuery(""); setSearched(false); }} className="text-[#555] hover:text-[#f0f0f0] transition">
+                <button onClick={() => { setQuery(""); setSearched(false); }} className="text-text-secondary hover:text-text-primary transition">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -350,31 +346,23 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
 
             <div className="flex gap-2 mb-4 lg:max-w-2xl">
               {([["all", "Tous"], ["talents", "Talents"], ["projets", "Films"]] as const).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className="px-4 py-2 rounded-[20px] text-[13px] font-medium transition-all duration-150"
-                  style={filter === key
-                    ? { background: "#C8FF00", color: "#0d0d0d" }
-                    : { background: "rgba(255,255,255,0.04)", color: "#888", border: "1px solid rgba(255,255,255,0.08)" }
-                  }
-                >
+                <Chip key={key} selected={filter === key} onClick={() => setFilter(key)}>
                   {label}
-                </button>
+                </Chip>
               ))}
             </div>
 
             {/* Loading skeletons */}
             {searching && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#1a1a1a" }}>
-                    <div className="w-11 h-11 rounded-full animate-pulse" style={{ background: "#222" }} />
+                  <GlassCard key={i} className="flex items-center gap-3 p-3">
+                    <div className="w-11 h-11 rounded-full animate-pulse bg-white/10" />
                     <div className="flex-1">
-                      <div className="h-3.5 w-32 rounded animate-pulse" style={{ background: "#222" }} />
-                      <div className="h-3 w-20 rounded mt-1.5 animate-pulse" style={{ background: "#1f1f1f" }} />
+                      <div className="h-3.5 w-32 rounded animate-pulse bg-white/10" />
+                      <div className="h-3 w-20 rounded mt-1.5 animate-pulse bg-white/5" />
                     </div>
-                  </div>
+                  </GlassCard>
                 ))}
               </div>
             )}
@@ -382,99 +370,105 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
             {/* Empty — not searched */}
             {!searching && !searched && query.length < 2 && (
               <div className="text-center py-12">
-                <p className="text-sm text-[#444]">Tape un nom, un métier ou une ville</p>
+                <p className="text-sm text-text-secondary">Tape un nom, un métier ou une ville</p>
               </div>
             )}
 
             {/* No results */}
             {!searching && searched && talents.length === 0 && projects.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-sm text-text-secondary mb-1">Aucun résultat pour &quot;{query}&quot;</p>
-                <p className="text-xs text-[#444]">Essaie un autre nom ou métier</p>
+                <p className="text-sm text-text-primary mb-1">Aucun résultat pour &quot;{query}&quot;</p>
+                <p className="text-xs text-text-secondary">Essaie un autre nom ou métier</p>
               </div>
             )}
 
             {/* Talent results */}
             {!searching && talents.length > 0 && (filter === "all" || filter === "talents") && (
-              <div className="mb-6">
-                {filter === "all" && <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">Talents</p>}
+              <EnterList className="mb-6 last:mb-0">
+                <EnterItem>
+                {filter === "all" && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Talents</p>}
                 {/* Mobile : liste compacte */}
-                <div className="space-y-1.5 lg:hidden">
+                <div className="space-y-2 lg:hidden">
                   {talents.map((t) => (
-                    <Link key={t.id} href={`/profil/${t.slug}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition group">
-                      <Avatar url={t.avatar_url} name={t.full_name} size={44} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-text-primary group-hover:text-[#C8FF00] transition truncate">{t.full_name}</p>
-                        <p className="text-xs text-[#555] truncate">{t.roles[0] || ""}{t.location && ` · ${t.location}`}</p>
-                      </div>
-                      {t.is_available && <span className="w-2 h-2 rounded-full bg-[#00D4AA] flex-shrink-0" />}
-                      <svg className="w-4 h-4 text-[#333] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                    <Link key={t.id} href={`/profil/${t.slug}`} className="block group">
+                      <GlassCard className="flex items-center gap-3 p-3">
+                        <Avatar url={t.avatar_url} name={t.full_name} size={44} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text-primary group-hover:text-lime transition truncate">{t.full_name}</p>
+                          <p className="text-xs text-text-secondary truncate">{t.roles[0] || ""}{t.location && ` · ${t.location}`}</p>
+                        </div>
+                        {t.is_available && <span className="w-2 h-2 rounded-full bg-[#00D4AA] flex-shrink-0" />}
+                        <svg className="w-4 h-4 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </GlassCard>
                     </Link>
                   ))}
                 </div>
                 {/* Desktop : grille cartes talent (langage Feed) */}
                 <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {talents.map((t) => (
-                    <Link key={t.id} href={`/profil/${t.slug}`} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 group block">
-                      <div className="flex items-center gap-2.5 mb-2.5">
-                        <Avatar url={t.avatar_url} name={t.full_name} size={40} shape="rounded" style={{ borderRadius: 12 }} />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition truncate">{t.full_name}</span>
-                            {t.is_available && <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] flex-shrink-0" />}
+                    <Link key={t.id} href={`/profil/${t.slug}`} className="group block">
+                      <GlassCard className="h-full p-4 transition-[translate,border-color,box-shadow] duration-base ease-glass group-hover:border-white/20 group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.45)] motion-safe:group-hover:-translate-y-0.5">
+                        <div className="flex items-center gap-2.5 mb-2.5">
+                          <Avatar url={t.avatar_url} name={t.full_name} size={40} shape="rounded" style={{ borderRadius: 12 }} />
+                          <div className="min-w-0">
+                            <span className="block text-[13px] font-semibold text-text-primary group-hover:text-lime transition truncate">{t.full_name}</span>
+                            {t.location && <p className="text-[10px] text-text-secondary truncate">{t.location}</p>}
                           </div>
-                          {t.location && <p className="text-[10px] text-text-tertiary truncate">{t.location}</p>}
                         </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {t.roles.slice(0, 2).map((role) => (
-                          <span key={role} className="px-2 py-0.5 rounded-full bg-lime/8 text-lime text-[9px] font-semibold">{role}</span>
-                        ))}
-                      </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {t.is_available && <Badge variant="available" />}
+                          {t.roles.slice(0, 2).map((role) => (
+                            <span key={role} className="px-2 py-0.5 rounded-pill bg-lime/8 text-lime text-[9px] font-semibold">{role}</span>
+                          ))}
+                        </div>
+                      </GlassCard>
                     </Link>
                   ))}
                 </div>
-              </div>
+                </EnterItem>
+              </EnterList>
             )}
 
             {/* Project results */}
             {!searching && projects.length > 0 && (filter === "all" || filter === "projets") && (
-              <div className="mb-6">
-                {filter === "all" && <p className="text-xs font-semibold text-[#555] uppercase tracking-wider mb-2">Films</p>}
+              <EnterList>
+                <EnterItem>
+                {filter === "all" && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Films</p>}
                 {/* Mobile : liste compacte */}
-                <div className="space-y-1.5 lg:hidden">
+                <div className="space-y-2 lg:hidden">
                   {projects.map((p) => {
                     const catColor = CATEGORY_COLORS[p.category];
                     return (
-                      <Link key={p.id} href={`/projet/${p.slug}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition group">
-                        <div className="w-[60px] h-[44px] rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: "#1a1a1a", position: "relative" }}>
-                          {(p.preview_url || p.poster_url) ? (
-                            <img
-                              src={(p.preview_url || p.poster_url) as string}
-                              alt={p.title}
-                              className="rounded-md"
-                              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <svg className="w-4 h-4" style={{ color: "#C8FF00", opacity: 0.3 }} fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-text-primary group-hover:text-[#C8FF00] transition truncate">{p.title}</p>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold flex-shrink-0" style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}25`, letterSpacing: "0.08em" }}>
-                              {CATEGORY_LABELS[p.category]}
-                            </span>
+                      <Link key={p.id} href={`/projet/${p.slug}`} className="block group">
+                        <GlassCard className="flex items-center gap-3 p-3">
+                          <div className="relative w-[60px] h-[44px] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden bg-white/5">
+                            {(p.preview_url || p.poster_url) ? (
+                              <img
+                                src={(p.preview_url || p.poster_url) as string}
+                                alt={p.title}
+                                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <svg className="w-4 h-4" style={{ color: "#C8FF00", opacity: 0.3 }} fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            )}
                           </div>
-                          <p className="text-xs text-[#555] truncate">{p.owner_name} · {p.year}</p>
-                        </div>
-                        <svg className="w-4 h-4 text-[#333] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-text-primary group-hover:text-lime transition truncate">{p.title}</p>
+                              <span className="px-2 py-0.5 rounded-pill text-[9px] font-mono font-semibold flex-shrink-0" style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}25`, letterSpacing: "0.08em" }}>
+                                {CATEGORY_LABELS[p.category]}
+                              </span>
+                            </div>
+                            <p className="text-xs text-text-secondary truncate">{p.owner_name} · {p.year}</p>
+                          </div>
+                          <svg className="w-4 h-4 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </GlassCard>
                       </Link>
                     );
                   })}
@@ -483,32 +477,38 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                 <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {projects.map((p) => {
                     const catColor = CATEGORY_COLORS[p.category];
+                    const hasImage = Boolean(p.preview_url || p.poster_url);
                     return (
                       <Link key={p.id} href={`/projet/${p.slug}`} className="group block">
-                        <div className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/50 transition-all duration-300" style={{ aspectRatio: "16/9" }}>
-                          {(p.preview_url || p.poster_url) ? (
-                            <img src={(p.preview_url || p.poster_url) as string} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <svg width="32" height="32" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.12 }}><path d="M8 5v14l11-7z" /></svg>
+                        <GlassCard className="p-2.5 transition-[translate,border-color,box-shadow] duration-base ease-glass group-hover:border-white/20 motion-safe:group-hover:-translate-y-1">
+                          <div className="relative w-full bg-white/5 rounded-media overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.55)]" style={{ aspectRatio: "16/9" }}>
+                            {hasImage && (
+                              <img src={(p.preview_url || p.poster_url) as string} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
+                            )}
+                            {/* Bouton lecture en verre : visible sans image, au survol sinon */}
+                            <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-base ${hasImage ? "opacity-0 group-hover:opacity-100" : ""}`}>
+                              <span className="glass-strong flex size-12 items-center justify-center rounded-pill" aria-hidden>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
+                              </span>
                             </div>
-                          )}
-                          <span className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide" style={{ backgroundColor: catColor + "20", color: catColor }}>
-                            {CATEGORY_LABELS[p.category]}
-                          </span>
-                        </div>
-                        <div className="mt-2.5 px-0.5">
-                          <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[11px] text-text-tertiary truncate">{p.owner_name}</span>
-                            <span className="text-[11px] text-text-tertiary/50 font-mono">{p.year}</span>
+                            <span className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-pill text-[9px] font-bold uppercase tracking-wide backdrop-blur-md" style={{ backgroundColor: catColor + "20", color: catColor }}>
+                              {CATEGORY_LABELS[p.category]}
+                            </span>
                           </div>
-                        </div>
+                          <div className="mt-2.5 px-1 pb-0.5">
+                            <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[11px] text-text-secondary truncate">{p.owner_name}</span>
+                              <span className="text-[11px] text-text-tertiary font-mono">{p.year}</span>
+                            </div>
+                          </div>
+                        </GlassCard>
                       </Link>
                     );
                   })}
                 </div>
-              </div>
+                </EnterItem>
+              </EnterList>
             )}
           </motion.div>
         )}

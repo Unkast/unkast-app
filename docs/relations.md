@@ -43,9 +43,12 @@
 | `(app)/feed/page.tsx` | [persiste dans] | `profile_roles` (lecture) |
 | `(app)/feed/page.tsx` | [persiste dans] | `project_credits` (lecture) |
 | `HeroCarousel` | [utilise] | `framer-motion` (motion, AnimatePresence) |
-| `HeroCarousel` | [utilise] | `constants.ts` (CATEGORY_LABELS) |
+| `HeroCarousel` | [utilise] | `constants.ts` (CATEGORY_LABELS, CATEGORY_COLORS) |
 | `HomeAnimations` | [utilise] | `framer-motion` |
-| `HomeAnimations` | [utilise] | `motion.tsx` (FadeInView) |
+| `HomeAnimations` | [utilise] | `motion.tsx` (enterUp, enterFade, cardSpring) |
+| `(app)/feed/page.tsx` | [utilise] | `ui/GlassCard` |
+| `ConversionBanner` | [utilise] | `ui/Button` |
+| `ConversionBanner` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
 | --- | --- | --- |
 | **Profil public** | | |
 | `profil/[slug]/page.tsx` | [utilise] | `ProfileClient` |
@@ -57,7 +60,8 @@
 | `profil/[slug]/page.tsx` | [persiste dans] | `project_credits` (lecture) |
 | `ProfileClient` | [utilise] | `VideoEmbed` |
 | `ProfileClient` | [utilise] | `ContactModal` |
-| `ProfileClient` | [utilise] | `motion.tsx` (FadeInView, cardHover) |
+| `ProfileClient` | [utilise] | `motion.tsx` (EnterList, EnterItem, enterUp, enterFade, cardSpring) |
+| `ProfileClient` | [utilise] | `ui/Button`, `ui/Chip`, `ui/Badge` |
 | `ProfileClient` | [utilise] | `framer-motion` |
 | --- | --- | --- |
 | **Page projet** | | |
@@ -69,12 +73,15 @@
 | `projet/[slug]/page.tsx` | [persiste dans] | `projects` (lecture) |
 | `projet/[slug]/page.tsx` | [persiste dans] | `project_credits` (lecture) |
 | `ProjetClient` | [utilise] | `VideoEmbed` |
-| `ProjetClient` | [utilise] | `motion.tsx` (FadeInView) |
+| `ProjetClient` | [utilise] | `motion.tsx` (EnterList, EnterItem, ModalBackdrop) |
+| `ProjetClient` | [utilise] | `ui/Button`, `ui/GlassCard` |
 | --- | --- | --- |
 | **Recherche** | | |
 | `RechercheClient` | [declenche] | `GET /api/search` |
 | `RechercheClient` | [utilise] | `constants.ts` |
 | `RechercheClient` | [utilise] | `framer-motion` |
+| `RechercheClient` | [utilise] | `motion.tsx` (EnterList, EnterItem) |
+| `RechercheClient` | [utilise] | `ui/Badge`, `ui/Chip`, `ui/GlassCard` |
 | `GET /api/search` | [persiste dans] | `profiles` (lecture) |
 | `GET /api/search` | [persiste dans] | `profile_roles` (lecture) |
 | `GET /api/search` | [persiste dans] | `projects` (lecture) |

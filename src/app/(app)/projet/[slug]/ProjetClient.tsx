@@ -4,11 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoEmbed from "@/components/VideoEmbed";
 import Avatar from "@/components/Avatar";
-import { ModalBackdrop } from "@/components/motion";
+import { EnterItem, EnterList, ModalBackdrop } from "@/components/motion";
+import Button from "@/components/ui/Button";
+import GlassCard from "@/components/ui/GlassCard";
 import ReportModal from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
@@ -35,8 +37,15 @@ function initials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
+const SEPARATOR = "h-px bg-white/[0.06] my-5";
+const SECTION_TITLE = "text-base font-semibold text-text-primary";
+const INFO_PILL = "glass rounded-pill px-3 py-1 text-xs text-text-secondary";
+const PENDING_BADGE = "inline-block rounded-pill border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 font-mono text-[11px] text-yellow-400";
+const PLAY_ICON = "M8 5v14l11-7z";
+
 export default function ProjetClient({ project, relatedProjects, categoryLabels, categoryColors }: Props) {
   const router = useRouter();
+  const reduced = useReducedMotion();
   const [showVideo, setShowVideo] = useState(false);
   const [synopsisOpen, setSynopsisOpen] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -114,121 +123,125 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
   return (
     <>
-      <div style={{ paddingBottom: 120 }}>
+      <EnterList className="pb-tabbar">
+        <div className="mx-auto w-full max-w-[1280px] px-5 lg:px-12 pt-3 lg:pt-6">
         {/* Banner for pending/refused */}
         {project.status && project.status !== "approved" && (
-          <div style={{ padding: "12px 20px 0" }}>
-            <div style={{ padding: "10px 14px", borderRadius: 8, background: "#1a1a1a", fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#f97316", borderLeft: "3px solid #f97316" }}>
-              {project.status === "pending" ? "Aperçu — Ce film est en attente de validation." : "Ce film a été refusé."}
-            </div>
-          </div>
+          <GlassCard className="mb-3 border-l-[3px] border-l-[#f97316] px-3.5 py-2.5 font-mono text-[11px] text-[#f97316]">
+            {project.status === "pending" ? "Aperçu — Ce film est en attente de validation." : "Ce film a été refusé."}
+          </GlassCard>
         )}
 
         {/* ===== ZONE 1 — IMAGE HERO (bannière) ===== */}
-        <div className="relative w-full overflow-hidden bg-[#1a1a1a] h-[260px] lg:h-[440px]">
+        {/* Hors EnterItem : l'image est prioritaire (LCP), elle ne doit pas attendre l'hydratation. */}
+        <div className="relative w-full overflow-hidden rounded-panel border border-white/10 bg-white/[0.04] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] h-[260px] lg:h-[440px]">
           {project.preview_url ? (
             <Image src={project.preview_url} alt={project.title} fill priority sizes="100vw" style={{ objectFit: "cover" }} />
           ) : (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="60" height="60" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.15 }}><path d="M8 5v14l11-7z" /></svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg width="60" height="60" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.15 }}><path d={PLAY_ICON} /></svg>
             </div>
           )}
 
-          {/* Gradient overlay */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 0%, rgba(13,13,13,0.4) 60%, #0d0d0d 100%)", pointerEvents: "none" }} />
+          {/* Gradient overlay (lisibilité du titre et des boutons) */}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(10,10,12,0.25) 0%, transparent 30%, transparent 50%, rgba(10,10,12,0.8) 100%)" }} />
 
           {/* Back button */}
-          <button onClick={() => router.back()} style={{ position: "absolute", top: 16, left: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, zIndex: 10 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0f0f0" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
-          </button>
+          <Button variant="icon" aria-label="Retour" onClick={() => router.back()} className="absolute top-4 left-4 z-10 bg-black/35">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
+          </Button>
 
           {/* Options button */}
-          <div ref={optionsRef} style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
-            <button onClick={() => setShowOptions(!showOptions)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#f0f0f0"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-            </button>
+          <div ref={optionsRef} className="absolute top-4 right-4 z-10">
+            <Button variant="icon" aria-label="Options" onClick={() => setShowOptions(!showOptions)} className="bg-black/35">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+            </Button>
             {showOptions && (
-              <div style={{ position: "absolute", top: 42, right: 0, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 4, width: 180, zIndex: 20 }}>
-                <button onClick={() => { navigator.clipboard.writeText(window.location.href); setShowOptions(false); toast("Lien copié !"); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", fontSize: 13, color: "#e0e0e0", background: "none", border: "none", borderRadius: 6, cursor: "pointer" }}>Partager ce film</button>
-                <button onClick={() => { setShowOptions(false); setReportOpen(true); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", fontSize: 13, color: "#888", background: "none", border: "none", borderRadius: 6, cursor: "pointer" }}>Signaler un probleme</button>
-              </div>
+              <GlassCard strong className="absolute top-12 right-0 z-20 w-[180px] bg-black/50 p-1">
+                <button onClick={() => { navigator.clipboard.writeText(window.location.href); setShowOptions(false); toast("Lien copié !"); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-primary hover:bg-white/[0.06]">Partager ce film</button>
+                <button onClick={() => { setShowOptions(false); setReportOpen(true); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler un probleme</button>
+              </GlassCard>
             )}
           </div>
 
           {/* Play button */}
-          <button onClick={() => setShowVideo(true)} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 60, height: 60, borderRadius: "50%", background: "rgba(0,0,0,0.65)", border: "2px solid rgba(255,255,255,0.9)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d="M8 5v14l11-7z" /></svg>
-          </button>
+          <Button variant="icon" aria-label="Regarder" onClick={() => setShowVideo(true)} className="absolute top-1/2 left-1/2 size-16 -translate-x-1/2 -translate-y-1/2 bg-black/35">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d={PLAY_ICON} /></svg>
+          </Button>
 
           {/* Titre en surimpression — desktop uniquement */}
           <div className="hidden lg:flex absolute inset-0 flex-col justify-end pointer-events-none">
-            <div className="mx-auto w-full max-w-[1280px] px-12 pb-10">
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary mb-2">
+            <div className="w-full px-10 pb-10">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary mb-2">
                 {project.year} &middot; {categoryLabels[project.category].toUpperCase()}
               </p>
-              <h1 className="text-4xl xl:text-5xl font-bold tracking-tight text-text-primary leading-[1.05]">{project.title}</h1>
+              <h1 className="text-sheen text-4xl xl:text-5xl font-bold tracking-tight leading-[1.1] pb-1">{project.title}</h1>
             </div>
           </div>
         </div>
 
         {/* ===== ZONE 2 — CONTENT ===== */}
-        <div className="mx-auto w-full max-w-[1280px] px-5 lg:px-12" style={{ marginTop: -2 }}>
-          <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 lg:items-start lg:pt-8">
+          <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 lg:items-start lg:pt-8 pb-6 lg:pb-12">
           {/* ========= COLONNE PRINCIPALE ========= */}
           <div className="min-w-0">
 
           {/* Date + Titre + Pills + Regarder — mobile (sur desktop : bannière + sidebar) */}
-          <div className="lg:hidden">
+          <EnterItem className="lg:hidden">
           {/* Date + category */}
-          <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, letterSpacing: "0.1em", color: "#555", textTransform: "uppercase", marginTop: 16, marginBottom: 8 }}>
+          <p className="mt-5 mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
             {project.year} &middot; {categoryLabels[project.category].toUpperCase()}
           </p>
 
           {/* Title */}
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.8, color: "#f0f0f0", lineHeight: 1.1, margin: "0 0 14px" }}>{project.title}</h1>
+          <h1 className="text-sheen mb-3.5 pb-0.5 text-[28px] font-bold leading-[1.15]">{project.title}</h1>
 
           {/* Pills */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-            <span style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "5px 12px", fontSize: 12, color: "#777" }}>{categoryLabels[project.category]}</span>
-            <span style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "5px 12px", fontSize: 12, color: "#777" }}>{project.year}</span>
-            <span style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "5px 12px", fontSize: 12, color: "#777" }}>{project.credits.length} talent{project.credits.length !== 1 ? "s" : ""}</span>
+          <div className="mb-5 flex flex-wrap gap-2">
+            <span className={INFO_PILL}>{categoryLabels[project.category]}</span>
+            <span className={INFO_PILL}>{project.year}</span>
+            <span className={INFO_PILL}>{project.credits.length} talent{project.credits.length !== 1 ? "s" : ""}</span>
           </div>
 
           {/* Regarder button */}
-          <button onClick={() => setShowVideo(true)} style={{ width: "100%", background: "#C8FF00", color: "#0d0d0d", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: 15, border: "none", cursor: "pointer", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          <Button onClick={() => setShowVideo(true)} className="mb-6 min-h-12! w-full text-[15px]!">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={PLAY_ICON} /></svg>
             Regarder
-          </button>
+          </Button>
 
           {/* Separator */}
-          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 24 }} />
-          </div>
+          <div className="h-px bg-white/[0.06] mb-6" />
+          </EnterItem>
 
           {/* Synopsis + Équipe + Du même réalisateur (partagés mobile/desktop) */}
           <div className="lg:pt-2">
 
           {/* Synopsis */}
           {desc && (
-            <>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 10 }}>Synopsis</h2>
-              <p style={{ fontSize: 14, color: "#777", lineHeight: 1.75, margin: 0, whiteSpace: "pre-line", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: synopsisOpen ? 9999 : 3, WebkitBoxOrient: "vertical" as const }}>{desc}</p>
+            <EnterItem>
+              <h2 className={`${SECTION_TITLE} mb-2.5`}>Synopsis</h2>
+              <p className="text-sm text-text-secondary" style={{ lineHeight: 1.75, margin: 0, whiteSpace: "pre-line", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: synopsisOpen ? 9999 : 3, WebkitBoxOrient: "vertical" as const }}>{desc}</p>
               {descLong && (
-                <button onClick={() => setSynopsisOpen(!synopsisOpen)} style={{ background: "none", border: "none", color: "#C8FF00", fontSize: 13, fontWeight: 500, cursor: "pointer", padding: 0, marginTop: 6 }}>
+                <button onClick={() => setSynopsisOpen(!synopsisOpen)} className="mt-1.5 text-[13px] font-medium text-lime">
                   {synopsisOpen ? "Réduire" : "Lire la suite"}
                 </button>
               )}
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
-            </>
+              <div className={SEPARATOR} />
+            </EnterItem>
           )}
 
           {/* Team */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", margin: 0 }}>Équipe</h2>
-            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555" }}>({project.credits.length} talent{project.credits.length !== 1 ? "s" : ""})</span>
+          <EnterItem>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className={SECTION_TITLE}>Équipe</h2>
+            <span className="font-mono text-[11px] text-text-tertiary">({project.credits.length} talent{project.credits.length !== 1 ? "s" : ""})</span>
           </div>
 
           <div style={{ position: "relative" }}>
-            <div className="no-scrollbar" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
+            {/* Gradient overlay for anonymous : fondu par masque (plus de dégradé opaque vers le fond) */}
+            <div
+              className="no-scrollbar flex gap-3 overflow-x-auto pb-1"
+              style={userStatus === "anonymous" && project.credits.length > 3 ? { maskImage: "linear-gradient(#000 15%, rgba(0,0,0,0.05))", WebkitMaskImage: "linear-gradient(#000 15%, rgba(0,0,0,0.05))" } : undefined}
+            >
               {project.credits.map((c) => {
                 const fullName = c.profile?.full_name ?? c.ghost_name ?? "Inconnu";
                 const isAnon = userStatus === "anonymous";
@@ -239,7 +252,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                 const displayName = isAnon ? maskedName : fullName;
 
                 const card = (
-                  <div style={{ width: 80, flexShrink: 0, textAlign: "center" }}>
+                  <GlassCard className="w-[104px] px-2.5 py-3 text-center transition-colors duration-fast group-hover:border-white/20">
                     <div style={{ width: 52, height: 52, borderRadius: "50%", background: isAnon ? "rgba(255,255,255,0.06)" : "rgba(200,255,0,0.08)", border: isAnon ? "1.5px solid rgba(255,255,255,0.1)" : "1.5px solid rgba(200,255,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", overflow: "hidden" }}>
                       {!isAnon && c.profile?.avatar_url ? (
                         <img src={c.profile.avatar_url} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -247,71 +260,72 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                         <span style={{ fontSize: isAnon ? 16 : 14, fontWeight: 600, color: isAnon ? "#555" : "#C8FF00" }}>{isAnon ? "?" : initials(fullName)}</span>
                       )}
                     </div>
-                    <p style={{ fontSize: 11, fontWeight: 500, color: isAnon ? "#555" : "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 80 }}>{displayName}</p>
-                    <p style={{ fontSize: 10, color: "#555", fontFamily: "JetBrains Mono, monospace", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.role_on_project}</p>
-                  </div>
+                    <p className="truncate text-[11px] font-medium" style={{ color: isAnon ? "#555" : "#f0f0f0", margin: 0 }}>{displayName}</p>
+                    <p className="mt-0.5 truncate font-mono text-[10px] text-text-tertiary">{c.role_on_project}</p>
+                  </GlassCard>
                 );
 
                 if (!isAnon && c.profile?.slug) {
-                  return <Link key={c.id} href={`/profil/${c.profile.slug}`} style={{ textDecoration: "none", flexShrink: 0 }}>{card}</Link>;
+                  return <Link key={c.id} href={`/profil/${c.profile.slug}`} className="group" style={{ textDecoration: "none", flexShrink: 0 }}>{card}</Link>;
                 }
                 return <div key={c.id} style={{ flexShrink: 0 }}>{card}</div>;
               })}
             </div>
-
-            {/* Gradient overlay for anonymous */}
-            {userStatus === "anonymous" && project.credits.length > 3 && (
-              <div style={{ position: "relative", marginTop: -80, height: 80, background: "linear-gradient(rgba(13,13,13,0), rgba(13,13,13,0.95))", pointerEvents: "none" }} />
-            )}
           </div>
 
           {/* Anonymous: conversion CTA */}
           {showConversionCTA && (
-            <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.12)", borderRadius: 14, padding: 20, marginTop: 16, textAlign: "center" }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Voir l&apos;équipe complète</p>
-              <p style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Crée un compte gratuit en 2 minutes</p>
-              <button onClick={() => router.push("/rejoindre")} style={{ width: "100%", background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: 12, border: "none", cursor: "pointer" }}>Créer mon compte gratuit</button>
-            </div>
+            <GlassCard className="mt-4 border-lime/20 p-5 text-center">
+              <p className="mb-1.5 text-sm font-semibold text-text-primary">Voir l&apos;équipe complète</p>
+              <p className="mb-3.5 text-xs text-text-secondary">Crée un compte gratuit en 2 minutes</p>
+              <Button onClick={() => router.push("/rejoindre")} className="w-full">Créer mon compte gratuit</Button>
+            </GlassCard>
           )}
+          </EnterItem>
 
-          <div className="lg:hidden">
-          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
+          <EnterItem className="lg:hidden">
+          <div className={SEPARATOR} />
 
           {/* Director */}
-          <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 12 }}>Réalisé par</h2>
+          <h2 className={`${SECTION_TITLE} mb-3`}>Réalisé par</h2>
           <Link href={`/profil/${project.owner.slug}`} style={{ textDecoration: "none" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px" }}>
+            <GlassCard className="flex items-center gap-3.5 px-4 py-3.5">
               <Avatar url={project.owner.avatar_url} name={project.owner.full_name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", margin: 0 }}>{project.owner.full_name}</p>
-                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{ownerRole}</p>
+                <p className="text-[15px] font-medium text-text-primary" style={{ margin: 0 }}>{project.owner.full_name}</p>
+                <p className="mt-0.5 text-xs text-text-secondary">{ownerRole}</p>
               </div>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
-            </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
+            </GlassCard>
           </Link>
-          </div>
+          </EnterItem>
 
           {/* Related projects */}
           {relatedProjects.length > 0 && (
-            <>
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 14 }}>Du même réalisateur</h2>
-              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar pb-1">
+            <EnterItem>
+              <div className={SEPARATOR} />
+              <h2 className={`${SECTION_TITLE} mb-2.5`}>Du même réalisateur</h2>
+              {/* pt-2 : place pour l'élévation au survol (overflow-x-auto rogne aussi en vertical) */}
+              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar pt-2 pb-1">
                 {relatedProjects.map((rp) => {
                   const rpColor = categoryColors[rp.category];
                   return (
                     <Link key={rp.id} href={`/projet/${rp.slug}`} className="flex-shrink-0 w-60 sm:w-72 group block">
                       <div
-                        className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/50 transition-all duration-300"
+                        className="relative w-full bg-white/[0.04] border border-white/10 rounded-media overflow-hidden shadow-[0_18px_40px_-12px_rgba(0,0,0,0.75)] transition-[translate,box-shadow,border-color] duration-base ease-glass group-hover:border-white/20 group-hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.9)] motion-safe:group-hover:-translate-y-1"
                         style={{ aspectRatio: "16/9" }}
                       >
                         {rp.preview_url || rp.poster_url ? (
                           <img src={(rp.preview_url || rp.poster_url) as string} alt={rp.title} className="absolute inset-0 w-full h-full object-cover" />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.12 }}><path d="M8 5v14l11-7z" /></svg>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.12 }}><path d={PLAY_ICON} /></svg>
                           </div>
                         )}
+                        {/* Bouton lecture en verre (décoratif : toute la carte est le lien) */}
+                        <span aria-hidden="true" className="glass absolute top-1/2 left-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill bg-black/35">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 2 }}><path d={PLAY_ICON} /></svg>
+                        </span>
                         <span
                           className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide"
                           style={{ backgroundColor: rpColor + "20", color: rpColor }}
@@ -330,26 +344,26 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                   );
                 })}
               </div>
-            </>
+            </EnterItem>
           )}
 
           {/* Crédit + statut — mobile (desktop : sidebar) */}
-          <div className="lg:hidden">
+          <EnterItem className="lg:hidden">
           {showCreditButton && (
             <>
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "20px 0" }} />
-              <button onClick={() => setShowCreditModal(true)} style={{ width: "100%", border: "1px dashed rgba(200,255,0,0.25)", background: "transparent", borderRadius: 10, padding: 12, color: "#C8FF00", fontSize: 13, fontFamily: "JetBrains Mono, monospace", textAlign: "center", cursor: "pointer" }}>
+              <div className={SEPARATOR} />
+              <Button variant="glass" onClick={() => setShowCreditModal(true)} className="w-full border-dashed border-lime/30 font-mono text-[13px]! font-normal! text-lime!">
                 + J&apos;ai participe a ce projet
-              </button>
+              </Button>
             </>
           )}
 
           {creditStatus.hasPendingRequest && (
-            <div style={{ textAlign: "center", marginTop: 16 }}>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.2)", color: "#facc15", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>Demande en attente</span>
+            <div className="mt-4 text-center">
+              <span className={PENDING_BADGE}>Demande en attente</span>
             </div>
           )}
-          </div>
+          </EnterItem>
 
           </div>{/* fin wrapper partagé */}
           </div>{/* fin colonne principale */}
@@ -357,59 +371,65 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
           {/* ========= SIDEBAR (desktop uniquement) ========= */}
           <aside className="hidden lg:block lg:sticky lg:top-8 space-y-4">
             {/* Fiche technique */}
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+            <EnterItem>
+            <GlassCard className="p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary mb-3">Fiche technique</p>
               <dl className="space-y-2.5 text-sm">
-                <div className="flex items-center justify-between gap-3"><dt className="text-text-tertiary">Catégorie</dt><dd className="font-medium" style={{ color: catColor }}>{categoryLabels[project.category]}</dd></div>
-                <div className="flex items-center justify-between gap-3"><dt className="text-text-tertiary">Année</dt><dd className="font-medium font-mono text-text-primary">{project.year}</dd></div>
-                <div className="flex items-center justify-between gap-3"><dt className="text-text-tertiary">Talents</dt><dd className="font-medium text-text-primary">{project.credits.length}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-text-secondary">Catégorie</dt><dd className="font-medium" style={{ color: catColor }}>{categoryLabels[project.category]}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-text-secondary">Année</dt><dd className="font-medium font-mono text-text-primary">{project.year}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-text-secondary">Talents</dt><dd className="font-medium text-text-primary">{project.credits.length}</dd></div>
               </dl>
-            </div>
+            </GlassCard>
+            </EnterItem>
 
             {/* Regarder */}
-            <button onClick={() => setShowVideo(true)} className="w-full inline-flex items-center justify-center gap-2 bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl px-6 py-3 hover:brightness-110 transition">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            <EnterItem>
+            <Button onClick={() => setShowVideo(true)} className="min-h-12! w-full">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d={PLAY_ICON} /></svg>
               Regarder
-            </button>
+            </Button>
+            </EnterItem>
 
             {/* Réalisé par */}
+            <EnterItem>
             <Link href={`/profil/${project.owner.slug}`} className="block">
-              <div className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl p-4 hover:border-white/10 transition">
+              <GlassCard className="flex items-center gap-3 p-4 transition-colors duration-fast hover:border-white/20">
                 <Avatar url={project.owner.avatar_url} name={project.owner.full_name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
                 <div className="min-w-0 flex-1">
                   <p className="font-mono text-[10px] uppercase tracking-wide text-text-tertiary mb-0.5">Réalisé par</p>
                   <p className="text-sm font-medium text-text-primary truncate">{project.owner.full_name}</p>
-                  <p className="text-xs text-text-tertiary truncate">{ownerRole}</p>
+                  <p className="text-xs text-text-secondary truncate">{ownerRole}</p>
                 </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M9 5l7 7-7 7" /></svg>
-              </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M9 5l7 7-7 7" /></svg>
+              </GlassCard>
             </Link>
+            </EnterItem>
 
             {/* Crédit + statut */}
             {showCreditButton && (
-              <button onClick={() => setShowCreditModal(true)} className="w-full border border-dashed rounded-xl px-4 py-3 text-[13px] text-center transition" style={{ borderColor: "rgba(200,255,0,0.25)", color: "#C8FF00", background: "transparent", fontFamily: "JetBrains Mono, monospace" }}>
+              <Button variant="glass" onClick={() => setShowCreditModal(true)} className="w-full border-dashed border-lime/30 font-mono text-[13px]! font-normal! text-lime!">
                 + J&apos;ai participé à ce projet
-              </button>
+              </Button>
             )}
             {creditStatus.hasPendingRequest && (
               <div className="text-center">
-                <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.2)", color: "#facc15", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>Demande en attente</span>
+                <span className={PENDING_BADGE}>Demande en attente</span>
               </div>
             )}
           </aside>
 
           </div>{/* fin grille */}
         </div>
-      </div>
+      </EnterList>
 
       {/* ===== VIDEO MODAL ===== */}
       <AnimatePresence>
         {showVideo && (
           <motion.div
-            initial={{ opacity: 0, y: "100%" }}
+            initial={{ opacity: 0, y: reduced ? 0 : "100%" }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: "100%" }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            exit={{ opacity: 0, y: reduced ? 0 : "100%" }}
+            transition={{ duration: reduced ? 0.15 : 0.3, ease: "easeOut" }}
             onTouchStart={(e) => { videoTouchY.current = e.touches[0].clientY; }}
             onTouchEnd={(e) => {
               if (videoTouchY.current !== null && e.changedTouches[0].clientY - videoTouchY.current > 80) setShowVideo(false);
@@ -417,10 +437,12 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
             }}
             style={{ position: "fixed", inset: 0, zIndex: 9998, background: "black", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            <button onClick={() => setShowVideo(false)} style={{ position: "absolute", top: 20, right: 20, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 9999 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f0f0f0" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
-            </button>
-            <div style={{ width: "100%", maxWidth: 900, aspectRatio: "16/9" }}>
+            <Button variant="icon" aria-label="Fermer" onClick={() => setShowVideo(false)} className="absolute top-5 right-5" style={{ zIndex: 9999 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
+            </Button>
+            {/* Panneau arrondi à partir de lg seulement : en mobile la vidéo est bord à bord,
+                l'arrondi rognerait les contrôles du lecteur. */}
+            <div className="lg:overflow-hidden lg:rounded-panel lg:shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]" style={{ width: "100%", maxWidth: 900, aspectRatio: "16/9" }}>
               <VideoEmbed url={project.video_url} title={project.title} autoplay />
             </div>
           </motion.div>
@@ -430,7 +452,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
       {/* Toast */}
       <AnimatePresence>
         {creditToast && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} style={{ position: "fixed", top: 16, right: 16, zIndex: 50, padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0", maxWidth: 280 }}>
+          <motion.div initial={{ opacity: 0, y: reduced ? 0 : -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -20 }} className="glass-strong rounded-card fixed top-4 right-4 z-50 max-w-[280px] px-4 py-2.5 text-[13px] text-text-primary">
             {creditToast}
           </motion.div>
         )}
@@ -456,14 +478,14 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1.5">Message <span className="text-text-tertiary">({creditMessage.length}/300)</span></label>
-                  <textarea rows={3} maxLength={300} value={creditMessage} onChange={(e) => setCreditMessage(e.target.value)} className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-base placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition resize-none" placeholder="Dis-lui comment tu as contribue..." />
+                  <textarea rows={3} maxLength={300} value={creditMessage} onChange={(e) => setCreditMessage(e.target.value)} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-card text-text-primary text-base placeholder:text-text-tertiary focus:outline-none focus:ring-3 focus:ring-lime/30 transition resize-none" placeholder="Dis-lui comment tu as contribue..." />
                 </div>
               </div>
               <div className="flex gap-3 mt-5">
-                <button onClick={submitCreditRequest} disabled={!creditRole || creditSending} className="flex-1 py-3 bg-lime text-[#0d0d0d] font-bold text-sm rounded-lg hover:brightness-110 transition disabled:opacity-40">
+                <Button onClick={submitCreditRequest} disabled={!creditRole || creditSending} className="flex-1">
                   {creditSending ? "Envoi..." : "Envoyer la demande"}
-                </button>
-                <button onClick={() => setShowCreditModal(false)} className="px-5 py-3 border border-white/10 text-text-secondary text-sm rounded-lg hover:text-text-primary transition">Annuler</button>
+                </Button>
+                <Button variant="glass" onClick={() => setShowCreditModal(false)}>Annuler</Button>
               </div>
             </div>
           </ModalBackdrop>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 
@@ -34,7 +34,12 @@ const POSITIONS = [
   { rotateY: -45, translateX: 200, translateZ: -120, scale: 0.65, opacity: 0.35, zIndex: 1 },
 ];
 
+// Memes classes que ui/Button, mais sur des liens (Button ne rend qu'un <button>)
+const BTN = "inline-flex min-h-11 items-center justify-center gap-2 rounded-pill px-5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime";
+const PILL = "glass inline-flex h-7 items-center gap-2 rounded-pill px-3 text-xs text-text-secondary";
+
 export default function HeroCarousel({ projects }: HeroCarouselProps) {
+  const reduced = useReducedMotion();
   const count = Math.min(projects.length, 5);
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
@@ -128,18 +133,19 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                 opacity: pos.opacity,
                 zIndex: pos.zIndex,
               }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
               style={{
                 position: "absolute",
                 width: 180,
                 height: 260,
-                borderRadius: 16,
+                borderRadius: "var(--radius-media)",
                 overflow: "hidden",
-                backgroundColor: "#1a1a1a",
+                // Opaque : les cartes de l'eventail se chevauchent
+                backgroundColor: "var(--color-glass-solid)",
                 cursor: isCenter ? "default" : "pointer",
                 transformStyle: "preserve-3d",
-                border: isCenter ? "1px solid rgba(200,255,0,0.15)" : "1px solid rgba(255,255,255,0.06)",
-                boxShadow: isCenter ? "0 30px 80px rgba(0,0,0,0.9)" : "none",
+                border: `1px solid var(${isCenter ? "--glass-border-strong" : "--glass-border"})`,
+                boxShadow: isCenter ? "0 30px 80px rgba(0,0,0,0.7)" : "none",
               }}
             >
               {/* Poster image or play icon placeholder */}
@@ -181,7 +187,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
             onClick={() => goTo(i)}
             animate={{
               width: i === activeIndex ? 20 : 6,
-              backgroundColor: i === activeIndex ? "#C8FF00" : "#2a2a2a",
+              backgroundColor: i === activeIndex ? "rgba(200,255,0,1)" : "rgba(255,255,255,0.16)",
             }}
             transition={{ duration: 0.3 }}
             style={{ height: 6, borderRadius: 4, border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
@@ -193,43 +199,38 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
       <AnimatePresence mode="wait">
         <motion.div
           key={activeIndex}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: reduced ? 0 : 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
+          exit={{ opacity: 0, y: reduced ? 0 : -8 }}
           transition={{ duration: 0.25 }}
-          style={{ padding: "14px 20px 0" }}
+          className="px-5 pt-3.5"
         >
-          <p className="font-mono" style={{ fontSize: 11, color: "#555", letterSpacing: "0.1em", marginBottom: 4, textTransform: "uppercase" }}>
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-tertiary mb-1">
             {active.year}
           </p>
-          <h2 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.5px", color: "#f0f0f0", margin: "0 0 10px", lineHeight: 1.15 }}>
+          <h2 className="text-sheen text-[26px] font-bold tracking-[-0.5px] leading-[1.15] pb-0.5 mb-2">
             {active.title}
           </h2>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-            <span style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "#888", fontSize: 12, borderRadius: 20, padding: "5px 12px" }}>
+          <div className="flex flex-wrap gap-1.5 mb-3.5">
+            <span className={PILL}>
+              <span className="size-1.5 rounded-full" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }} />
               {CATEGORY_LABELS[active.category]}
             </span>
             {active.team_size > 0 && (
-              <span style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "#888", fontSize: 12, borderRadius: 20, padding: "5px 12px" }}>
+              <span className={PILL}>
                 {active.team_size} talent{active.team_size > 1 ? "s" : ""}
               </span>
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <Link
-              href={`/projet/${active.slug}`}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#C8FF00", color: "#0d0d0d", fontWeight: 600, fontSize: 14, borderRadius: 10, padding: "12px 24px", textDecoration: "none" }}
-            >
+          <div className="flex gap-2">
+            <Link href={`/projet/${active.slug}`} className={`${BTN} btn-accent flex-1`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
               Voir le film
             </Link>
-            <Link
-              href={`/profil/${active.owner_slug}`}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "#f0f0f0", fontSize: 14, borderRadius: 10, padding: "12px 16px", textDecoration: "none", whiteSpace: "nowrap", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}
-            >
-              {active.owner_name}
+            <Link href={`/profil/${active.owner_slug}`} className={`${BTN} glass text-text-primary max-w-[160px]`}>
+              <span className="truncate">{active.owner_name}</span>
             </Link>
           </div>
         </motion.div>
@@ -238,12 +239,12 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
 
     {/* ============ DESKTOP — billboard façon Netflix ============ */}
     <div className="hidden lg:block px-12 xl:px-16 pt-2">
-      <div className="relative w-full overflow-hidden rounded-2xl border border-white/5 bg-[#141414] h-[460px] xl:h-[540px]">
+      <div className="relative w-full overflow-hidden glass rounded-panel shadow-2xl shadow-black/60 h-[460px] xl:h-[540px]">
         {/* Backdrop (crossfade sur le projet actif) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={active.id}
-            initial={{ opacity: 0, scale: 1.04 }}
+            initial={{ opacity: 0, scale: reduced ? 1 : 1.04 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
@@ -269,32 +270,30 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
         </AnimatePresence>
 
         {/* Scrims pour la lisibilité du texte */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/30 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0d]/85 via-[#0d0d0d]/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-canvas/90 via-canvas/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-canvas/80 via-canvas/10 to-transparent" />
 
         {/* Bloc texte + actions (largeur intrinsèque, aligné à gauche) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={active.id + "-info"}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: reduced ? 0 : 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            exit={{ opacity: 0, y: reduced ? 0 : -8 }}
             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             className="absolute left-0 bottom-0 p-10 xl:p-12 max-w-[620px]"
           >
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary mb-3">{active.year}</p>
-            <h2 className="text-4xl xl:text-5xl font-bold tracking-tight text-text-primary leading-[1.05] mb-4">
+            <h2 className="text-sheen text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05] pb-1.5 mb-2.5">
               {active.title}
             </h2>
             <div className="flex flex-wrap items-center gap-2 mb-7">
-              <span
-                className="px-3 py-1 rounded-full text-xs font-semibold"
-                style={{ backgroundColor: activeColor + "20", color: activeColor }}
-              >
+              <span className={PILL}>
+                <span className="size-1.5 rounded-full" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }} />
                 {CATEGORY_LABELS[active.category]}
               </span>
               {active.team_size > 0 && (
-                <span className="px-3 py-1 rounded-full bg-white/[0.08] border border-white/10 text-xs text-text-secondary">
+                <span className={PILL}>
                   {active.team_size} talent{active.team_size > 1 ? "s" : ""}
                 </span>
               )}
@@ -302,16 +301,16 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
             <div className="flex items-center gap-3">
               <Link
                 href={`/projet/${active.slug}`}
-                className="inline-flex items-center gap-2 bg-lime text-[#0d0d0d] font-semibold text-sm rounded-xl px-6 py-3 hover:brightness-110 transition"
+                className={`${BTN} btn-accent`}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 Voir le film
               </Link>
               <Link
                 href={`/profil/${active.owner_slug}`}
-                className="inline-flex items-center max-w-[220px] truncate bg-white/[0.08] border border-white/10 text-text-primary text-sm rounded-xl px-5 py-3 backdrop-blur-sm hover:bg-white/[0.12] transition"
+                className={`${BTN} glass text-text-primary max-w-[220px] hover:border-white/20`}
               >
-                {active.owner_name}
+                <span className="truncate">{active.owner_name}</span>
               </Link>
             </div>
           </motion.div>
@@ -327,10 +326,10 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                 onClick={() => goTo(i)}
                 aria-label={`Voir ${p.title}`}
                 animate={{ width: isActive ? 132 : 104, height: isActive ? 74 : 60 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="relative overflow-hidden rounded-lg flex-shrink-0"
+                transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+                className="relative overflow-hidden rounded-media flex-shrink-0"
                 style={{
-                  border: isActive ? "2px solid #C8FF00" : "1px solid rgba(255,255,255,0.1)",
+                  border: isActive ? "2px solid #C8FF00" : "1px solid var(--glass-border)",
                   boxShadow: isActive ? "0 12px 30px rgba(0,0,0,0.5)" : "none",
                   cursor: isActive ? "default" : "pointer",
                 }}
@@ -338,7 +337,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                 {p.preview_url || p.poster_url ? (
                   <Image src={(p.preview_url || p.poster_url) as string} alt={p.title} fill sizes="132px" style={{ objectFit: "cover" }} />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a]">
+                  <div className="absolute inset-0 flex items-center justify-center bg-glass-solid">
                     <svg width="20" height="20" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.25 }}>
                       <polygon points="16,10 40,24 16,38" fill="#C8FF00" />
                     </svg>

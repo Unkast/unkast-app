@@ -135,13 +135,30 @@ FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   Hero carousel 3D + rangees par categorie + talents a decouvrir.
   [utilise] HeroCarousel, HeroPlayer, HomeAnimations, ConversionBanner
   [persiste dans] profiles, projects, profile_roles, project_credits (lecture)
+  Verre liquide (chantier 4, 07/10/2026) : infos du film en text-sheen + pilule categorie a point
+  de couleur, cartes video rounded-media (ombre, elevation au survol, lecture en verre), talents
+  en GlassCard. ConversionBanner = pilule .glass-strong posee 12 px au-dessus de la navigation
+  mobile (bottom 68 px + safe area en navigateur, 100 px + safe area si html.app-installed,
+  bottom-6 en desktop), avec un espaceur de 72 px dans le flux quand elle est visible.
+  ⚠️ Bug anterieur non corrige : elle ecoute window.scrollY alors que c'est <main> (AppShell)
+  qui defile, donc elle ne s'affiche jamais dans l'app.
 
 FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server + ProfileClient]
   Fetch profil approuve + roles + projets + credits. Bouton contact + partage.
   [utilise] ProfileClient, VideoEmbed, ContactModal, ReportModal
+  Verre liquide (chantier 4) : colonne gauche en panneau .glass (toujours lg:sticky), avatar
+  112 px avec halo citron, Badge Disponible / Recruteur verifie (pas de badge Pro : `plan` n'est
+  pas expose au client par page.tsx), metiers en Chip, filtre de categories en Chip.
 
 FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server + ProjetClient]
-  Video plein ecran, equipe, projets lies. [utilise] VideoEmbed
+  Image hero + video en modale plein ecran, equipe, projets lies. [utilise] VideoEmbed
+  Verre liquide (chantier 4) : hero en panneau rounded-panel dans le conteneur (plus bord a bord),
+  cartes d'equipe, fiche technique et carte createur en GlassCard. Equipe et projets lies restent
+  empiles (pas d'onglets). Reserve la barre mobile via .pb-tabbar (ex paddingBottom 120 en dur).
+
+FEATURE  Recherche — voir ci-dessous. Verre liquide (chantier 4) : bascule Parcourir / Rechercher,
+  filtres et metiers en Chip, champ de recherche .glass, tuiles de categorie rounded-panel,
+  resultats en GlassCard.
 
 FEATURE  Recherche — /recherche (src/app/(app)/recherche/) [+ RechercheClient]
   Recherche debounced, filtres role/categorie/localisation. [declenche] GET /api/search
@@ -219,7 +236,13 @@ UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte vi
          [depend de] tokens et utilitaires de globals.css (.glass, .glass-strong, .btn-accent,
          .press-spring, rounded-card/panel/pill, duration-fast/slow, ease-glass)
          Button [utilise] framer-motion (appui ressort, useReducedMotion)
-         Pas encore consommees par les pages : seule la vitrine /dev/ui les utilise.
+         Consommees depuis le chantier 4 (07/10/2026) par Feed (ConversionBanner, page), Profil
+         public (ProfileClient), Page projet (ProjetClient), Recherche (RechercheClient), et par
+         la vitrine /dev/ui. Limites connues, contournees localement dans ces pages : Button ne
+         rend pas de lien (HeroCarousel recopie ses classes sur des <Link>) et n'a pas de taille ;
+         Chip est toujours un bouton (metiers du profil en Chip disabled) ; Badge n'a pas de
+         variante neutre ni a couleur libre ; Field n'a ni icone, ni textarea (champ de recherche
+         et textareas styles a la main).
 UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — HORS groupe (app),
          notFound() si NODE_ENV=production (donc 404 aussi sur les previews Vercel), non liee.
 ```

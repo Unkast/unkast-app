@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { FadeInView } from "@/components/motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { cardSpring, enterFade, enterUp } from "@/components/motion";
 import type { ReactNode } from "react";
 
 export function HeroContent({ children }: { children: ReactNode }) {
@@ -17,20 +17,29 @@ export function HeroContent({ children }: { children: ReactNode }) {
   );
 }
 
-export function Section({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
+// Entree au scroll (une seule fois), memes variantes que EnterItem
+export function Section({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion();
   return (
-    <FadeInView delay={delay}>
+    <motion.div
+      variants={reduced ? enterFade : enterUp}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "0px 0px -40px 0px" }}
+    >
       {children}
-    </FadeInView>
+    </motion.div>
   );
 }
 
+// Legere elevation au survol
 export function AnimatedCard({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion();
   return (
     <motion.div
-      whileHover={{ scale: 1.03, y: -4 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+      whileHover={reduced ? undefined : { y: -4 }}
+      whileTap={reduced ? undefined : { scale: 0.98 }}
+      transition={cardSpring}
     >
       {children}
     </motion.div>

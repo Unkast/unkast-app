@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import { Section, AnimatedCard } from "./HomeAnimations";
 import Avatar from "@/components/Avatar";
+import GlassCard from "@/components/ui/GlassCard";
 import HeroCarousel from "./HeroCarousel";
 import ConversionBanner from "./ConversionBanner";
 
@@ -178,19 +179,19 @@ export default async function Home() {
       {/* CONTENT ROWS */}
       <div className="space-y-8 lg:space-y-12 py-6 lg:py-10">
         {recent.length > 5 && (
-          <Section delay={0}>
+          <Section>
             <ProjectRow title="Projets récents" href="/recherche?type=projets" items={recent.slice(5)} />
           </Section>
         )}
 
-        {categoryRows.map((row, i) => (
-          <Section key={row.title} delay={(i + 1) * 0.1}>
+        {categoryRows.map((row) => (
+          <Section key={row.title}>
             <ProjectRow {...row} />
           </Section>
         ))}
 
         {talents.length > 0 && (
-          <Section delay={(categoryRows.length + 1) * 0.1}>
+          <Section>
             <section className="glow-lime px-5 sm:px-8 lg:px-12 xl:px-16">
               <div className="flex items-end justify-between mb-3 lg:mb-4">
                 <h2 className="text-[15px] lg:text-xl font-bold text-text-primary tracking-tight">Talents à découvrir</h2>
@@ -199,13 +200,14 @@ export default async function Home() {
                   <span className="transition-transform duration-300 group-hover/all:translate-x-0.5">→</span>
                 </Link>
               </div>
-              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pb-1">
+              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pt-2 -mt-2 pb-6 -mb-5">
                 {talents.map((talent) => (
                   <AnimatedCard key={talent.id}>
                     <Link
                       href={`/profil/${talent.slug}`}
-                      className="flex-shrink-0 w-48 lg:w-56 bg-white/[0.03] border border-white/5 rounded-xl p-3.5 lg:p-4 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 group block"
+                      className="flex-shrink-0 w-48 lg:w-56 group block"
                     >
+                      <GlassCard className="h-full p-3.5 lg:p-4 transition-colors duration-base group-hover:border-white/20">
                       <div className="flex items-center gap-2.5 mb-2.5">
                         <Avatar url={talent.avatar_url} name={talent.full_name} size={40} shape="rounded" style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
                         <div className="min-w-0">
@@ -222,7 +224,7 @@ export default async function Home() {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {talent.roles.slice(0, 2).map((role) => (
-                          <span key={role} className="px-2 py-0.5 rounded-full bg-lime/8 text-lime text-[9px] font-semibold">
+                          <span key={role} className="px-2 py-0.5 rounded-pill border border-lime/20 bg-lime/10 text-lime text-[9px] font-semibold">
                             {role}
                           </span>
                         ))}
@@ -230,6 +232,7 @@ export default async function Home() {
                       <p className="text-[10px] text-text-tertiary mt-2">
                         {talent.project_count} projet{talent.project_count > 1 ? "s" : ""}
                       </p>
+                      </GlassCard>
                     </Link>
                   </AnimatedCard>
                 ))}
@@ -256,14 +259,14 @@ function ProjectRow({ title, href, items }: ContentRow) {
           <span className="transition-transform duration-300 group-hover/all:translate-x-0.5">→</span>
         </Link>
       </div>
-      <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pb-1">
+      <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pt-2 -mt-2 pb-6 -mb-5">
         {items.map((project) => {
           const catColor = CATEGORY_COLORS[project.category];
           return (
             <AnimatedCard key={project.id}>
               <Link href={`/projet/${project.slug}`} className="flex-shrink-0 w-60 sm:w-72 lg:w-80 group block">
                 <div
-                  className="relative w-full bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden group-hover:border-white/10 group-hover:bg-white/[0.05] group-hover:shadow-2xl group-hover:shadow-black/50 transition-all duration-300"
+                  className="glass relative w-full rounded-media overflow-hidden shadow-xl shadow-black/50 group-hover:border-white/20 group-hover:shadow-2xl group-hover:shadow-black/70 transition-[border-color,box-shadow] duration-base ease-glass"
                   style={{ aspectRatio: "16/9" }}
                 >
                   {project.preview_url ? (
@@ -291,17 +294,15 @@ function ProjectRow({ title, href, items }: ContentRow) {
                       </svg>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="w-11 h-11 rounded-full bg-white/90 flex items-center justify-center shadow-lg shadow-black/30">
-                      <svg className="w-4 h-4 text-[#0d0d0d] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <div className="absolute inset-0 bg-black/30 transition-opacity duration-base flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="glass-strong w-11 h-11 rounded-pill flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
                   </div>
-                  <span
-                    className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase"
-                    style={{ backgroundColor: catColor + "20", color: catColor }}
-                  >
+                  <span className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill border border-white/10 bg-black/50 text-white/90 text-[9px] font-bold tracking-wide uppercase">
+                    <span className="size-1.5 rounded-full" style={{ backgroundColor: catColor }} />
                     {CATEGORY_LABELS[project.category]}
                   </span>
                 </div>

@@ -10,7 +10,7 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/AppShell.tsx`
 - **Role** : Shell principal de l'app (sidebar desktop, navigation mobile `LiquidDock` ou `MobileTabBar` selon `html.app-installed`, header)
-- **Hauteur reservee en bas (mobile)** : app installee, le dock monte a 88 px + safe area (collerette comprise) : les pages reservent 56 px (`.pb-tabbar`), `<main>` ajoute 36 px. Navigateur, la barre plate fait 56 px + safe area : `.pb-tabbar` suffit. Exception : `/messages/[id]`, ou le dock est masque et la page ne reserve que la safe area (`.safe-bottom`). Les elements `fixed` en bas des pages doivent se placer au-dessus de cette hauteur (`ConversionBanner` en `bottom-16` et la barre de `RecruitmentSpace` en `bottom: 90` datent de l'ancienne tab bar)
+- **Hauteur reservee en bas (mobile)** : app installee, le dock monte a 88 px + safe area (collerette comprise) : les pages reservent 56 px (`.pb-tabbar`), `<main>` ajoute 36 px. Navigateur, la barre plate fait 56 px + safe area : `.pb-tabbar` suffit. Exception : `/messages/[id]`, ou le dock est masque et la page ne reserve que la safe area (`.safe-bottom`). Les elements `fixed` en bas des pages doivent se placer au-dessus de cette hauteur (`ConversionBanner` est aligne depuis le chantier 4 : 68 px + safe area en navigateur, 100 px + safe area en app installee ; la barre de `RecruitmentSpace` en `bottom: 90` date de l'ancienne tab bar). `<main>` ne reserve PAS la barre : chaque page garde `.pb-tabbar` sur son wrapper racine (Feed, Profil, Projet, Recherche, Categories, Dashboard)
 - **Consommateurs** : TOUTES les pages du groupe (via `src/app/(app)/layout.tsx`). `/admin` n'en fait **plus** partie (espace separe `src/app/admin/` depuis le 07/08/2026, layout propre sans AppShell)
 - **Risque si modifie** : **CRITIQUE** — casse la navigation de toute l'app
 - **Note admin** : le menu utilisateur desktop affiche un lien « Administration » si `is_admin` (fetch `GET /api/me` au montage quand connecte — affichage seulement, la garde reelle est le layout serveur de `/admin`)
@@ -26,8 +26,16 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/motion.tsx`
 - **Role** : Primitives d'animation partagees
-- **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `ContactModal`, `dev/ui/UiShowcase`
+- **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `RechercheClient`, `ContactModal`, `dev/ui/UiShowcase`
 - **Risque si modifie** : **ELEVE** — affecte les animations de 4+ pages
+- **Point d'attention** : `EnterItem` laisse un `filter: blur(0px)` en ligne apres l'entree ; un `.glass` enfant peut alors ne plus flouter les halos du fond. Dans le doute, poser le verre sur l'element anime lui-meme
+
+## ui/ (Button, Chip, Badge, GlassCard, Field)
+
+- **Fichiers** : `src/components/ui/*`
+- **Role** : briques du style verre liquide
+- **Consommateurs** (chantier 4, 07/10/2026) : `Button` → `ConversionBanner`, `ProfileClient`, `ProjetClient` ; `Chip` → `ProfileClient`, `RechercheClient` ; `Badge` → `ProfileClient`, `RechercheClient` ; `GlassCard` → `feed/page`, `ProjetClient`, `RechercheClient` ; toutes → `dev/ui/UiShowcase`. `HeroCarousel` recopie les classes de `Button` sur des `<Link>`
+- **Risque si modifie** : **ELEVE** — change le rendu de Feed, Profil, Projet et Recherche
 - **Ajouts du 07/10/2026 (verre liquide, purement additifs)** : `cardSpring`, `listStagger`, `enterUp`, `enterFade`, `EnterList`, `EnterItem`
 
 ## globals.css (tokens, utilitaires verre, regle reduced motion)
