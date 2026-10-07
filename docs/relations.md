@@ -29,7 +29,7 @@
 | `motion.tsx` | [utilise] | `framer-motion` |
 | `layout.tsx` (racine) | [depend de] | `globals.css` (`.bg-canvas-halos` sur le `body`) |
 | `ui/*` (Button, Chip, Badge, GlassCard, Field, ProgressSteps) | [depend de] | `globals.css` (tokens et utilitaires verre) |
-| `ui/Button` | [utilise] | `framer-motion` (whileTap, useReducedMotion) |
+| `ui/Button` | [utilise] | `framer-motion` (whileTap, useReducedMotion), `next/link` (prop `href`) |
 | `dev/ui/UiShowcase` | [utilise] | `ui/*`, `motion.tsx` (EnterList, EnterItem, cardSpring) |
 | --- | --- | --- |
 | **Feed** | | |
@@ -48,7 +48,9 @@
 | `HomeAnimations` | [utilise] | `motion.tsx` (enterUp, enterFade, cardSpring) |
 | `(app)/feed/page.tsx` | [utilise] | `ui/GlassCard` |
 | `ConversionBanner` | [utilise] | `ui/Button` |
-| `ConversionBanner` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
+| `HeroCarousel` | [utilise] | `ui/Button` (liens) |
+| `ConversionBanner` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`, defilement du `<main>`) |
+| `AppShell` (`<main>`) | [depend de] | `globals.css` (`.pb-tabbar` : reserve de la navigation mobile pour toutes les pages) |
 | --- | --- | --- |
 | **Profil public** | | |
 | `profil/[slug]/page.tsx` | [utilise] | `ProfileClient` |
@@ -61,7 +63,8 @@
 | `ProfileClient` | [utilise] | `VideoEmbed` |
 | `ProfileClient` | [utilise] | `ContactModal` |
 | `ProfileClient` | [utilise] | `motion.tsx` (EnterList, EnterItem, enterUp, enterFade, cardSpring) |
-| `ProfileClient` | [utilise] | `ui/Button`, `ui/Chip`, `ui/Badge` |
+| `ProfileClient` | [utilise] | `ui/Button`, `ui/Chip`, `ui/Badge`, `ui/Field` |
+| `ProfileClient` | [utilise] | `VideoFacade` |
 | `ProfileClient` | [utilise] | `framer-motion` |
 | --- | --- | --- |
 | **Page projet** | | |
@@ -74,14 +77,15 @@
 | `projet/[slug]/page.tsx` | [persiste dans] | `project_credits` (lecture) |
 | `ProjetClient` | [utilise] | `VideoEmbed` |
 | `ProjetClient` | [utilise] | `motion.tsx` (EnterList, EnterItem, ModalBackdrop) |
-| `ProjetClient` | [utilise] | `ui/Button`, `ui/GlassCard` |
+| `ProjetClient` | [utilise] | `ui/Button`, `ui/Badge`, `ui/Field`, `ui/GlassCard` |
 | --- | --- | --- |
 | **Recherche** | | |
 | `RechercheClient` | [declenche] | `GET /api/search` |
 | `RechercheClient` | [utilise] | `constants.ts` |
 | `RechercheClient` | [utilise] | `framer-motion` |
 | `RechercheClient` | [utilise] | `motion.tsx` (EnterList, EnterItem) |
-| `RechercheClient` | [utilise] | `ui/Badge`, `ui/Chip`, `ui/GlassCard` |
+| `RechercheClient` | [utilise] | `ui/Badge`, `ui/Chip`, `ui/Field`, `ui/GlassCard` |
+| `loading.tsx` (feed, profil, projet, recherche) | [utilise] | `skeletons/*` (cales sur la mise en page de chaque page) |
 | `GET /api/search` | [persiste dans] | `profiles` (lecture) |
 | `GET /api/search` | [persiste dans] | `profile_roles` (lecture) |
 | `GET /api/search` | [persiste dans] | `projects` (lecture) |

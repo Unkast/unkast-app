@@ -118,15 +118,20 @@ h1, h2, h3 {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Reserve la hauteur de la tab bar mobile d'AppShell (position fixed : h-14 = 56px
-   + env(safe-area-inset-bottom)). Sans ca le bas de la page passe DERRIERE la barre.
-   Un pb-16 (64px) en dur suffisait sur Android sans geste, mais pas sur un appareil
-   a home indicator ou la safe area vaut ~34px. Neutralise en desktop (tab bar lg:hidden). */
+/* Reserve la hauteur de la navigation mobile d'AppShell (position fixed). Posee UNE fois,
+   sur le <main> d'AppShell : les pages n'ont plus rien a reserver. Barre plate du navigateur :
+   56px + env(safe-area-inset-bottom). Dock de l'app installee : 88px (collerette comprise)
+   + 4px d'air. Sans ca le bas de la page passe DERRIERE la navigation.
+   Neutralise en desktop (navigation lg:hidden). */
 .pb-tabbar {
   padding-bottom: calc(56px + env(safe-area-inset-bottom, 8px));
 }
+.app-installed .pb-tabbar {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom, 8px));
+}
 @media (min-width: 1024px) {
-  .pb-tabbar {
+  .pb-tabbar,
+  .app-installed .pb-tabbar {
     padding-bottom: 0;
   }
 }

@@ -1,6 +1,6 @@
 export default function CategoryLoading() {
   return (
-    <div className="pb-tabbar">
+    <div>
       <style>{`@keyframes skeleton-pulse { 0%,100%{opacity:0.4} 50%{opacity:0.15} }`}</style>
       <div className="px-5 pt-5 pb-4">
         <div style={{ width: 140, height: 22, background: "#1a1a1a", borderRadius: 6, animation: "skeleton-pulse 1.5s ease infinite" }} />

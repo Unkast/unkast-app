@@ -95,7 +95,7 @@ export default function ConnexionClient() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-      <div className="pb-16 lg:pb-0">
+      <div>
         <main className="max-w-sm mx-auto w-full px-4 sm:px-6 py-12 sm:py-20">
           <h1 className="text-2xl font-extrabold tracking-tight text-text-primary mb-1">
             Connexion

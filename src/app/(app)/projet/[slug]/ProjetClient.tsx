@@ -10,6 +10,8 @@ import VideoEmbed from "@/components/VideoEmbed";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList, ModalBackdrop } from "@/components/motion";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
+import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import ReportModal from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
@@ -39,8 +41,6 @@ function initials(name: string) {
 
 const SEPARATOR = "h-px bg-white/[0.06] my-5";
 const SECTION_TITLE = "text-base font-semibold text-text-primary";
-const INFO_PILL = "glass rounded-pill px-3 py-1 text-xs text-text-secondary";
-const PENDING_BADGE = "inline-block rounded-pill border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 font-mono text-[11px] text-yellow-400";
 const PLAY_ICON = "M8 5v14l11-7z";
 
 export default function ProjetClient({ project, relatedProjects, categoryLabels, categoryColors }: Props) {
@@ -123,7 +123,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
   return (
     <>
-      <EnterList className="pb-tabbar">
+      <EnterList>
         <div className="mx-auto w-full max-w-[1280px] px-5 lg:px-12 pt-3 lg:pt-6">
         {/* Banner for pending/refused */}
         {project.status && project.status !== "approved" && (
@@ -197,13 +197,13 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
           {/* Pills */}
           <div className="mb-5 flex flex-wrap gap-2">
-            <span className={INFO_PILL}>{categoryLabels[project.category]}</span>
-            <span className={INFO_PILL}>{project.year}</span>
-            <span className={INFO_PILL}>{project.credits.length} talent{project.credits.length !== 1 ? "s" : ""}</span>
+            <Badge variant="neutral">{categoryLabels[project.category]}</Badge>
+            <Badge variant="neutral">{project.year}</Badge>
+            <Badge variant="neutral">{project.credits.length} talent{project.credits.length !== 1 ? "s" : ""}</Badge>
           </div>
 
           {/* Regarder button */}
-          <Button onClick={() => setShowVideo(true)} className="mb-6 min-h-12! w-full text-[15px]!">
+          <Button size="lg" onClick={() => setShowVideo(true)} className="mb-6 w-full">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={PLAY_ICON} /></svg>
             Regarder
           </Button>
@@ -352,7 +352,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
           {showCreditButton && (
             <>
               <div className={SEPARATOR} />
-              <Button variant="glass" onClick={() => setShowCreditModal(true)} className="w-full border-dashed border-lime/30 font-mono text-[13px]! font-normal! text-lime!">
+              <Button variant="dashed" size="sm" onClick={() => setShowCreditModal(true)} className="w-full font-mono">
                 + J&apos;ai participe a ce projet
               </Button>
             </>
@@ -360,7 +360,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
           {creditStatus.hasPendingRequest && (
             <div className="mt-4 text-center">
-              <span className={PENDING_BADGE}>Demande en attente</span>
+              <Badge variant="pending">Demande en attente</Badge>
             </div>
           )}
           </EnterItem>
@@ -384,7 +384,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
             {/* Regarder */}
             <EnterItem>
-            <Button onClick={() => setShowVideo(true)} className="min-h-12! w-full">
+            <Button size="lg" onClick={() => setShowVideo(true)} className="w-full">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d={PLAY_ICON} /></svg>
               Regarder
             </Button>
@@ -407,13 +407,13 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
 
             {/* Crédit + statut */}
             {showCreditButton && (
-              <Button variant="glass" onClick={() => setShowCreditModal(true)} className="w-full border-dashed border-lime/30 font-mono text-[13px]! font-normal! text-lime!">
+              <Button variant="dashed" size="sm" onClick={() => setShowCreditModal(true)} className="w-full font-mono">
                 + J&apos;ai participé à ce projet
               </Button>
             )}
             {creditStatus.hasPendingRequest && (
               <div className="text-center">
-                <span className={PENDING_BADGE}>Demande en attente</span>
+                <Badge variant="pending">Demande en attente</Badge>
               </div>
             )}
           </aside>
@@ -476,10 +476,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                     placeholder="Ton rôle dans ce projet..."
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Message <span className="text-text-tertiary">({creditMessage.length}/300)</span></label>
-                  <textarea rows={3} maxLength={300} value={creditMessage} onChange={(e) => setCreditMessage(e.target.value)} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-card text-text-primary text-base placeholder:text-text-tertiary focus:outline-none focus:ring-3 focus:ring-lime/30 transition resize-none" placeholder="Dis-lui comment tu as contribue..." />
-                </div>
+                <Field multiline rows={3} maxLength={300} label={<>Message <span className="text-text-tertiary">({creditMessage.length}/300)</span></>} value={creditMessage} onChange={(e) => setCreditMessage(e.target.value)} placeholder="Dis-lui comment tu as contribue..." />
               </div>
               <div className="flex gap-3 mt-5">
                 <Button onClick={submitCreditRequest} disabled={!creditRole || creditSending} className="flex-1">

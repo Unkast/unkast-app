@@ -660,13 +660,12 @@ export default function AppShell({
           </div>
         </header>
 
-        {/* pb mobile, app installee seulement : le dock (marge 10 + barre 56 + collerette 22
-            au-dessus = 88 px) est plus haut que les 56 px que reservent deja les pages
-            (.pb-tabbar) ; ces 36 px comblent l'ecart. La barre plate du navigateur fait
-            exactement 56 px : rien a ajouter. Dans une conversation, la navigation est
-            masquee et la page occupe toute la hauteur sans defiler elle-meme (seule la
-            liste des messages defile). */}
-        <main className={`flex-1 overflow-y-auto ${inConversation ? "max-lg:overflow-hidden" : "max-lg:[.app-installed_&]:pb-9"}`}>
+        {/* .pb-tabbar (globals.css) reserve ici, pour toutes les pages, la hauteur de la
+            navigation mobile : 56 px pour la barre plate du navigateur, 92 px pour le dock
+            de l'app installee (marge 10 + barre 56 + collerette 22 = 88 px, + 4 px d'air).
+            Dans une conversation, la navigation est masquee et la page occupe toute la
+            hauteur sans defiler elle-meme (seule la liste des messages defile). */}
+        <main className={`flex-1 overflow-y-auto ${inConversation ? "max-lg:overflow-hidden" : "pb-tabbar"}`}>
           {children}
         </main>
       </div>

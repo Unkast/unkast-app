@@ -98,7 +98,7 @@ export function ModalBackdrop({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-        className="bg-card border border-white/5 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="glass-strong bg-glass-solid/80 rounded-panel w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -115,16 +115,18 @@ export const listStagger: Variants = {
   show: { transition: { staggerChildren: 0.08 } },
 };
 
+// transitionEnd : l'entree finit sur filter: none. Un blur(0px) residuel ferait de
+// l'element un fond isole, et le backdrop-filter d'un .glass enfant ne verrait plus les halos.
 export const enterUp: Variants = {
   hidden: { opacity: 0, y: 18, filter: "blur(8px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.45, ease: [0.2, 0.8, 0.2, 1] } },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" }, transition: { duration: 0.45, ease: [0.2, 0.8, 0.2, 1] } },
 };
 
 // Reduced motion : fondu seul. Memes cles que enterUp pour que framer reecrive
 // transform/filter si le HTML serveur a ete rendu avec l'etat cache de enterUp.
 export const enterFade: Variants = {
   hidden: { opacity: 0, y: 0, filter: "blur(0px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.15 } },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" }, transition: { duration: 0.15 } },
 };
 
 // Liste dont les EnterItem entrent avec 80 ms de decalage

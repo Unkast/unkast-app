@@ -1,36 +1,46 @@
+const BAR = "rounded bg-white/[0.07]";
+
+// Cale sur ProjetClient : hero en panneau arrondi, colonne principale + sidebar desktop.
 export default function ProjectSkeleton() {
   return (
-    <div className="animate-pulse pb-16">
-      {/* Video hero */}
-      <div className="w-full h-[260px] bg-[#1a1a1a]" />
+    <div className="mx-auto w-full max-w-[1280px] animate-pulse px-5 pt-3 lg:px-12 lg:pt-6">
+      {/* Hero */}
+      <div className="h-[260px] w-full rounded-panel border border-white/10 bg-white/[0.04] lg:h-[440px]" />
 
-      <div className="px-5 sm:px-8 py-6 space-y-4">
-        {/* Category badge */}
-        <div className="h-5 w-20 bg-[#1a1a1a] rounded-full" />
-        {/* Title */}
-        <div className="h-6 w-64 bg-[#1a1a1a] rounded" />
-        {/* Subtitle */}
-        <div className="h-4 w-40 bg-[#1a1a1a] rounded" />
-        {/* Description */}
-        <div className="space-y-2 pt-2">
-          <div className="h-3 w-full bg-[#1a1a1a] rounded" />
-          <div className="h-3 w-4/5 bg-[#1a1a1a] rounded" />
-          <div className="h-3 w-3/5 bg-[#1a1a1a] rounded" />
-        </div>
-        {/* Action button */}
-        <div className="h-12 w-full bg-[#1a1a1a] rounded-xl mt-4" />
-        {/* Team section */}
-        <div className="pt-6 space-y-3">
-          <div className="h-4 w-24 bg-[#1a1a1a] rounded" />
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1a1a1a] rounded-full" />
-              <div className="space-y-1.5">
-                <div className="h-3.5 w-28 bg-[#1a1a1a] rounded" />
-                <div className="h-3 w-20 bg-[#1a1a1a] rounded" />
-              </div>
+      <div className="pb-6 lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-10 lg:pb-12 lg:pt-8">
+        <div className="min-w-0">
+          {/* Titre + pastilles + Regarder (mobile) */}
+          <div className="lg:hidden">
+            <div className={`mb-2 mt-5 h-3 w-36 ${BAR}`} />
+            <div className={`mb-3.5 h-8 w-56 ${BAR}`} />
+            <div className="mb-5 flex gap-2">
+              <div className="h-6 w-24 rounded-pill bg-white/[0.07]" />
+              <div className="h-6 w-14 rounded-pill bg-white/[0.07]" />
             </div>
-          ))}
+            <div className="mb-6 h-12 w-full rounded-pill bg-white/[0.07]" />
+          </div>
+
+          {/* Synopsis */}
+          <div className={`mb-3 h-5 w-24 ${BAR}`} />
+          <div className="mb-8 space-y-2">
+            <div className={`h-3 w-full ${BAR}`} />
+            <div className={`h-3 w-4/5 ${BAR}`} />
+          </div>
+
+          {/* Equipe */}
+          <div className={`mb-3 h-5 w-20 ${BAR}`} />
+          <div className="flex gap-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="glass h-[122px] w-[104px] rounded-card" />
+            ))}
+          </div>
+        </div>
+
+        {/* Sidebar desktop : fiche technique, Regarder, createur */}
+        <div className="hidden space-y-4 lg:block">
+          <div className="glass h-[150px] rounded-card" />
+          <div className="h-12 w-full rounded-pill bg-white/[0.07]" />
+          <div className="glass h-[86px] rounded-card" />
         </div>
       </div>
     </div>

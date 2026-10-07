@@ -447,7 +447,7 @@ export default function MoiClient() {
           </button>
         </div>
 
-        <div style={{ padding: "0 16px", paddingBottom: 120 }}>
+        <div style={{ padding: "0 16px", paddingBottom: 64 }}>
           {/* PHOTO */}
           <p style={sectionHeader}>Photo</p>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "8px 0" }}>
@@ -648,7 +648,7 @@ export default function MoiClient() {
         )}
       </AnimatePresence>
 
-      <div style={{ paddingBottom: 120 }}>
+      <div style={{ paddingBottom: 64 }}>
         {/* Tabs */}
         <div style={{ display: "flex", gap: 0, padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }} className="no-scrollbar mx-auto w-full max-w-2xl">
           {(([

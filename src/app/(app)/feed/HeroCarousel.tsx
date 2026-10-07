@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import Button from "@/components/ui/Button";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
@@ -35,7 +36,6 @@ const POSITIONS = [
 ];
 
 // Memes classes que ui/Button, mais sur des liens (Button ne rend qu'un <button>)
-const BTN = "inline-flex min-h-11 items-center justify-center gap-2 rounded-pill px-5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime";
 const PILL = "glass inline-flex h-7 items-center gap-2 rounded-pill px-3 text-xs text-text-secondary";
 
 export default function HeroCarousel({ projects }: HeroCarouselProps) {
@@ -225,13 +225,13 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
           </div>
 
           <div className="flex gap-2">
-            <Link href={`/projet/${active.slug}`} className={`${BTN} btn-accent flex-1`}>
+            <Button href={`/projet/${active.slug}`} className="flex-1">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
               Voir le film
-            </Link>
-            <Link href={`/profil/${active.owner_slug}`} className={`${BTN} glass text-text-primary max-w-[160px]`}>
+            </Button>
+            <Button variant="glass" href={`/profil/${active.owner_slug}`} className="max-w-[160px]">
               <span className="truncate">{active.owner_name}</span>
-            </Link>
+            </Button>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -299,19 +299,13 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <Link
-                href={`/projet/${active.slug}`}
-                className={`${BTN} btn-accent`}
-              >
+              <Button href={`/projet/${active.slug}`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 Voir le film
-              </Link>
-              <Link
-                href={`/profil/${active.owner_slug}`}
-                className={`${BTN} glass text-text-primary max-w-[220px] hover:border-white/20`}
-              >
+              </Button>
+              <Button variant="glass" href={`/profil/${active.owner_slug}`} className="max-w-[220px]">
                 <span className="truncate">{active.owner_name}</span>
-              </Link>
+              </Button>
             </div>
           </motion.div>
         </AnimatePresence>

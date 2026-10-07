@@ -1,31 +1,40 @@
+const BAR = "rounded bg-white/[0.07]";
+
+// Cale sur ProfileClient : panneau verre a gauche (avatar 112 px), cartes projet a droite.
 export default function ProfileSkeleton() {
   return (
-    <div className="animate-pulse pb-16 px-5 sm:px-8 pt-6">
-      {/* Avatar + name */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-[88px] h-[88px] bg-[#1a1a1a] rounded-full" />
-        <div className="space-y-2">
-          <div className="h-5 w-40 bg-[#1a1a1a] rounded" />
-          <div className="h-3 w-24 bg-[#1a1a1a] rounded" />
+    <div className="mx-auto flex w-full max-w-[1600px] animate-pulse flex-col px-4 py-4 sm:px-6 sm:py-6 lg:flex-row lg:items-start lg:gap-12 lg:px-12 lg:py-10 xl:px-16">
+      {/* Panneau profil */}
+      <div className="glass mb-8 rounded-panel p-5 sm:p-6 lg:mb-0 lg:w-80 lg:shrink-0">
+        <div className="mb-5 size-28 rounded-full bg-white/[0.07]" />
+        <div className={`mb-4 h-8 w-48 ${BAR}`} />
+        <div className="mb-4 flex gap-2">
+          <div className="h-9 w-28 rounded-pill bg-white/[0.07]" />
+          <div className="h-9 w-24 rounded-pill bg-white/[0.07]" />
         </div>
+        <div className="mb-6 space-y-2">
+          <div className={`h-3 w-full ${BAR}`} />
+          <div className={`h-3 w-4/5 ${BAR}`} />
+          <div className={`h-3 w-2/3 ${BAR}`} />
+        </div>
+        <div className="h-11 w-full max-w-[240px] rounded-pill bg-white/[0.07]" />
       </div>
-      {/* Role pills */}
-      <div className="flex gap-2 mb-4">
-        <div className="h-7 w-20 bg-[#1a1a1a] rounded-full" />
-        <div className="h-7 w-24 bg-[#1a1a1a] rounded-full" />
-      </div>
-      {/* Bio */}
-      <div className="space-y-2 mb-6">
-        <div className="h-3 w-full bg-[#1a1a1a] rounded" />
-        <div className="h-3 w-4/5 bg-[#1a1a1a] rounded" />
-        <div className="h-3 w-2/3 bg-[#1a1a1a] rounded" />
-      </div>
-      {/* Projects */}
-      <div className="h-4 w-28 bg-[#1a1a1a] rounded mb-4" />
-      <div className="grid grid-cols-2 gap-3">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="bg-[#1a1a1a] rounded-xl" style={{ aspectRatio: "16/9" }} />
-        ))}
+
+      {/* Projets */}
+      <div className="min-w-0 flex-1">
+        <div className={`mb-4 h-7 w-28 ${BAR}`} />
+        <div className="grid grid-cols-1 items-start gap-8 xl:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="glass overflow-hidden rounded-media">
+              <div className="aspect-video w-full bg-white/[0.04]" />
+              <div className="space-y-3 p-5 sm:p-6">
+                <div className={`h-5 w-40 ${BAR}`} />
+                <div className={`h-3 w-full ${BAR}`} />
+                <div className={`h-3 w-3/4 ${BAR}`} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

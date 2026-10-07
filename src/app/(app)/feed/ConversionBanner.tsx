@@ -24,20 +24,27 @@ export default function ConversionBanner() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) return;
+    // C'est le <main> d'AppShell qui defile (premier <main> du document), pas window
+    const scroller = document.querySelector("main");
+    if (!scroller) return;
 
-      // Listen for scroll after auth check
-      function handleScroll() {
-        if (window.scrollY > 300 && !sessionStorage.getItem("unkast_banner_dismissed")) {
-          setVisible(true);
-        }
+    function handleScroll() {
+      if (scroller!.scrollTop > 300 && !sessionStorage.getItem("unkast_banner_dismissed")) {
+        setVisible(true);
       }
+    }
 
-      window.addEventListener("scroll", handleScroll, { passive: true });
-      // Cleanup
-      return () => window.removeEventListener("scroll", handleScroll);
+    // Listen for scroll after auth check
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user || cancelled) return;
+      scroller.addEventListener("scroll", handleScroll, { passive: true });
     });
+
+    return () => {
+      cancelled = true;
+      scroller.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   function handleDismiss() {
@@ -77,7 +84,7 @@ export default function ConversionBanner() {
             </div>
 
             {/* Right: CTA button */}
-            <Button onClick={() => router.push("/rejoindre")} className="shrink-0 px-4! text-[13px]!">
+            <Button size="sm" onClick={() => router.push("/rejoindre")} className="shrink-0">
               S&apos;inscrire →
             </Button>
 

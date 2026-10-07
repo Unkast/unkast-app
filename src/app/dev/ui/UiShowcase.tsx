@@ -23,6 +23,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export default function UiShowcase() {
   const [filter, setFilter] = useState(FILTERS[0]);
+  const [search, setSearch] = useState("");
   const [step, setStep] = useState(0);
   const [listKey, setListKey] = useState(0);
 
@@ -42,6 +43,12 @@ export default function UiShowcase() {
           </Button>
           <Button disabled>Désactivé</Button>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button size="sm">Petit</Button>
+          <Button size="lg">Grand</Button>
+          <Button variant="dashed" size="sm">Pointillé</Button>
+          <Button variant="glass" href="/dev/ui">Lien</Button>
+        </div>
       </Section>
 
       <Section title="Chip">
@@ -51,6 +58,7 @@ export default function UiShowcase() {
               {f}
             </Chip>
           ))}
+          <Chip variant="static">Statique</Chip>
         </div>
       </Section>
 
@@ -59,6 +67,8 @@ export default function UiShowcase() {
           <Badge variant="verified" />
           <Badge variant="pro" />
           <Badge variant="available" />
+          <Badge variant="neutral">Neutre</Badge>
+          <Badge variant="pending" />
         </div>
       </Section>
 
@@ -75,6 +85,20 @@ export default function UiShowcase() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nom de scène" placeholder="Ex : J.M. Vision" />
           <Field label="Email" type="email" placeholder="contact@exemple.com" />
+          <Field multiline rows={3} label="Message" placeholder="Quelques mots..." />
+          <Field
+            size="lg"
+            aria-label="Rechercher"
+            placeholder="Nom, métier, ville..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            }
+          />
         </div>
       </Section>
 

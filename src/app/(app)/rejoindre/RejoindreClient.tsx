@@ -308,7 +308,7 @@ export default function RejoindreClient() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-      <div className="pb-16 lg:pb-0">
+      <div>
         <main className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
           {/* Progress bar */}
           {step < 5 && (

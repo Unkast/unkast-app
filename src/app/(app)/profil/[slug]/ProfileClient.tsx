@@ -8,6 +8,7 @@ import { EnterList, EnterItem, enterUp, enterFade, cardSpring } from "@/componen
 import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
 import Badge from "@/components/ui/Badge";
+import Field from "@/components/ui/Field";
 import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoFacade from "@/components/VideoFacade";
 import Avatar from "@/components/Avatar";
@@ -246,7 +247,7 @@ export default function ProfileClient({
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-tabbar">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
       <style>{`@keyframes recruiting-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }`}</style>
       <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-4 sm:py-6 lg:py-10">
         <EnterList className="flex flex-col lg:flex-row lg:gap-12 lg:items-start">
@@ -269,7 +270,7 @@ export default function ProfileClient({
             {/* Roles */}
             <div className="flex flex-wrap gap-2 mb-4">
               {profile.roles.map((role) => (
-                <Chip key={role.id} disabled className="cursor-default">
+                <Chip key={role.id} variant="static">
                   {role.role_name}
                 </Chip>
               ))}
@@ -461,14 +462,12 @@ export default function ProfileClient({
                   const isExpanded = expandedCredits.has(project.id);
 
                   return (
-                    // Bouton lecture en verre : surcharge locale du dernier <span> de
-                    // VideoFacade (styles inline, composant hors périmètre).
                     <motion.article
                       key={project.id}
                       variants={reduced ? enterFade : enterUp}
                       whileHover={reduced ? undefined : { y: -4 }}
                       transition={cardSpring}
-                      className="glass rounded-media overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_50px_rgba(0,0,0,0.5)] hover:border-white/20 transition-[border-color]! duration-base! [&>button>span:last-child]:bg-white/10! [&>button>span:last-child]:border-white/25! [&>button>span:last-child]:backdrop-blur-xl!"
+                      className="glass rounded-media overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_50px_rgba(0,0,0,0.5)] hover:border-white/20 transition-[border-color]! duration-base!"
                     >
                       {/* Façade vidéo : poster + play, lecteur monté au clic seulement */}
                       <VideoFacade
@@ -640,7 +639,7 @@ export default function ProfileClient({
                   />
                 </div>
 
-                <textarea value={inviteMessage} onChange={(e) => setInviteMessage(e.target.value)} maxLength={200} placeholder="Ajoute un message..." style={{ width: "100%", padding: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", resize: "none", minHeight: 60, outline: "none", marginBottom: 16 }} />
+                <Field multiline rows={2} aria-label="Message" value={inviteMessage} onChange={(e) => setInviteMessage(e.target.value)} maxLength={200} placeholder="Ajoute un message..." className="mb-4" />
 
                 <Button onClick={sendInvitation} disabled={!inviteSelectedProject || !inviteRole || inviteSending} className="w-full">
                   {inviteSending ? "Envoi..." : "Envoyer l'invitation"}

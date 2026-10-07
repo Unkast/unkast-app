@@ -55,8 +55,10 @@ CORE  AppShell (src/components/AppShell.tsx)
   Refonte verre liquide (07/10/2026) : sidebar flottante .glass-strong (marges 14 px, rayon 30),
   indicateur = pastille verre + trait citron, header .glass-strong (dans le flux, PAS en
   surimpression : ProfileClient et ProjetClient ont des colonnes lg:sticky qui passeraient dessous).
-  <main> a un pb-9 (36 px) en mobile, app installee seulement : ecart entre le dock (88 px) et
-  les 56 px que reservent les pages (.pb-tabbar). La barre plate fait 56 px : aucun pb ajoute.
+  Reserve basse (chantier 5, 07/10/2026) : <main> porte .pb-tabbar (globals.css) et reserve seul
+  la navigation mobile pour TOUTES les pages : 56 px + safe area (barre plate du navigateur),
+  92 px + safe area (dock de l'app installee : 88 px + 4 px d'air), 0 en desktop. Les pages ne
+  reservent plus rien (ni .pb-tabbar, ni pb-16) ; rien dans une conversation (navigation masquee).
   Navigation masquee (prop hidden) dans une conversation ouverte et quand le clavier virtuel est
   ouvert : useKeyboardOpen(), hook local a AppShell (focus d'un champ de texte + visualViewport).
 
@@ -113,6 +115,9 @@ CORE  Motion Primitives (src/components/motion.tsx)
   Variants staggerContainer/fadeUp/fadeIn/scaleIn, cardHover, FadeInView, ModalBackdrop
   Verre liquide (07/10/2026) : cardSpring (260/28), listStagger (80 ms), enterUp (18 px + flou
   8 px, 450 ms), enterFade (variante reduced motion), EnterList / EnterItem (useReducedMotion)
+  Chantier 5 : enterUp / enterFade finissent sur filter: none (transitionEnd), pour qu'un .glass
+  enfant continue de flouter les halos du fond ; ModalBackdrop = panneau .glass-strong teinte
+  (bg-glass-solid/80), rounded-panel.
 
 UTILITY  lib/utils.ts        — slugify() PARTAGE (utilise par signup, dashboard/projects, auth/callback)
 UTILITY  lib/rate-limit.ts   — checkRateLimit() (RPC check_rate_limit, FAIL-CLOSED ; RPC absente toleree hors prod)
@@ -140,8 +145,9 @@ FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   en GlassCard. ConversionBanner = pilule .glass-strong posee 12 px au-dessus de la navigation
   mobile (bottom 68 px + safe area en navigateur, 100 px + safe area si html.app-installed,
   bottom-6 en desktop), avec un espaceur de 72 px dans le flux quand elle est visible.
-  ⚠️ Bug anterieur non corrige : elle ecoute window.scrollY alors que c'est <main> (AppShell)
-  qui defile, donc elle ne s'affiche jamais dans l'app.
+  Elle ecoute le defilement du <main> d'AppShell (premier <main> du document, c'est lui qui
+  defile, pas window) et apparait apres 300 px, visiteur non connecte seulement (corrige au
+  chantier 5 : elle ecoutait window.scrollY et ne s'affichait jamais).
 
 FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server + ProfileClient]
   Fetch profil approuve + roles + projets + credits. Bouton contact + partage.
@@ -154,7 +160,7 @@ FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server +
   Image hero + video en modale plein ecran, equipe, projets lies. [utilise] VideoEmbed
   Verre liquide (chantier 4) : hero en panneau rounded-panel dans le conteneur (plus bord a bord),
   cartes d'equipe, fiche technique et carte createur en GlassCard. Equipe et projets lies restent
-  empiles (pas d'onglets). Reserve la barre mobile via .pb-tabbar (ex paddingBottom 120 en dur).
+  empiles (pas d'onglets).
 
 FEATURE  Recherche — voir ci-dessous. Verre liquide (chantier 4) : bascule Parcourir / Rechercher,
   filtres et metiers en Chip, champ de recherche .glass, tuiles de categorie rounded-panel,
@@ -225,12 +231,14 @@ FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) d
 
 ```
 UTILITY  VideoEmbed (src/components/VideoEmbed.tsx)  — wrapper SSR-safe react-player
-         + VideoFacade.tsx (facade clic-pour-charger)
+         + VideoFacade.tsx (facade clic-pour-charger) : bouton lecture .glass-strong, fond
+         translucide, prop className (plus de styles en ligne a surcharger)
 UTILITY  ContactModal (src/components/ContactModal.tsx)   [declenche] POST /api/contact
 UTILITY  ReportModal (src/components/ReportModal.tsx)     [declenche] POST /api/reports
 UTILITY  AvatarUpload (src/components/AvatarUpload.tsx)   [declenche] /api/avatar
 UTILITY  RoleSelector (src/components/RoleSelector.tsx) + icons/RoleIcons.tsx
-UTILITY  skeletons/ (Feed, Profile, Project, Search)
+UTILITY  skeletons/ (Feed, Profile, Project, Search) — en verre, cales sur la mise en page des
+         pages (memes conteneurs, memes rayons) ; a tenir a jour si une de ces pages change
 UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte visuelle, 07/10/2026) :
          Button, Chip, Badge, GlassCard, Field, ProgressSteps.
          [depend de] tokens et utilitaires de globals.css (.glass, .glass-strong, .btn-accent,
@@ -238,11 +246,15 @@ UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte vi
          Button [utilise] framer-motion (appui ressort, useReducedMotion)
          Consommees depuis le chantier 4 (07/10/2026) par Feed (ConversionBanner, page), Profil
          public (ProfileClient), Page projet (ProjetClient), Recherche (RechercheClient), et par
-         la vitrine /dev/ui. Limites connues, contournees localement dans ces pages : Button ne
-         rend pas de lien (HeroCarousel recopie ses classes sur des <Link>) et n'a pas de taille ;
-         Chip est toujours un bouton (metiers du profil en Chip disabled) ; Badge n'a pas de
-         variante neutre ni a couleur libre ; Field n'a ni icone, ni textarea (champ de recherche
-         et textareas styles a la main).
+         la vitrine /dev/ui. API (chantier 5, 07/10/2026) :
+         Button — variant accent | light | glass | dashed | icon (aria-label obligatoire),
+           size sm | md | lg, href (rendu en next/link, memes styles et meme appui).
+         Chip — variant filter (bouton, selected) | static (span, affichage seul).
+         Badge — variant verified | pro | available | neutral (children) | pending.
+         Field — label optionnel (sinon aria-label), icon (a gauche), onClear (bouton
+           d'effacement tant qu'il y a une valeur), multiline (textarea), size md | lg (lg =
+           grand champ en verre). className va sur l'enveloppe, pas sur le champ.
+         GlassCard — strong, radius card | panel.
 UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — HORS groupe (app),
          notFound() si NODE_ENV=production (donc 404 aussi sur les previews Vercel), non liee.
 ```

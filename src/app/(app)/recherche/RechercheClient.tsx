@@ -9,6 +9,7 @@ import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
 import Chip from "@/components/ui/Chip";
+import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 
 type Mode = "browse" | "search";
@@ -222,7 +223,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
   }
 
   return (
-    <div className="pb-tabbar">
+    <div>
       <div className="mx-auto w-full max-w-[1600px] lg:px-12 xl:px-16">
       {/* Header */}
       <div className="px-5 pt-5">
@@ -321,28 +322,23 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
             transition={{ duration: 0.2 }}
             className="px-4"
           >
-            <div
-              className={`glass flex items-center gap-3 min-h-14 px-5 rounded-panel mb-3 transition-[border-color,box-shadow] duration-fast focus-within:ring-3 focus-within:ring-lime/30 lg:max-w-2xl ${query ? "border-lime" : ""}`}
-            >
-              <svg className="w-5 h-5 flex-shrink-0 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nom, métier, ville..."
-                className="flex-1 min-w-0 bg-transparent text-base text-text-primary placeholder:text-text-tertiary outline-none"
-              />
-              {query && (
-                <button onClick={() => { setQuery(""); setSearched(false); }} className="text-text-secondary hover:text-text-primary transition">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
+            {/* Bordure citron tant que le champ a une valeur */}
+            <Field
+              ref={inputRef}
+              size="lg"
+              type="text"
+              aria-label="Rechercher"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onClear={() => { setQuery(""); setSearched(false); }}
+              placeholder="Nom, métier, ville..."
+              className="mb-3 lg:max-w-2xl [&_input:not(:placeholder-shown)]:border-lime"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              }
+            />
 
             <div className="flex gap-2 mb-4 lg:max-w-2xl">
               {([["all", "Tous"], ["talents", "Talents"], ["projets", "Films"]] as const).map(([key, label]) => (

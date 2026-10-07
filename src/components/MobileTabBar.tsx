@@ -4,7 +4,7 @@ import type { DockItem } from "@/components/LiquidDock";
 // Barre d'onglets mobile du NAVIGATEUR (rendu par defaut d'AppShell) : plate, en verre
 // fort, collee en bas, 56 px + safe area. L'app installee (Capacitor / PWA) utilise
 // LiquidDock a la place — voir la detection `app-installed` dans AppShell.
-// Hauteur = celle que les pages reservent deja avec .pb-tabbar (56 px + safe area).
+// Hauteur = celle que reserve .pb-tabbar sur le <main> d'AppShell (56 px + safe area).
 
 export default function MobileTabBar({
   items,

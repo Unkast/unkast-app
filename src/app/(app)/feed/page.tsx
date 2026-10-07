@@ -169,7 +169,7 @@ export default async function Home() {
   const { recent, categoryRows, talents } = await getHomeData();
 
   return (
-    <div className="pb-tabbar">
+    <div>
       <div className="mx-auto w-full max-w-[1600px]">
       {/* HERO CAROUSEL */}
       {recent.length > 0 && (

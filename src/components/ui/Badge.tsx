@@ -6,6 +6,9 @@ const VARIANTS = {
   verified: { label: "Vérifié", className: LIME },
   pro: { label: "Pro", className: `${LIME} uppercase tracking-wider` },
   available: { label: "Disponible", className: "border-white/10 bg-white/5 text-text-primary" },
+  // Neutre : pas de libelle par defaut, le contenu est passe en children.
+  neutral: { label: "", className: "border-white/10 bg-white/5 text-text-secondary" },
+  pending: { label: "En attente", className: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400" },
 } as const;
 
 export default function Badge({
