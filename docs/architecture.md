@@ -36,13 +36,44 @@ RELATIONS :
 ```
 CORE  Layout racine (src/app/layout.tsx)
   HTML wrapper, metadata, fonts, PWA manifest. NE contient PAS AppShell.
+  Viewport : interactive-widget=resizes-content (le clavier virtuel redimensionne la mise en page).
 
 CORE  Layout app (src/app/(app)/layout.tsx)
   [utilise] AppShell (enveloppe toutes les pages du groupe (app))
 
 CORE  AppShell (src/components/AppShell.tsx)
-  Sidebar desktop + bottom tab mobile + header. Indicateur anime (framer-motion layoutId).
-  [utilise] framer-motion ; [depend de] next/navigation (usePathname)
+  Sidebar desktop + navigation mobile + header. Indicateur anime (framer-motion layoutId).
+  [utilise] framer-motion, LiquidDock, MobileTabBar ; [depend de] next/navigation (usePathname)
+  Deux rendus de navigation mobile (07/10/2026), choisis en CSS par la classe app-installed
+  sur <html> : LiquidDock si l'app est installee (Capacitor natif ou PWA standalone),
+  MobileTabBar (barre plate) dans un navigateur — rendu par defaut. La classe est posee par un
+  script inline rendu dans le HTML serveur (avant le premier rendu, sans flash) et par un
+  useLayoutEffect (montage client depuis /). Les deux nav sont dans le DOM, une seule affichee.
+  Hauteur du shell : 100dvh (repli 100vh) ; clavier ouvert, elle suit visualViewport.
+  Conversation (/messages/[id]) en mobile : header d'AppShell masque, navigation masquee,
+  <main> sans defilement — la page occupe toute la zone visible.
+  Refonte verre liquide (07/10/2026) : sidebar flottante .glass-strong (marges 14 px, rayon 30),
+  indicateur = pastille verre + trait citron, header .glass-strong (dans le flux, PAS en
+  surimpression : ProfileClient et ProjetClient ont des colonnes lg:sticky qui passeraient dessous).
+  <main> a un pb-9 (36 px) en mobile, app installee seulement : ecart entre le dock (88 px) et
+  les 56 px que reservent les pages (.pb-tabbar). La barre plate fait 56 px : aucun pb ajoute.
+  Navigation masquee (prop hidden) dans une conversation ouverte et quand le clavier virtuel est
+  ouvert : useKeyboardOpen(), hook local a AppShell (focus d'un champ de texte + visualViewport).
+
+CORE  MobileTabBar (src/components/MobileTabBar.tsx) — barre d'onglets mobile du NAVIGATEUR
+  Plate, .glass-strong, collee en bas, 56 px + safe area. Onglet actif = icone + libelle citron.
+  Memes props que LiquidDock (items, activeIndex, hidden). Masquee si html.app-installed.
+
+CORE  LiquidDock (src/components/LiquidDock.tsx) — dock mobile de l'APP INSTALLEE (html.app-installed)
+  Barre flottante 56 px (marges 12, bas = safe-area-inset-bottom + 10), bille citron 44 px qui
+  depasse de 14 px sur l'onglet actif, collerette 60 px fusionnee a la barre par un filtre SVG
+  goo (#dock-goo). Hauteur totale depuis le bas : 88 px + safe area.
+  Fond OPAQUE obligatoire (#121217), lisere produit par le filtre. Deplacement en CSS
+  (600 ms ease-dock, collerette +140 ms), coupe par la regle reduced motion de globals.css.
+  L'icone ne passe en sombre qu'a l'arrivee de la bille (transition de couleur retardee de 420 ms).
+  Props : items (href, label, icon, badge), activeIndex (-1 = aucun onglet actif, pas de bille),
+  hidden (sort par le bas en 250 ms, fondu seul en reduced motion, nav inerte).
+  [depend de] globals.css (--accent-gradient, --accent-halo, duration-slower, ease-dock)
 
 CORE  SplashScreen (src/components/SplashScreen.tsx)
   Video /public/splash.mp4, une fois par session (sessionStorage).
@@ -80,6 +111,8 @@ CORE  Types (src/types/database.ts) — SOURCE DE VERITE du schema (introspecte 
 
 CORE  Motion Primitives (src/components/motion.tsx)
   Variants staggerContainer/fadeUp/fadeIn/scaleIn, cardHover, FadeInView, ModalBackdrop
+  Verre liquide (07/10/2026) : cardSpring (260/28), listStagger (80 ms), enterUp (18 px + flou
+  8 px, 450 ms), enterFade (variante reduced motion), EnterList / EnterItem (useReducedMotion)
 
 UTILITY  lib/utils.ts        — slugify() PARTAGE (utilise par signup, dashboard/projects, auth/callback)
 UTILITY  lib/rate-limit.ts   — checkRateLimit() (RPC check_rate_limit, FAIL-CLOSED ; RPC absente toleree hors prod)
@@ -181,6 +214,14 @@ UTILITY  ReportModal (src/components/ReportModal.tsx)     [declenche] POST /api/
 UTILITY  AvatarUpload (src/components/AvatarUpload.tsx)   [declenche] /api/avatar
 UTILITY  RoleSelector (src/components/RoleSelector.tsx) + icons/RoleIcons.tsx
 UTILITY  skeletons/ (Feed, Profile, Project, Search)
+UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte visuelle, 07/10/2026) :
+         Button, Chip, Badge, GlassCard, Field, ProgressSteps.
+         [depend de] tokens et utilitaires de globals.css (.glass, .glass-strong, .btn-accent,
+         .press-spring, rounded-card/panel/pill, duration-fast/slow, ease-glass)
+         Button [utilise] framer-motion (appui ressort, useReducedMotion)
+         Pas encore consommees par les pages : seule la vitrine /dev/ui les utilise.
+UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — HORS groupe (app),
+         notFound() si NODE_ENV=production (donc 404 aussi sur les previews Vercel), non liee.
 ```
 
 ## Notes importantes (corrigees — etat reel du code)

@@ -17,6 +17,45 @@
   --color-accent-demo: #FF5577;
   --font-sans: var(--font-dm-sans);
   --font-mono: var(--font-jetbrains-mono);
+
+  /* Verre liquide — fondations (refonte visuelle, chantier 1) */
+  --color-canvas: #0A0A0C;
+  --color-glass-solid: #17171C;
+  --radius-media: 14px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+  --radius-panel-lg: 32px;
+  --radius-pill: 9999px;
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 250ms;
+  --transition-duration-slow: 450ms;
+  --transition-duration-slower: 600ms;
+  --ease-glass: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-dock: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Verre liquide — valeurs composees (hors namespaces Tailwind) */
+:root {
+  --halo-lime: rgba(200, 255, 0, 0.16);
+  --halo-blue: rgba(64, 132, 255, 0.14);
+  --halo-pink: rgba(255, 85, 119, 0.12);
+  --canvas-halos:
+    radial-gradient(60% 50% at 100% 0%, var(--halo-lime) 0%, transparent 70%),
+    radial-gradient(50% 55% at 0% 35%, var(--halo-blue) 0%, transparent 70%),
+    radial-gradient(60% 45% at 50% 100%, var(--halo-pink) 0%, transparent 70%);
+
+  --glass-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --glass-blur: blur(28px) saturate(170%);
+  --glass-blur-strong: blur(30px) saturate(170%);
+
+  --accent-gradient: linear-gradient(180deg, #DCFF57 0%, #C8FF00 55%, #B4E600 100%);
+  --accent-halo: 0 0 0 1px rgba(200, 255, 0, 0.35), 0 8px 28px rgba(200, 255, 0, 0.28);
+  --accent-halo-hover: 0 0 0 1px rgba(200, 255, 0, 0.5), 0 10px 36px rgba(200, 255, 0, 0.4);
+
+  --sheen-gradient: linear-gradient(180deg, #ffffff 0%, #8a8a8a 100%);
 }
 
 body {
@@ -119,6 +158,16 @@ a:active,
   transform: scale(0.94);
 }
 
+/* Briques dont l'appui est pilote par framer-motion (ui/Button) : ni appui ni
+   transition de transform en CSS, sinon ils se battent avec le ressort. */
+.press-spring {
+  transition-property: opacity, box-shadow, background-color, border-color, color;
+  transition-duration: 150ms;
+}
+.press-spring:active {
+  transform: none;
+}
+
 /* Cards — subtle press */
 .card-press:active {
   transform: scale(0.97);
@@ -203,15 +252,29 @@ select:focus {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Respect reduced motion preference */
+/* Respect reduced motion preference : les fondus d'opacite restent (150 ms max),
+   les deplacements, mises a l'echelle et animations en boucle sont coupes.
+   Ne couvre que le CSS : les animations framer-motion relevent de useReducedMotion. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
+  }
+
+  button:active,
+  a:active,
+  [role="button"]:active,
+  .clickable:active,
+  .btn-primary:active,
+  .card-press:active,
+  .btn-back:active svg {
+    transform: none;
   }
 }
 
@@ -236,4 +299,84 @@ body {
   background: radial-gradient(ellipse, rgba(200, 255, 0, 0.04) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* ===== Verre liquide — utilitaires (refonte visuelle) ===== */
+
+/* Fond canvas + 3 halos fixes. Pose sur le body (src/app/layout.tsx). */
+.bg-canvas-halos {
+  background-color: var(--color-canvas);
+  isolation: isolate;
+}
+.bg-canvas-halos::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--canvas-halos);
+}
+
+/* Dans @layer components : les classes Tailwind (bg-*, border-*, rounded-*...) les surchargent. */
+@layer components {
+  /* Surface verre. Le rayon reste a la charge du composant (rounded-card, rounded-panel...). */
+  .glass,
+  .glass-strong {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-highlight);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  /* Variante forte — barres de navigation */
+  .glass-strong {
+    border-color: var(--glass-border-strong);
+    -webkit-backdrop-filter: var(--glass-blur-strong);
+    backdrop-filter: var(--glass-blur-strong);
+  }
+
+  /* Bouton principal — degrade citron + halo */
+  .btn-accent {
+    background: var(--accent-gradient);
+    color: var(--color-canvas);
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--accent-halo), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    transition:
+      transform var(--transition-duration-fast) var(--ease-glass),
+      opacity var(--transition-duration-fast) var(--ease-glass),
+      box-shadow var(--transition-duration-base) var(--ease-glass);
+  }
+  .btn-accent:hover {
+    box-shadow: var(--accent-halo-hover), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+  .btn-accent:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+  }
+
+  /* Grands titres — degrade blanc vers gris */
+  .text-sheen {
+    background: var(--sheen-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* Sans backdrop-filter, ou en mode .lite (Android) : surface opaque, pas de flou */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong {
+    background: var(--color-glass-solid);
+  }
+}
+.lite .glass,
+.lite .glass-strong,
+.lite.glass,
+.lite.glass-strong {
+  background: var(--color-glass-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

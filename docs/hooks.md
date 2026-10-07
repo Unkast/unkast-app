@@ -20,6 +20,12 @@ Enregistre les notifications push **uniquement en natif (Capacitor/Android)**. I
 (`{ token, platform: "android" }`). Gere aussi le tap de notification (redirige vers `data.url`).
 Garde anti-double-enregistrement via `useRef`.
 
+### `useKeyboardOpen()` — local a `src/components/AppShell.tsx` (non exporte)
+
+Retourne `true` quand le clavier virtuel est suppose ouvert : focus d'un champ de texte
+(`focusin` / `focusout`), affine par `visualViewport` pour detecter le clavier referme sans
+quitter le champ. Sert uniquement a masquer `LiquidDock`.
+
 ## Hooks built-in / frameworks utilises
 
 | Hook | Usage |

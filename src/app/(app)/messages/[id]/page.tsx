@@ -39,6 +39,7 @@ export default function ConversationPage({
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmFirst, setConfirmFirst] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const initialScrollDone = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   /* ── Fetch messages ── */
@@ -76,9 +77,27 @@ export default function ConversationPage({
   }, [loading, conversationId]);
 
   /* ── Auto-scroll ── */
+  // A l'ouverture on arrive directement sur le dernier message (pas de defilement
+  // anime depuis le haut) ; les messages suivants defilent en douceur.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!bottomRef.current) return;
+    bottomRef.current.scrollIntoView({ behavior: initialScrollDone.current ? "smooth" : "auto" });
+    if (messages.length > 0) initialScrollDone.current = true;
   }, [messages]);
+
+  // Quand la liste retrecit (clavier qui s'ouvre, zone de saisie qui grandit), on reste
+  // cale sur le dernier message au lieu de le laisser passer sous la barre de saisie.
+  useEffect(() => {
+    const list = bottomRef.current?.parentElement;
+    if (!list) return;
+    let lastHeight = list.clientHeight;
+    const observer = new ResizeObserver(() => {
+      if (list.clientHeight < lastHeight) bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      lastHeight = list.clientHeight;
+    });
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [loading]);
 
   /* ── Realtime subscription ── */
   useEffect(() => {
@@ -205,9 +224,9 @@ export default function ConversationPage({
 
   return (
     <div
-      // On remplit le parent, et `pb-tabbar` (globals.css) reserve la hauteur de la
-      // tab bar mobile — sinon la barre de saisie passe derriere.
-      className="pb-tabbar"
+      // On remplit le parent. Le dock mobile est masque dans une conversation (AppShell) :
+      // on ne reserve donc que la safe area, la barre de saisie se cale en bas de l'ecran.
+      className="safe-bottom"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -221,17 +240,25 @@ export default function ConversationPage({
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "12px 16px",
+          // En mobile le header d'AppShell est masque ici : ce header porte la safe area haute.
+          padding: "calc(6px + env(safe-area-inset-top, 0px)) 16px 6px 4px",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
+          flexShrink: 0,
         }}
       >
         <button
           onClick={() => router.back()}
+          aria-label="Retour"
           style={{
             background: "none",
             border: "none",
             cursor: "pointer",
-            padding: 4,
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
         >
           <svg

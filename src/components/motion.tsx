@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // ---- Fade-in with stagger for lists ----
@@ -103,6 +103,45 @@ export function ModalBackdrop({
       >
         {children}
       </motion.div>
+    </motion.div>
+  );
+}
+
+// ---- Verre liquide (refonte visuelle) ----
+export const cardSpring = { type: "spring", stiffness: 260, damping: 28 } as const;
+
+export const listStagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+export const enterUp: Variants = {
+  hidden: { opacity: 0, y: 18, filter: "blur(8px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.45, ease: [0.2, 0.8, 0.2, 1] } },
+};
+
+// Reduced motion : fondu seul. Memes cles que enterUp pour que framer reecrive
+// transform/filter si le HTML serveur a ete rendu avec l'etat cache de enterUp.
+export const enterFade: Variants = {
+  hidden: { opacity: 0, y: 0, filter: "blur(0px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.15 } },
+};
+
+// Liste dont les EnterItem entrent avec 80 ms de decalage
+export function EnterList({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <motion.div variants={listStagger} initial="hidden" animate="show" className={className}>
+      {children}
+    </motion.div>
+  );
+}
+
+// A placer dans un EnterList (c'est lui qui declenche l'entree)
+export function EnterItem({ children, className }: { children: ReactNode; className?: string }) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.div variants={reduced ? enterFade : enterUp} className={className}>
+      {children}
     </motion.div>
   );
 }

@@ -9,7 +9,8 @@ Composants / modules utilises par 3+ features.
 ## AppShell
 
 - **Fichier** : `src/components/AppShell.tsx`
-- **Role** : Shell principal de l'app (sidebar desktop, bottom tab mobile, header)
+- **Role** : Shell principal de l'app (sidebar desktop, navigation mobile `LiquidDock` ou `MobileTabBar` selon `html.app-installed`, header)
+- **Hauteur reservee en bas (mobile)** : app installee, le dock monte a 88 px + safe area (collerette comprise) : les pages reservent 56 px (`.pb-tabbar`), `<main>` ajoute 36 px. Navigateur, la barre plate fait 56 px + safe area : `.pb-tabbar` suffit. Exception : `/messages/[id]`, ou le dock est masque et la page ne reserve que la safe area (`.safe-bottom`). Les elements `fixed` en bas des pages doivent se placer au-dessus de cette hauteur (`ConversionBanner` en `bottom-16` et la barre de `RecruitmentSpace` en `bottom: 90` datent de l'ancienne tab bar)
 - **Consommateurs** : TOUTES les pages du groupe (via `src/app/(app)/layout.tsx`). `/admin` n'en fait **plus** partie (espace separe `src/app/admin/` depuis le 07/08/2026, layout propre sans AppShell)
 - **Risque si modifie** : **CRITIQUE** — casse la navigation de toute l'app
 - **Note admin** : le menu utilisateur desktop affiche un lien « Administration » si `is_admin` (fetch `GET /api/me` au montage quand connecte — affichage seulement, la garde reelle est le layout serveur de `/admin`)
@@ -25,8 +26,16 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/motion.tsx`
 - **Role** : Primitives d'animation partagees
-- **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `ContactModal`
+- **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `ContactModal`, `dev/ui/UiShowcase`
 - **Risque si modifie** : **ELEVE** — affecte les animations de 4+ pages
+- **Ajouts du 07/10/2026 (verre liquide, purement additifs)** : `cardSpring`, `listStagger`, `enterUp`, `enterFade`, `EnterList`, `EnterItem`
+
+## globals.css (tokens, utilitaires verre, regle reduced motion)
+
+- **Fichier** : `src/app/globals.css`
+- **Role** : tokens Tailwind (`@theme`), utilitaires `.glass` / `.glass-strong` / `.btn-accent` / `.text-sheen` (dans `@layer components`), fond `.bg-canvas-halos` pose sur le `body`, regle globale `prefers-reduced-motion`
+- **Consommateurs** : toute l'app (via `layout.tsx` racine), `src/components/ui/*`
+- **Risque si modifie** : **CRITIQUE** — les regles hors `@layer` (`button`, `a`, `input:focus`, reduced motion) l'emportent sur toutes les classes Tailwind
 
 ## VideoEmbed
 

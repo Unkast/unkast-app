@@ -3,10 +3,38 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRef, useEffect, useState, useCallback, type ReactNode } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback, useSyncExternalStore, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import Avatar from "@/components/Avatar";
+import LiquidDock from "@/components/LiquidDock";
+import MobileTabBar from "@/components/MobileTabBar";
+
+// App installee (Capacitor natif, ou PWA en display-mode standalone) → classe
+// `app-installed` sur <html>. Elle choisit en CSS la navigation mobile : LiquidDock si
+// installee, MobileTabBar (barre plate) sinon. Dans le doute, rien n'est pose : rendu
+// navigateur par defaut.
+// Execute deux fois : en script inline dans le HTML serveur (avant le premier rendu,
+// donc sans flash), et dans un useLayoutEffect pour le cas ou AppShell est monte cote
+// client (arrivee depuis `/`), ou un <script> rendu par React ne s'execute pas.
+const INSTALLED_CLASS = "app-installed";
+
+function isInstalledApp() {
+  try {
+    const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    return (
+      cap?.isNativePlatform?.() === true ||
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as { standalone?: boolean }).standalone === true
+    );
+  } catch {
+    return false;
+  }
+}
+
+const noopSubscribe = () => () => {};
+
+const INSTALLED_SCRIPT =`(function(){try{var c=window.Capacitor;if((c&&c.isNativePlatform&&c.isNativePlatform())||window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true)document.documentElement.classList.add("${INSTALLED_CLASS}")}catch(e){}})()`;
 
 // Icons
 const IconExplore = () => (
@@ -74,6 +102,66 @@ interface UserProfile {
 // Pages that don't show a back button
 const ROOT_PAGES = ["/feed", "/recherche", "/messages", "/moi"];
 
+// Clavier virtuel ouvert sur un champ de saisie ? Sert a sortir le dock, qui sinon
+// remonte au-dessus du clavier (la WebView Android redimensionne la fenetre).
+// Le focus d'un champ de texte suffit a le supposer ouvert. visualViewport sert a
+// reperer le cas ou l'utilisateur referme le clavier sans quitter le champ : la
+// hauteur a retreci puis est revenue a sa valeur de reference.
+const NON_TEXT_INPUTS = ["checkbox", "radio", "button", "submit", "reset", "range", "file", "color", "image", "hidden"];
+
+function isTextField(el: EventTarget | null) {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable || el.tagName === "TEXTAREA") return true;
+  return el.tagName === "INPUT" && !NON_TEXT_INPUTS.includes((el as HTMLInputElement).type);
+}
+
+function useKeyboardOpen() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const height = () => vv?.height ?? window.innerHeight;
+    let base = height();
+    let focused = false;
+    let shrunk = false;
+
+    function onFocusIn(e: FocusEvent) {
+      if (!isTextField(e.target)) return;
+      focused = true;
+      shrunk = false;
+      setOpen(true);
+    }
+    function onFocusOut() {
+      focused = false;
+      setOpen(false);
+    }
+    function onResize() {
+      const h = height();
+      if (!focused) {
+        base = h;
+        return;
+      }
+      if (base - h > 120) {
+        shrunk = true;
+        setOpen(true);
+      } else if (shrunk) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    (vv ?? window).addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      (vv ?? window).removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  return open;
+}
+
 function getPageTitle(pathname: string): string | null {
   if (pathname === "/connexion") return "Connexion";
   if (pathname === "/rejoindre") return "Créer un compte";
@@ -107,6 +195,36 @@ export default function AppShell({
 
   const showBack = !ROOT_PAGES.includes(pathname);
   const pageTitle = getPageTitle(pathname);
+  // Conversation ouverte : pas de dock, la barre de saisie se cale en bas de l'ecran.
+  const inConversation = /^\/messages\/[^/]+/.test(pathname);
+  const keyboardOpen = useKeyboardOpen();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Vrai au rendu serveur et pendant l'hydratation, faux sur un montage client : le
+  // <script> inline n'est rendu que la ou il peut s'executer (React le signale sinon).
+  const fromServerHtml = useSyncExternalStore(noopSubscribe, () => false, () => true);
+
+  useLayoutEffect(() => {
+    if (isInstalledApp()) document.documentElement.classList.add(INSTALLED_CLASS);
+  }, []);
+
+  // Clavier ouvert : la hauteur du shell suit visualViewport, pour que le bas de page
+  // (barre de saisie) reste au-dessus du clavier meme la ou il ne redimensionne pas la
+  // mise en page (iOS, WebView sans interactive-widget). Ignore pendant un zoom.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = rootRef.current;
+    if (!keyboardOpen || !vv || !el) return;
+    const sync = () => {
+      if (Math.abs(vv.scale - 1) < 0.01) el.style.height = `${vv.height}px`;
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      el.style.height = "";
+    };
+  }, [keyboardOpen]);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   // Register push notifications when logged in
@@ -287,7 +405,7 @@ export default function AppShell({
         { href: "/feed", label: "Accueil", icon: <IconExplore /> },
         { href: "/recherche", label: "Recherche", icon: <IconSearch /> },
         { href: "/messages", label: "Messages", icon: <IconChat />, badge: unreadCount },
-        { href: "/moi", label: "Moi", icon: <IconProfile /> },
+        { href: "/moi", label: "Profil", icon: <IconProfile /> },
       ]
     : [
         { href: "/feed", label: "Accueil", icon: <IconExplore /> },
@@ -306,6 +424,42 @@ export default function AppShell({
     return pathname.startsWith(href);
   }
 
+  // Dock mobile : l'onglet Profil garde l'avatar a la place de l'icone. Sur la bille
+  // (onglet actif), sa bordure passe en sombre pour se detacher du citron.
+  const dockActiveIndex = mobileItems.findIndex((item) => isActive(item.href));
+  const dockItems = mobileItems.map((item, i) =>
+    user && item.href === "/moi"
+      ? {
+          ...item,
+          icon: (
+            <Avatar
+              url={user.avatar_url}
+              name={user.full_name}
+              size={28}
+              style={{ border: i === dockActiveIndex ? "2px solid #0A0A0C" : "1.5px solid rgba(255,255,255,0.15)" }}
+            />
+          ),
+        }
+      : item
+  );
+  // Barre plate (navigateur) : memes onglets, l'avatar actif garde sa bordure citron.
+  const tabBarItems = mobileItems.map((item, i) =>
+    user && item.href === "/moi"
+      ? {
+          ...item,
+          icon: (
+            <Avatar
+              url={user.avatar_url}
+              name={user.full_name}
+              size={24}
+              style={{ border: i === dockActiveIndex ? "2px solid #C8FF00" : "1.5px solid rgba(255,255,255,0.15)" }}
+            />
+          ),
+        }
+      : item
+  );
+  const navHidden = inConversation || keyboardOpen;
+
   // Animate sidebar indicator
   useEffect(() => {
     if (!navRef.current || activeIndex < 0) return;
@@ -317,10 +471,13 @@ export default function AppShell({
   }, [activeIndex, user]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    // Hauteur = zone reellement visible (100dvh, repli 100vh) : avec 100vh seul, le bas du
+    // shell passait sous la barre d'adresse de Chrome Android.
+    <div ref={rootRef} className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden">
+      {fromServerHtml && <script dangerouslySetInnerHTML={{ __html: INSTALLED_SCRIPT }} />}
       {/* Sidebar — desktop */}
-      <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-white/5 bg-[#0a0a0a]">
-        <div className="h-12 flex items-center px-5 border-b border-white/5">
+      <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 m-[14px] rounded-[30px] glass-strong">
+        <div className="h-14 flex items-center px-5 border-b border-white/5">
           <Link href="/feed" className="text-lg font-extrabold tracking-tight text-text-primary">
             Unkast<span className="text-lime">.</span>
           </Link>
@@ -332,10 +489,12 @@ export default function AppShell({
             {activeIndex >= 0 && (
               <motion.div
                 layoutId="sidebar-indicator"
-                className="absolute left-2.5 right-2.5 rounded-lg bg-white/[0.06]"
+                className="absolute left-2.5 right-2.5 rounded-xl glass backdrop-filter-none"
                 style={{ top: indicatorStyle.top, height: indicatorStyle.height }}
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
-              />
+              >
+                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-lime shadow-[0_0_10px_rgba(200,255,0,0.8)]" />
+              </motion.div>
             )}
           </AnimatePresence>
 
@@ -418,14 +577,15 @@ export default function AppShell({
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="relative z-[9991] flex items-center justify-between px-5 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex-shrink-0" style={{ paddingTop: "env(safe-area-inset-top, 16px)", minHeight: "calc(56px + env(safe-area-inset-top, 16px))" }}>
+        {/* Masque en mobile dans une conversation : elle a son propre header (retour, avatar, nom). */}
+        <header className={`sticky top-0 z-[9991] flex items-center justify-between px-5 glass-strong rounded-none border-x-0 border-t-0 flex-shrink-0 ${inConversation ? "max-lg:hidden" : ""}`} style={{ paddingTop: "env(safe-area-inset-top, 16px)", minHeight: "calc(56px + env(safe-area-inset-top, 16px))" }}>
           {/* Mobile: back button or logo */}
           <div className="lg:hidden flex items-center gap-2">
             {showBack ? (
               <>
                 <button
                   onClick={() => router.back()}
-                  className="w-9 h-9 -ml-1 flex items-center justify-center rounded-lg text-[#f0f0f0] active:bg-white/5"
+                  className="w-11 h-11 -ml-3 flex items-center justify-center rounded-full text-[#f0f0f0] active:bg-white/5"
                   aria-label="Retour"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,7 +631,7 @@ export default function AppShell({
                     fontWeight: 400,
                     borderRadius: 20,
                     padding: "7px 14px",
-                    minHeight: 34,
+                    minHeight: 44,
                     display: "flex",
                     alignItems: "center",
                   }}
@@ -488,7 +648,7 @@ export default function AppShell({
                     fontWeight: 600,
                     borderRadius: 20,
                     padding: "7px 16px",
-                    minHeight: 34,
+                    minHeight: 44,
                     display: "flex",
                     alignItems: "center",
                   }}
@@ -500,61 +660,25 @@ export default function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        {/* pb mobile, app installee seulement : le dock (marge 10 + barre 56 + collerette 22
+            au-dessus = 88 px) est plus haut que les 56 px que reservent deja les pages
+            (.pb-tabbar) ; ces 36 px comblent l'ecart. La barre plate du navigateur fait
+            exactement 56 px : rien a ajouter. Dans une conversation, la navigation est
+            masquee et la page occupe toute la hauteur sans defiler elle-meme (seule la
+            liste des messages defile). */}
+        <main className={`flex-1 overflow-y-auto ${inConversation ? "max-lg:overflow-hidden" : "max-lg:[.app-installed_&]:pb-9"}`}>
           {children}
         </main>
       </div>
 
-      {/* Bottom tab bar — mobile (hidden until auth checked) */}
-      {authChecked && <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0d0d0d]/95 backdrop-blur-[20px] border-t border-white/[0.06]" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
-        <div className="flex items-center justify-around h-14 px-1">
-          {mobileItems.map((item) => {
-            const active = isActive(item.href);
-            const isMoiTab = user && item.href === "/moi";
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors ${
-                  active ? "text-lime" : "text-[#444]"
-                }`}
-              >
-                {active && (
-                  <motion.div
-                    layoutId="tab-indicator"
-                    className="absolute -top-1 w-5 h-0.5 rounded-full bg-lime"
-                    transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                  />
-                )}
-                {isMoiTab ? (
-                  <Avatar
-                    url={user.avatar_url}
-                    name={user.full_name}
-                    size={28}
-                    style={{ border: active ? "2px solid #C8FF00" : "1.5px solid rgba(255,255,255,0.15)" }}
-                  />
-                ) : (
-                  <>
-                    {item.icon}
-                    {(item.badge ?? 0) > 0 && (
-                      <div style={{
-                        position: "absolute",
-                        top: 4,
-                        right: 10,
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "#ef4444",
-                      }} />
-                    )}
-                    <span className="text-[10px] font-medium tracking-[0.02em]">{item.label}</span>
-                  </>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>}
+      {/* Navigation mobile (hidden until auth checked) : les deux rendus sont dans le DOM,
+          le CSS n'en affiche qu'un selon la classe app-installed. */}
+      {authChecked && (
+        <>
+          <MobileTabBar items={tabBarItems} activeIndex={dockActiveIndex} hidden={navHidden} />
+          <LiquidDock items={dockItems} activeIndex={dockActiveIndex} hidden={navHidden} />
+        </>
+      )}
     </div>
   );
 }
@@ -565,7 +689,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors duration-200 ${
+      className={`relative flex items-center gap-2.5 min-h-11 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lime ${
         active ? "text-text-primary" : "text-text-secondary hover:text-text-primary"
       }`}
     >

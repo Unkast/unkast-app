@@ -20,6 +20,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Clavier virtuel : il redimensionne la mise en page (donc 100dvh), pas seulement la
+  // zone visible — la barre de saisie reste au-dessus du clavier.
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
@@ -59,7 +62,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="h-full font-sans">
+      <body className="h-full font-sans bg-canvas-halos">
         {children}
       </body>
     </html>

@@ -1,0 +1,37 @@
+import type { ReactNode } from "react";
+
+const LIME = "border-lime/30 bg-lime/15 text-lime shadow-[0_0_16px_rgba(200,255,0,0.25)]";
+
+const VARIANTS = {
+  verified: { label: "Vérifié", className: LIME },
+  pro: { label: "Pro", className: `${LIME} uppercase tracking-wider` },
+  available: { label: "Disponible", className: "border-white/10 bg-white/5 text-text-primary" },
+} as const;
+
+export default function Badge({
+  variant,
+  children,
+  className = "",
+}: {
+  variant: keyof typeof VARIANTS;
+  children?: ReactNode;
+  className?: string;
+}) {
+  const v = VARIANTS[variant];
+
+  return (
+    <span
+      className={`inline-flex h-6 items-center gap-1.5 rounded-pill border px-2.5 text-xs font-semibold leading-none ${v.className} ${className}`}
+    >
+      {variant === "verified" && (
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2.5 6.2 5 8.7l4.5-5.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+      {variant === "available" && (
+        <span className="size-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" aria-hidden="true" />
+      )}
+      {children ?? v.label}
+    </span>
+  );
+}

@@ -14,6 +14,10 @@
 | `AppShell` / `layout` | [utilise] | `SplashScreen` |
 | `AppShell` | [depend de] | `next/navigation` (usePathname) |
 | `AppShell` | [utilise] | `framer-motion` |
+| `AppShell` | [utilise] | `LiquidDock` (app installee), `MobileTabBar` (navigateur), `Avatar` |
+| `MobileTabBar` | [depend de] | `LiquidDock` (type `DockItem`), `globals.css` (`.glass-strong`) |
+| `messages/[id]/page.tsx` | [depend de] | `AppShell` (header et navigation masques en mobile, hauteur 100dvh) |
+| `LiquidDock` | [depend de] | `globals.css` (tokens accent, `duration-slower`, `ease-dock`, regle reduced motion) |
 | `SplashScreen` | [depend de] | `/public/splash.mp4` |
 | `SplashScreen` | [depend de] | `sessionStorage` |
 | `proxy.ts` (ex-`middleware.ts`) | [utilise] | `supabase/middleware.ts` |
@@ -23,6 +27,10 @@
 | `supabase/client.ts` | [utilise] | `@supabase/ssr` |
 | `constants.ts` | [utilise] | `types/database.ts` (ProjectCategory) |
 | `motion.tsx` | [utilise] | `framer-motion` |
+| `layout.tsx` (racine) | [depend de] | `globals.css` (`.bg-canvas-halos` sur le `body`) |
+| `ui/*` (Button, Chip, Badge, GlassCard, Field, ProgressSteps) | [depend de] | `globals.css` (tokens et utilitaires verre) |
+| `ui/Button` | [utilise] | `framer-motion` (whileTap, useReducedMotion) |
+| `dev/ui/UiShowcase` | [utilise] | `ui/*`, `motion.tsx` (EnterList, EnterItem, cardSpring) |
 | --- | --- | --- |
 | **Feed** | | |
 | `(app)/feed/page.tsx` | [utilise] | `HeroCarousel` |
