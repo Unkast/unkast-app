@@ -83,7 +83,7 @@ export default function ConnexionClient({ next }: { next?: string }) {
     const { error: authError } = await getSupabase().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/dashboard")}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/feed")}`,
       },
     });
 

@@ -113,7 +113,7 @@ Composants / modules utilises par 3+ features.
 ## AppShell : écran d'acceptation des CGU (08/10/2026)
 
 - Prop `needsTerms` (calculée par `src/app/(app)/layout.tsx`, service role) : quand elle est vraie,
-  `AppShell` affiche un écran bloquant « Les CGU ont été mises à jour » sur toutes les pages, sauf
+  `AppShell` affiche un écran bloquant « Avant de continuer » (acceptation des CGU) sur toutes les pages, sauf
   les pages légales, `/suspended` et `/compte-introuvable`. Il appelle `POST /api/terms/accept`.
 - Dépend de la migration `20261012_terms_acceptance.sql`.
 

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import RejoindreClient from "./RejoindreClient";
 
 export const metadata: Metadata = {
@@ -13,6 +15,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RejoindrePage() {
+// L'inscription classique cree un compte : elle n'est jamais montree a une
+// personne deja connectee. Un compte sans metier est deja renvoye vers
+// /rejoindre/finaliser par le proxy ; les autres vont au feed.
+export default async function RejoindrePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) redirect("/feed");
   return <RejoindreClient />;
 }

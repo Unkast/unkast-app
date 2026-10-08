@@ -181,8 +181,8 @@ Routes existantes modifiées : `/api/signup` (film via `publish_project`, répon
 
 **Pages légales** (`/cgu`, `/confidentialite`, `/mentions-legales`, publiques) : `/api/signup` exige
 `terms_accepted: true` (400 `terms_required` sinon) et enregistre version et date ;
-`POST /api/terms/accept` `{ accepted: true }` fait de même pour un membre connecté (écran « Les CGU
-ont été mises à jour » d'`AppShell`, affiché tant que `terms_version` diffère de `TERMS_VERSION`).
+`POST /api/terms/accept` `{ accepted: true }` fait de même pour un membre connecté (écran « Avant de
+continuer » d'`AppShell`, affiché tant que `terms_version` diffère de `TERMS_VERSION`).
 
 **Alerte admin** : à chaque film publié (depuis « Mes films » ou l'inscription), `sendAdminNewFilmEmail`
 envoie un email à `ADMIN_ALERT_EMAIL` avec un lien vers `/admin?tab=films`. Variable absente :

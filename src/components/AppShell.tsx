@@ -755,10 +755,10 @@ export default function AppShell({
           className="glass-strong bg-glass-solid/80 max-h-full w-full max-w-md overflow-y-auto rounded-panel p-5 sm:p-6"
         >
           <h2 id="terms-update-title" className="text-xl font-bold tracking-tight text-text-primary">
-            Les CGU ont été mises à jour
+            Avant de continuer
           </h2>
           <p id="terms-update-text" className="mt-2 text-sm leading-relaxed text-text-secondary">
-            Pour continuer à utiliser Unkast, lis et accepte les conditions d&apos;utilisation et la politique de confidentialité.
+            Pour utiliser Unkast, lis et accepte les conditions d&apos;utilisation et la politique de confidentialité.
           </p>
 
           <LegalLinks newTab className="mt-2" />

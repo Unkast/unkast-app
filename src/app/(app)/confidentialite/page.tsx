@@ -176,7 +176,10 @@ export default function ConfidentialitePage() {
         <ul>
           <li>accéder à tes données et en recevoir une copie ;</li>
           <li>les corriger (la plupart se modifient directement dans ton espace) ;</li>
-          <li>les faire supprimer, avec ton compte ;</li>
+          <li>
+            les faire supprimer, avec ton compte : <strong>pendant la bêta</strong>, la suppression du compte
+            se demande par email à <Info value={LEGAL.contactEmail} />, depuis l&apos;adresse de ton compte ;
+          </li>
           <li>t&apos;opposer à un traitement ou en demander la limitation ;</li>
           <li>récupérer tes données dans un format réutilisable.</li>
         </ul>

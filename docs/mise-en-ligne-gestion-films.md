@@ -204,6 +204,28 @@ A tester :
       ni vimeo.com avant de cliquer sur lecture. Apres le clic sur un film YouTube, le lecteur vient
       de `youtube-nocookie.com`.
 
+## 4 sexies. Lot « inscription par Google »
+
+Aucune migration. A tester avec un compte Google jamais utilise sur Unkast, puis avec un compte
+deja finalise :
+- [ ] **Nouveau compte, depuis l'inscription** : cocher la case, « Continuer avec Google ». Au
+      retour, on arrive sur « Finalise ton profil », jamais sur l'etape 1 de l'inscription.
+      L'ecran « Avant de continuer » ne s'affiche pas (la case etait cochee). Remplir, « Terminer » :
+      on arrive sur le feed, le profil a ses metiers, et l'acceptation des CGU est enregistree.
+- [ ] **Nouveau compte, depuis la page de connexion** (sans case) : au retour, l'ecran « Avant de
+      continuer » demande l'acceptation, puis la finalisation.
+- [ ] **Finalisation abandonnee** : fermer l'onglet sur la finalisation, revenir sur n'importe
+      quelle page (feed, /moi, un film) : on est ramene a la finalisation. Les trois pages legales
+      et la deconnexion restent accessibles.
+- [ ] **Compte Google deja finalise** : la connexion mene directement au feed.
+- [ ] **/rejoindre en etant connecte** : on arrive sur le feed (ou la finalisation), jamais sur le
+      formulaire d'inscription.
+- [ ] **Lien d'un film reserve aux membres, puis Google** : apres la finalisation, on revient sur
+      le film.
+- [ ] **Compte cree par email** : rien ne change pour lui (il a deja ses metiers).
+- [ ] **Compte admin** : s'il n'a aucun metier, il passe une fois par la finalisation sur les
+      pages hors admin ; l'admin reste accessible.
+
 ## Avant le lancement public (lot separe, non fait)
 
 - [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
@@ -211,6 +233,13 @@ A tester :
       personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
       A traiter : droits par colonne et nom d'affichage calcule en base.
 - [ ] Refuser une demande de credit sur un film non visible.
+- [ ] **Bouton « Supprimer mon compte ».** Pendant la beta, la suppression se demande par email
+      (CGU et politique de confidentialite). Un bouton dans l'app est a faire avant le lancement
+      public : c'est une attente du RGPD, et **une obligation de Google Play** pour toute app qui
+      permet de creer un compte (suppression depuis l'app et depuis une page web).
+- [ ] **Inscription recruteur par Google.** La finalisation Google ne propose que Talent et
+      Createur ; un recruteur doit s'inscrire par email. A ouvrir si besoin, avec les champs
+      societe et fonction et la validation admin.
 - [ ] **Avis d'un juriste, representant dans l'Union europeenne.** Une societe etablie hors de
       l'Union europeenne qui s'adresse a des residents francais peut devoir designer un
       representant dans l'Union (RGPD, article 27). Le champ est prevu dans `src/lib/legal.ts`.

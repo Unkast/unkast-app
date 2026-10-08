@@ -24,6 +24,7 @@ import ProgressSteps from "@/components/ui/ProgressSteps";
 import Select from "@/components/ui/Select";
 import Toggle from "@/components/ui/Toggle";
 import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
+import { TERMS_VERSION } from "@/lib/legal";
 
 // Compte créé mais film non créé : message selon video_skipped_reason (api/signup).
 const VIDEO_SKIPPED_MESSAGES: Record<string, string> = {
@@ -204,8 +205,9 @@ export default function RejoindreClient() {
   }, [searchQuery]);
 
   async function handleGoogle() {
-    // Le compte Google est créé par /auth/callback, qui ne connaît pas la case :
-    // l'acceptation est enregistrée ensuite par l'écran des CGU d'AppShell.
+    // La case est cochée : la version acceptée part dans l'adresse de retour,
+    // et /auth/callback l'enregistre à la création du profil. Il envoie ensuite
+    // vers /rejoindre/finaliser (jamais vers cette inscription classique).
     if (!termsAccepted) return;
     setGoogleLoading(true);
     const supabase = createBrowserClient(
@@ -215,7 +217,7 @@ export default function RejoindreClient() {
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/feed&terms=${encodeURIComponent(TERMS_VERSION)}`,
       },
     });
     if (authError) {

@@ -43,7 +43,11 @@ export default function CguPage() {
           <li>Tu dois avoir <strong>{AGE_MINIMUM} ans ou plus</strong>.</li>
           <li>Un compte par personne, avec des informations exactes. Tu peux afficher un nom de scène.</li>
           <li>Tu es responsable de ton mot de passe et de ce qui est fait avec ton compte.</li>
-          <li>Tu peux demander la suppression de ton compte à tout moment (voir « Nous contacter »).</li>
+          <li>
+            Tu peux demander la suppression de ton compte à tout moment. <strong>Pendant la bêta</strong>,
+            elle se demande par email à <Info value={LEGAL.contactEmail} />, depuis l&apos;adresse de ton
+            compte. Nous la traitons dans les 30 jours.
+          </li>
         </ul>
       </Section>
 

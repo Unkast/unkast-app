@@ -2,6 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Pages ouvertes a un compte connecte dont l'inscription n'est pas finalisee.
+const FINALIZE_EXEMPT = [
+  "/rejoindre/finaliser",
+  "/cgu",
+  "/confidentialite",
+  "/mentions-legales",
+  "/admin",
+  "/auth",
+];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -72,10 +82,12 @@ export async function updateSession(request: NextRequest) {
     !pathname.startsWith("/api") &&
     pathname !== "/"
   ) {
+    // profile_roles (1 ligne au plus) : sert a savoir si le compte est finalise.
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("is_suspended")
+      .select("is_suspended, account_type, profile_roles ( id )")
       .eq("id", user.id)
+      .limit(1, { foreignTable: "profile_roles" })
       .single();
 
     if (profileError) {
@@ -108,6 +120,25 @@ export async function updateSession(request: NextRequest) {
     } else if (profile?.is_suspended) {
       const url = request.nextUrl.clone();
       url.pathname = "/suspended";
+      return NextResponse.redirect(url);
+    } else if (
+      // Compte connecte SANS METIER = inscription non finalisee (compte cree par
+      // Google) : renvoye vers la finalisation, quelle que soit la page ouverte.
+      // Exceptions : la finalisation elle-meme, les pages legales, l'admin, et
+      // les recruteurs (autre parcours d'inscription). /api (dont la
+      // deconnexion) et / sont deja exclus par la condition du bloc.
+      profile &&
+      profile.account_type !== "recruiter" &&
+      (profile.profile_roles ?? []).length === 0 &&
+      !FINALIZE_EXEMPT.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/rejoindre/finaliser";
+      // La page demandee est gardee, sauf l'inscription classique (sans objet
+      // pour un compte deja cree).
+      url.search = pathname.startsWith("/rejoindre")
+        ? ""
+        : `?next=${encodeURIComponent(pathname + request.nextUrl.search)}`;
       return NextResponse.redirect(url);
     }
   }
