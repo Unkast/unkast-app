@@ -28,7 +28,9 @@
 | `constants.ts` | [utilise] | `types/database.ts` (ProjectCategory) |
 | `motion.tsx` | [utilise] | `framer-motion` |
 | `layout.tsx` (racine) | [depend de] | `globals.css` (`.bg-canvas-halos` sur le `body`) |
-| `ui/*` (Button, Chip, Badge, GlassCard, Field, ProgressSteps) | [depend de] | `globals.css` (tokens et utilitaires verre) |
+| `ui/*` (Button, Chip, Badge, GlassCard, Field, ProgressSteps, Select, Toggle, Toast) | [depend de] | `globals.css` (tokens et utilitaires verre) |
+| `ui/Toast` | [utilise] | `framer-motion`, `react-dom` (createPortal) |
+| `layout.tsx` (racine, script inline) | [declenche] | classe `.lite` sur `<html>` (Android) → `globals.css` (verre sans flou) |
 | `ui/Button` | [utilise] | `framer-motion` (whileTap, useReducedMotion), `next/link` (prop `href`) |
 | `dev/ui/UiShowcase` | [utilise] | `ui/*`, `motion.tsx` (EnterList, EnterItem, cardSpring) |
 | --- | --- | --- |
@@ -93,12 +95,11 @@
 | `RechercheClient` | [depend de] | `ui/Field` (`autoFocus` a l'entree en mode Rechercher) |
 | --- | --- | --- |
 | **Refonte vague 2 (chantier 6, 08/10/2026)** | | |
-| `RejoindreClient` | [utilise] | `RoleSelector`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/ProgressSteps` |
+| `RejoindreClient` | [utilise] | `RoleSelector`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/ProgressSteps`, `ui/Select` |
 | `ConnexionClient`, `auth/confirm/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard` |
-| `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard` |
+| `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/Select`, `ui/Toast`, `ui/Toggle` |
 | `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field` |
 | `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
-| `moi/parts.tsx` | [utilise] | `ui/Badge` |
 | `messages/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard`, `Avatar` |
 | `messages/[id]/page.tsx` | [utilise] | `ui/Button` |
 | `messages/[id]/page.tsx` | [depend de] | `globals.css` (`.lite`, `--accent-gradient`) |
@@ -107,7 +108,7 @@
 | `categories/[slug]/page.tsx` | [utilise] | `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/GlassCard` |
 | `RoleSelector` | [utilise] | `ui/Button`, `ui/Chip`, `ui/Field`, `constants.ts`, `react-dom` (createPortal) |
 | `ProfileClient`, `ProjetClient` | [utilise] | `RoleSelector` (singleSelect, dans une `ModalBackdrop`) |
-| `AvatarUpload` | [utilise] | `ui/Button`, `react-dom` (createPortal) |
+| `AvatarUpload` | [utilise] | `ui/Button`, `ui/Toast`, `react-dom` (createPortal) |
 | --- | --- | --- |
 | **Inscription** | | |
 | `RejoindreClient` | [declenche] | `POST /api/signup` |

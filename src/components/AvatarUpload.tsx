@@ -6,6 +6,7 @@ import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
 import { canvasToWebpBlob, MAX_INPUT_BYTES } from "@/lib/image-compress";
 import Button from "@/components/ui/Button";
+import Toast from "@/components/ui/Toast";
 
 interface Props {
   currentAvatarUrl: string | null;
@@ -274,16 +275,7 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
         document.body
       )}
 
-      {/* Toast (sous l'en-tete d'AppShell) */}
-      {toast && createPortal(
-        <div
-          role="status"
-          className="glass-strong fixed right-4 top-[calc(68px+env(safe-area-inset-top,16px))] z-[10000] max-w-[calc(100vw-2rem)] rounded-card bg-glass-solid/80 px-4 py-2.5 text-[13px] text-text-primary shadow-2xl shadow-black/50"
-        >
-          {toast}
-        </div>,
-        document.body
-      )}
+      <Toast message={toast} />
     </>
   );
 }

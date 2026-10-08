@@ -82,6 +82,10 @@ export function ModalBackdrop({
   onClose: () => void;
   children: ReactNode;
 }) {
+  // Fermeture au clic exterieur : seulement si mousedown ET clic ont lieu sur le fond
+  // (un glisser de selection de texte commence dans la modale ne doit pas la fermer).
+  const downOnBackdrop = useRef(false);
+
   if (!open) return null;
 
   return (
@@ -90,7 +94,11 @@ export function ModalBackdrop({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => { downOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        if (downOnBackdrop.current && e.target === e.currentTarget) onClose();
+        downOnBackdrop.current = false;
+      }}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[20px] p-4"
     >
       <motion.div

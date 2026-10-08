@@ -9,6 +9,9 @@ const VARIANTS = {
   // Neutre : pas de libelle par defaut, le contenu est passe en children.
   neutral: { label: "", className: "border-white/10 bg-white/5 text-text-secondary" },
   pending: { label: "En attente", className: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400" },
+  // Statuts d'un film, d'une demande ou d'une invitation (libelle surchargeable en children).
+  published: { label: "Publié", className: LIME },
+  rejected: { label: "Refusé", className: "border-red-500/25 bg-red-500/10 text-red-400" },
 } as const;
 
 export default function Badge({
@@ -26,7 +29,7 @@ export default function Badge({
     <span
       className={`inline-flex h-6 items-center gap-1.5 rounded-pill border px-2.5 text-xs font-semibold leading-none ${v.className} ${className}`}
     >
-      {variant === "verified" && (
+      {(variant === "verified" || variant === "published") && (
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
           <path d="M2.5 6.2 5 8.7l4.5-5.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

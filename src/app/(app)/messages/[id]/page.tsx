@@ -162,7 +162,8 @@ export default function ConversationPage({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "40px";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    // scrollHeight ne compte pas la bordure (1 px haut + 1 px bas) d'une boite border-box.
+    el.style.height = Math.min(el.scrollHeight + 2, 120) + "px";
   }, []);
 
   /* ── Send message ── */
@@ -577,17 +578,19 @@ export default function ConversationPage({
             disabled={inputBlocked}
             style={{
               flex: 1,
-              padding: "10px 14px",
+              // 16 px : pas de zoom automatique d'iOS au focus. 8 + 22 + 8 + 2 de bordure
+              // = 40 px sur une ligne, la barre garde sa hauteur.
+              padding: "8px 14px",
               background: "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: 20,
-              fontSize: 14,
+              fontSize: 16,
               color: inputBlocked ? "#555" : "#f0f0f0",
               outline: "none",
               resize: "none",
               minHeight: 40,
               maxHeight: 120,
-              lineHeight: 1.4,
+              lineHeight: "22px",
               fontFamily: "inherit",
               cursor: inputBlocked ? "not-allowed" : "text",
             }}

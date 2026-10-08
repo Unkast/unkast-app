@@ -8,6 +8,9 @@ import Chip from "@/components/ui/Chip";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import ProgressSteps from "@/components/ui/ProgressSteps";
+import Select from "@/components/ui/Select";
+import Toast from "@/components/ui/Toast";
+import Toggle from "@/components/ui/Toggle";
 
 const FILTERS = ["Tous", "Fiction", "Clip", "Documentaire", "Publicité"];
 const STEPS = 5;
@@ -23,6 +26,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export default function UiShowcase() {
   const [filter, setFilter] = useState(FILTERS[0]);
+  const [toggle, setToggle] = useState(true);
+  const [toast, setToast] = useState("");
   const [search, setSearch] = useState("");
   const [step, setStep] = useState(0);
   const [listKey, setListKey] = useState(0);
@@ -45,10 +50,12 @@ export default function UiShowcase() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button size="sm">Petit</Button>
+          <Button size="compact">Compact 40</Button>
           <Button size="lg">Grand</Button>
           <Button variant="dashed" size="sm">Pointillé</Button>
           <Button variant="glass" href="/dev/ui">Lien</Button>
         </div>
+        <Button variant="glass" fullWidth>Pleine largeur</Button>
       </Section>
 
       <Section title="Chip">
@@ -59,7 +66,22 @@ export default function UiShowcase() {
             </Chip>
           ))}
           <Chip variant="static">Statique</Chip>
+          <Chip variant="removable" aria-label="Retirer Monteur">Monteur</Chip>
         </div>
+      </Section>
+
+      <Section title="Select, Toggle, Toast">
+        <Select label="Catégorie" defaultValue="fiction" className="max-w-xs">
+          <option value="fiction">Fiction</option>
+          <option value="clip">Clip</option>
+        </Select>
+        <Toggle checked={toggle} onChange={setToggle} label="Disponible pour des projets" className="max-w-xs" />
+        <div>
+          <Button variant="glass" size="sm" onClick={() => { setToast("Profil mis à jour"); setTimeout(() => setToast(""), 3000); }}>
+            Afficher un toast
+          </Button>
+        </div>
+        <Toast message={toast} />
       </Section>
 
       <Section title="Badge">
@@ -69,6 +91,8 @@ export default function UiShowcase() {
           <Badge variant="available" />
           <Badge variant="neutral">Neutre</Badge>
           <Badge variant="pending" />
+          <Badge variant="published" />
+          <Badge variant="rejected" />
         </div>
       </Section>
 

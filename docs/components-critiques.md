@@ -28,23 +28,26 @@ Composants / modules utilises par 3+ features.
 - **Role** : Primitives d'animation partagees
 - **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `RechercheClient`, `ContactModal`, `dev/ui/UiShowcase` ; depuis le chantier 6 : `RejoindreClient`, `ConnexionClient`, `auth/confirm`, `MoiClient`, `RecruitmentSpace`, `messages/page`, `pro/*`, `categories/[slug]/page`
 - **Risque si modifie** : **CRITIQUE** — affecte les animations de presque toutes les pages
+- **Chantier 7** : `ModalBackdrop` protege contre le drag-select (fermeture seulement si mousedown ET clic sur le fond)
 - **Chantier 5** : `enterUp` / `enterFade` finissent sur `filter: none` (`transitionEnd`) : un `.glass` place dans un `EnterItem` floute bien les halos du fond. `ModalBackdrop` : panneau `.glass-strong` teinte, `rounded-panel`
 
-## ui/ (Button, Chip, Badge, GlassCard, Field)
+## ui/ (Button, Chip, Badge, GlassCard, Field, Select, Toggle, Toast)
 
 - **Fichiers** : `src/components/ui/*`
 - **Role** : briques du style verre liquide
-- **API** : `Button` (variant `accent | light | glass | dashed | icon`, size `sm | md | lg`, `href` → lien next/link) ; `Chip` (variant `filter | static`, `selected`) ; `Badge` (variant `verified | pro | available | neutral | pending`) ; `Field` (`label`, `icon`, `onClear`, `multiline`, size `md | lg`) ; `GlassCard` (`strong`, radius `card | panel`)
+- **API** : `Button` (variant `accent | light | glass | dashed | icon`, size `sm | compact | md | lg`, `fullWidth`, `href` → lien next/link) ; `Chip` (variant `filter | static | removable`, `selected`) ; `Badge` (variant `verified | pro | available | neutral | pending | published | rejected`) ; `Field` (`label`, `icon`, `onClear`, `multiline`, size `md | lg`) ; `GlassCard` (`strong`, radius `card | panel`) ; `Select` (`label`, props de `<select>`) ; `Toggle` (`checked`, `onChange`, `label`) ; `Toast` (`message`)
 - **Consommateurs** : `Button` → `ConversionBanner`, `HeroCarousel`, `ProfileClient`, `ProjetClient` ; `Chip` → `ProfileClient`, `RechercheClient` ; `Badge` → `ProfileClient`, `ProjetClient`, `RechercheClient` ; `Field` → `ProfileClient`, `ProjetClient`, `RechercheClient` ; `GlassCard` → `feed/page`, `ProjetClient`, `RechercheClient` ; toutes → `dev/ui/UiShowcase`
 - **Consommateurs ajoutes au chantier 6 (08/10/2026)** : `RejoindreClient` (toutes + `ProgressSteps`), `ConnexionClient`, `auth/confirm`, `MoiClient`, `RecruitmentSpace`, `moi/parts`, `messages/page`, `messages/[id]`, `pro/*`, `categories/[slug]/page`, `RoleSelector`, `AvatarUpload`
 - **Risque si modifie** : **CRITIQUE** — change le rendu de presque toutes les pages
-- **Manques connus (contournes en local, a arbitrer)** : pas de Chip retirable, pas de brique Select ni Toggle ni Toast, pas de variant Badge « refuse » ni « publie », pas de Button 40 px ni pleine largeur ; `ModalBackdrop` n'est pas protege contre le drag-select
+- **Chantier 7 (08/10/2026)** : ajout de `Select`, `Toggle`, `Toast`, Chip `removable`, Button `compact` et `fullWidth`, Badge `published` et `rejected`. Consommateurs : `Select` → `RejoindreClient`, `MoiClient` ; `Toggle` → `MoiClient` ; `Toast` → `MoiClient`, `AvatarUpload` ; Chip `removable` → `RoleSelector`. Les versions locales (GlassSelect, parts.tsx) sont supprimees
+- **Reste local** : le bouton d'envoi de la conversation (40 px, rond) et la modale Pro de `MoiClient` n'utilisent pas encore les briques
 - **Ajouts du 07/10/2026 (verre liquide, purement additifs)** : `cardSpring`, `listStagger`, `enterUp`, `enterFade`, `EnterList`, `EnterItem`
 
 ## globals.css (tokens, utilitaires verre, regle reduced motion)
 
 - **Fichier** : `src/app/globals.css`
 - **Role** : tokens Tailwind (`@theme`), utilitaires `.glass` / `.glass-strong` / `.btn-accent` / `.text-sheen` (dans `@layer components`), fond `.bg-canvas-halos` pose sur le `body`, regle globale `prefers-reduced-motion`
+- **Mode `.lite`** : verre opaque sans `backdrop-filter`. Pose sur `<html>` pour tout Android par un script inline de `src/app/layout.tsx` (chantier 7) ; aussi pose a la main sur les bulles de la conversation
 - **Consommateurs** : toute l'app (via `layout.tsx` racine), `src/components/ui/*`
 - **Risque si modifie** : **CRITIQUE** — les regles hors `@layer` (`button`, `a`, `input:focus`, reduced motion) l'emportent sur toutes les classes Tailwind
 
@@ -63,7 +66,7 @@ Composants / modules utilises par 3+ features.
 - **API (a ne pas casser)** : `selectedRoles`, `onChange`, `maxSelection` (defaut 5), `placeholder`, `singleSelect`. L'ordre de `selectedRoles` n'est jamais modifie (ajout en fin, retrait par filtre) : le premier element est le titre principal
 - **Consommateurs** : `RejoindreClient`, `MoiClient`, `ProfileClient` et `ProjetClient` (singleSelect, dans une `ModalBackdrop`)
 - **Risque si modifie** : **ELEVE** — 4 features
-- **Comportement herite** : en `singleSelect`, une fois un metier choisi, les autres sont desactives (il faut le retirer pour en changer)
+- **singleSelect** (chantier 7) : un clic sur un autre metier remplace le precedent
 
 ## ContactModal
 

@@ -18,7 +18,10 @@ import Chip from "@/components/ui/Chip";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
-import { SectionLabel, Toggle, Select, StatusBadge, FilmThumb, Toast, MoiSkeleton } from "./parts";
+import Select from "@/components/ui/Select";
+import Toast from "@/components/ui/Toast";
+import Toggle from "@/components/ui/Toggle";
+import { SectionLabel, FilmThumb, MoiSkeleton } from "./parts";
 
 /* ---------- types ---------- */
 
@@ -784,7 +787,7 @@ export default function MoiClient() {
 
                 {/* Project list */}
                 {projects.map((project) => {
-                  const statusTone = project.status === "approved" ? "ok" : project.status === "pending" ? "pending" : "ko";
+                  const statusTone = project.status === "approved" ? "published" : project.status === "pending" ? "pending" : "rejected";
                   const statusLabel = project.status === "approved" ? "Publié" : project.status === "pending" ? "En attente" : "Refusé";
 
                   const inviteOpen = inviteForProject === project.id;
@@ -796,7 +799,7 @@ export default function MoiClient() {
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-sm font-semibold leading-snug text-text-primary">{project.title}</p>
                           <div className="mt-1.5">
-                            <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                            <Badge variant={statusTone}>{statusLabel}</Badge>
                           </div>
                         </div>
                         {/* Inviter */}
@@ -838,7 +841,7 @@ export default function MoiClient() {
                 {/* Add button */}
                 {!addingProject && projects.length < projectLimit && (
                   <EnterItem>
-                    <Button size="lg" onClick={() => setAddingProject(true)} className="w-full">
+                    <Button size="lg" onClick={() => setAddingProject(true)} fullWidth>
                       + Ajouter un film
                     </Button>
                   </EnterItem>
@@ -846,7 +849,7 @@ export default function MoiClient() {
 
                 {!addingProject && plan !== "pro" && projects.length >= projectLimit && (
                   <EnterItem>
-                    <Button variant="dashed" onClick={() => setShowProModal(true)} className="w-full">
+                    <Button variant="dashed" onClick={() => setShowProModal(true)} fullWidth>
                       Passer a Unkast Pro pour publier plus &rarr;
                     </Button>
                   </EnterItem>
@@ -926,7 +929,7 @@ export default function MoiClient() {
                           <p className={rowMetaCls}>{req.role}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <StatusBadge tone="pending">En attente</StatusBadge>
+                          <Badge variant="pending">En attente</Badge>
                           <Button variant="glass" size="sm" onClick={() => cancelMyCreditRequest(req.id)}>
                             Annuler
                           </Button>
@@ -970,7 +973,7 @@ export default function MoiClient() {
                   </EnterItem>
                 ) : (
                   myCreditRequests.map((req) => {
-                    const statusTone = req.status === "pending" ? "pending" : req.status === "accepted" ? "ok" : "ko";
+                    const statusTone = req.status === "pending" ? "pending" : req.status === "accepted" ? "published" : "rejected";
                     const statusLabel = req.status === "pending" ? "En attente" : req.status === "accepted" ? "Accepté" : "Refusé";
                     return (
                       <EnterItem key={req.id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card p-3 pl-4">
@@ -979,7 +982,7 @@ export default function MoiClient() {
                           <p className={rowMetaCls}>{req.role}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                          <Badge variant={statusTone}>{statusLabel}</Badge>
                           {req.status === "pending" && (
                             <Button variant="glass" size="sm" onClick={() => cancelMyCreditRequest(req.id)}>
                               Annuler
@@ -1034,9 +1037,9 @@ export default function MoiClient() {
                       )}
                       {inv.status !== "pending" && (
                         <div className="mt-2.5">
-                          <StatusBadge tone={inv.status === "accepted" ? "ok" : "ko"}>
+                          <Badge variant={inv.status === "accepted" ? "published" : "rejected"}>
                             {inv.status === "accepted" ? "Acceptée" : "Déclinée"}
-                          </StatusBadge>
+                          </Badge>
                         </div>
                       )}
                     </EnterItem>
@@ -1089,7 +1092,7 @@ export default function MoiClient() {
                   </EnterItem>
                 ) : (
                   sentInvitations.map((inv) => {
-                    const statusTone = inv.status === "pending" ? "pending" : inv.status === "accepted" ? "ok" : "ko";
+                    const statusTone = inv.status === "pending" ? "pending" : inv.status === "accepted" ? "published" : "rejected";
                     const statusLabel = inv.status === "pending" ? "En attente" : inv.status === "accepted" ? "Acceptée" : "Déclinée";
                     return (
                       <EnterItem key={inv.id} className="glass flex items-center gap-3 rounded-card p-3">
@@ -1100,7 +1103,7 @@ export default function MoiClient() {
                           <p className={`${rowMetaCls} truncate`}>{inv.project_title || "Projet"}</p>
                         </div>
                         <div className="shrink-0">
-                          <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                          <Badge variant={statusTone}>{statusLabel}</Badge>
                         </div>
                       </EnterItem>
                     );
@@ -1185,7 +1188,7 @@ export default function MoiClient() {
                   ))}
                 </div>
 
-                <Button size="lg" href="/pro" className="w-full">
+                <Button size="lg" href="/pro" fullWidth>
                   Découvrir Unkast Pro
                 </Button>
               </EnterItem>
@@ -1204,7 +1207,7 @@ export default function MoiClient() {
 
             {/* Disconnect — separate */}
             <EnterItem>
-              <Button variant="glass" onClick={handleLogout} className="w-full border-red-500/25! text-red-400!">
+              <Button variant="glass" onClick={handleLogout} fullWidth className="border-red-500/25! text-red-400!">
                 Se déconnecter
               </Button>
             </EnterItem>

@@ -36,6 +36,9 @@ RELATIONS :
 ```
 CORE  Layout racine (src/app/layout.tsx)
   HTML wrapper, metadata, fonts, PWA manifest. NE contient PAS AppShell.
+  Script inline en tete de <body> (chantier 7, 08/10/2026) : sur Android (user agent), pose la
+  classe .lite sur <html> avant le premier rendu → tout .glass / .glass-strong devient opaque,
+  sans backdrop-filter (regles .lite de globals.css). Vaut pour toute l'app, admin compris.
   Viewport : interactive-widget=resizes-content (le clavier virtuel redimensionne la mise en page).
 
 CORE  Layout app (src/app/(app)/layout.tsx)
@@ -59,6 +62,8 @@ CORE  AppShell (src/components/AppShell.tsx)
   la navigation mobile pour TOUTES les pages : 56 px + safe area (barre plate du navigateur),
   92 px + safe area (dock de l'app installee : 88 px + 4 px d'air), 0 en desktop. Les pages ne
   reservent plus rien (ni .pb-tabbar, ni pb-16) ; rien dans une conversation (navigation masquee).
+  En-tete mobile : pas de titre de page sur /rejoindre (il ne tient pas a 360 px a cote de
+  « Se connecter » et « Rejoindre ») ; « Se connecter » ne passe jamais a la ligne.
   Navigation masquee (prop hidden) dans une conversation ouverte et quand le clavier virtuel est
   ouvert : useKeyboardOpen(), hook local a AppShell (focus d'un champ de texte + visualViewport).
 
@@ -118,6 +123,8 @@ CORE  Motion Primitives (src/components/motion.tsx)
   Chantier 5 : enterUp / enterFade finissent sur filter: none (transitionEnd), pour qu'un .glass
   enfant continue de flouter les halos du fond ; ModalBackdrop = panneau .glass-strong teinte
   (bg-glass-solid/80), rounded-panel.
+  Chantier 7 : ModalBackdrop ne se ferme que si mousedown ET clic ont lieu sur le fond (un
+  glisser de selection de texte commence dans la modale ne la ferme plus).
 
 UTILITY  lib/utils.ts        — slugify() PARTAGE (utilise par signup, dashboard/projects, auth/callback)
 UTILITY  lib/rate-limit.ts   — checkRateLimit() (RPC check_rate_limit, FAIL-CLOSED ; RPC absente toleree hors prod)
@@ -181,7 +188,7 @@ FEATURE  Inscription — /rejoindre (src/app/(app)/rejoindre/ + RejoindreClient)
   glissement de 40 px + fondu selon le sens (fondu seul en reduced motion), etapes en GlassCard,
   Field / Button / Chip partout. Annee du film : Chip sur les 5 dernieres annees + « Plus ancien »
   (revele les annees anterieures de la meme liste, payload inchange). Selects restants (categorie,
-  poste recruteur) : <select> natif habille en verre (GlassSelect local a RejoindreClient).
+  poste recruteur) : brique ui/Select.
   [utilise] RoleSelector, ui/*, motion.tsx
 
 FEATURE  Connexion — /connexion (src/app/(app)/connexion/ + ConnexionClient)
@@ -201,8 +208,8 @@ FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient + RecruitmentSpace 
   text-sheen, Badge Pro / Recruteur verifie / Disponible / Validation en attente), onglets en Chip,
   jauge de films « X sur limite » (projectLimit existant), cartes de films avec statut en Badge,
   « Ajouter un film » en Button accent, formulaires en Field, squelette de verre.
-  parts.tsx = sous-composants de presentation locaux (SectionLabel, Toggle, Select, StatusBadge,
-  FilmThumb, Toast, MoiSkeleton, ListSkeleton). RecruitmentSpace : barre « ecarte / Annuler »
+  parts.tsx = sous-composants de presentation locaux (SectionLabel, FilmThumb, MoiSkeleton,
+  ListSkeleton) ; Select, Toggle, Toast et les statuts sont des briques ui/ depuis le chantier 7. RecruitmentSpace : barre « ecarte / Annuler »
   portee dans <body> et calee au-dessus de la navigation mobile (68 px + safe area, 100 px si
   app-installed, 24 px en desktop).
   [utilise] RoleSelector, AvatarUpload, Avatar, ui/*, motion.tsx
@@ -216,6 +223,8 @@ FEATURE  Messagerie — /messages, /messages/[id] (src/app/(app)/messages/)
   `glass lite` (verre opaque SANS backdrop-filter : une bulle floutee par message couterait trop
   cher sur Android), en-tete .glass, barre de saisie .glass-strong. Pas d'animation d'entree sur
   les messages (defilement automatique). Structure plein ecran et logique inchangees.
+  Champ de saisie en 16 px (pas de zoom iOS au focus), ligne de 22 px, padding vertical 8 px :
+  40 px sur une ligne, 120 px max ; adjustTextarea ajoute les 2 px de bordure a scrollHeight.
 
 FEATURE  Pro / Freemium — /pro (src/app/(app)/pro/)
   Page offre Pro. Deux sources cumulables (chantier grants, 10/08/2026) : abonnement Stripe
@@ -281,10 +290,12 @@ UTILITY  RoleSelector (src/components/RoleSelector.tsx) + icons/RoleIcons.tsx
          centree des sm) rendue par createPortal(document.body) : Populaires, puis metiers groupes
          par famille (ROLE_CATEGORIES), recherche en Field, metier libre, Echap, fermeture au clic
          exterieur protegee contre le drag-select.
+         singleSelect (chantier 7) : un clic sur un autre metier REMPLACE le precedent (les autres
+         metiers ne sont plus desactives).
 UTILITY  skeletons/ (Feed, Profile, Project, Search) — en verre, cales sur la mise en page des
          pages (memes conteneurs, memes rayons) ; a tenir a jour si une de ces pages change
 UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte visuelle, 07/10/2026) :
-         Button, Chip, Badge, GlassCard, Field, ProgressSteps.
+         Button, Chip, Badge, GlassCard, Field, ProgressSteps, Select, Toggle, Toast.
          [depend de] tokens et utilitaires de globals.css (.glass, .glass-strong, .btn-accent,
          .press-spring, rounded-card/panel/pill, duration-fast/slow, ease-glass)
          Button [utilise] framer-motion (appui ressort, useReducedMotion)
@@ -294,9 +305,17 @@ UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte vi
          /auth/confirm, /moi, Messagerie, Pro, Categories, RoleSelector, AvatarUpload.
          API (chantier 5, 07/10/2026) :
          Button — variant accent | light | glass | dashed | icon (aria-label obligatoire),
-           size sm | md | lg, href (rendu en next/link, memes styles et meme appui).
-         Chip — variant filter (bouton, selected) | static (span, affichage seul).
-         Badge — variant verified | pro | available | neutral (children) | pending.
+           size sm (36) | compact (40) | md (44) | lg (48), fullWidth, href (rendu en next/link,
+           memes styles et meme appui).
+         Chip — variant filter (bouton, selected) | static (span, affichage seul) | removable
+           (element d'une selection, croix a droite, le clic le retire ; aria-label a fournir).
+         Badge — variant verified | pro | available | neutral (children) | pending | published
+           (« Publié ») | rejected (« Refusé ») ; libelle surchargeable en children.
+         Select — <select> natif aux cotes de Field md, label optionnel (sinon aria-label),
+           className sur l'enveloppe.
+         Toggle — interrupteur (checkbox role="switch") : checked, onChange(bool), label.
+         Toast — message ; affiche tant que la chaine n'est pas vide (l'appelant la vide),
+           portail sur le body, sous l'en-tete d'AppShell, z-index 10000.
          Field — label optionnel (sinon aria-label), icon (a gauche), onClear (bouton
            d'effacement tant qu'il y a une valeur), multiline (textarea), size md | lg (lg =
            grand champ en verre). className va sur l'enveloppe, pas sur le champ.

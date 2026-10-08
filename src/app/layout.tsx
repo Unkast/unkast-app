@@ -63,6 +63,9 @@ export default function RootLayout({
       className={`${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full font-sans bg-canvas-halos">
+        {/* Android : classe .lite sur <html> avant le premier rendu (verre opaque, sans
+            backdrop-filter, voir globals.css). Layout serveur : le script s'execute toujours. */}
+        <script dangerouslySetInnerHTML={{ __html: `if(/Android/i.test(navigator.userAgent))document.documentElement.classList.add("lite")` }} />
         {children}
       </body>
     </html>

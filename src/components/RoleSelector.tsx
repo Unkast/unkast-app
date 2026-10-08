@@ -24,27 +24,20 @@ function normalize(str: string): string {
 
 const SECTION_LABEL = "font-mono text-[11px] uppercase tracking-widest text-text-tertiary";
 
-const CloseIcon = (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden="true" className="shrink-0">
-    <path d="M6 18 18 6M6 6l12 12" />
-  </svg>
-);
-
 // Chip de selection retirable. Le premier metier d'une selection multiple est le
 // titre principal (ordre du tableau selectedRoles, jamais reordonne ici).
 function SelectedChip({ role, primary, onRemove }: { role: string; primary: boolean; onRemove: () => void }) {
   return (
     <Chip
+      variant="removable"
       onClick={onRemove}
-      aria-pressed={undefined}
       aria-label={`Retirer ${role}${primary ? " (titre principal)" : ""}`}
-      className={`max-w-full pr-3 ${primary ? "border-lime/40 text-text-primary" : ""}`}
+      className={primary ? "border-lime/40 text-text-primary" : ""}
     >
       {primary && (
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-lime">Titre principal</span>
       )}
       <span className="truncate">{role}</span>
-      {CloseIcon}
     </Chip>
   );
 }
@@ -112,7 +105,7 @@ export default function RoleSelector({
   })).filter((g) => g.roles.length > 0);
 
   const customRole = query.trim();
-  const canAddCustom = customRole.length > 2 && !selectedRoles.includes(customRole) && selectedRoles.length < maxSelection;
+  const canAddCustom = customRole.length > 2 && !selectedRoles.includes(customRole) && (singleSelect || !atMax);
 
   const roleChip = (role: string) => {
     const selected = selectedRoles.includes(role);
@@ -120,7 +113,8 @@ export default function RoleSelector({
       <Chip
         key={role}
         selected={selected}
-        disabled={atMax && !selected}
+        // Selection unique : un clic sur un autre metier remplace le precedent.
+        disabled={!singleSelect && atMax && !selected}
         onClick={() => toggleRole(role)}
         className="disabled:cursor-not-allowed disabled:opacity-35"
       >

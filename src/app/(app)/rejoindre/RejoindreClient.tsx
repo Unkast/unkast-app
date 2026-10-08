@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useId, type ComponentProps, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
@@ -14,6 +14,7 @@ import Chip from "@/components/ui/Chip";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import ProgressSteps from "@/components/ui/ProgressSteps";
+import Select from "@/components/ui/Select";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -456,7 +457,7 @@ export default function RejoindreClient() {
                 <p className={SUBTITLE}>Crée ton compte pour commencer.</p>
 
                 {/* Google button */}
-                <Button variant="light" onClick={handleGoogle} disabled={googleLoading} className="w-full">
+                <Button variant="light" onClick={handleGoogle} disabled={googleLoading} fullWidth>
                   {GOOGLE_LOGO}
                   {googleLoading ? "Redirection..." : "Continuer avec Google"}
                 </Button>
@@ -592,11 +593,11 @@ export default function RejoindreClient() {
                     )}
                   </div>
 
-                  <GlassSelect label="Catégorie" value={projectCategory} onChange={(e) => setProjectCategory(e.target.value as ProjectCategory)}>
+                  <Select label="Catégorie" value={projectCategory} onChange={(e) => setProjectCategory(e.target.value as ProjectCategory)}>
                     {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
-                  </GlassSelect>
+                  </Select>
                 </div>
 
                 <InfoNote>
@@ -714,12 +715,12 @@ export default function RejoindreClient() {
                 <div className="space-y-4">
                   <Field label="Société / Structure" type="text" value={recruiterCompany} onChange={(e) => setRecruiterCompany(e.target.value)} placeholder="Nom de ta société de production" />
 
-                  <GlassSelect label="Ton poste" value={recruiterRole} onChange={(e) => setRecruiterRole(e.target.value)}>
+                  <Select label="Ton poste" value={recruiterRole} onChange={(e) => setRecruiterRole(e.target.value)}>
                     <option value="">Sélectionne ton poste</option>
                     {["Directeur de casting", "Producteur", "Réalisateur", "Chargé de production", "Agent artistique", "Autre"].map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
-                  </GlassSelect>
+                  </Select>
 
                   <Field label="Site web ou lien pro" type="url" value={recruiterWebsite} onChange={(e) => setRecruiterWebsite(e.target.value)} placeholder="https://..." />
 
@@ -862,28 +863,6 @@ function InfoNote({ children }: { children: ReactNode }) {
         <circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5v.01" />
       </svg>
       <p className="text-xs leading-relaxed text-text-secondary">{children}</p>
-    </div>
-  );
-}
-
-// <select> natif habillé comme Field (taille md). Options et valeurs inchangées.
-function GlassSelect({ label, children, ...props }: ComponentProps<"select"> & { label: string }) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={id} className={LABEL}>{label}</label>
-      <div className="relative">
-        <select
-          id={id}
-          className="min-h-11 w-full appearance-none rounded-card border border-white/10 bg-white/5 pl-4 pr-11 text-base text-text-primary outline-none scheme-dark transition-[border-color,box-shadow]! duration-fast! focus:ring-3 focus:ring-lime/30 [&>option]:bg-glass-solid [&>option]:text-text-primary"
-          {...props}
-        >
-          {children}
-        </select>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </div>
     </div>
   );
 }

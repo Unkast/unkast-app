@@ -592,7 +592,8 @@ export default function AppShell({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                {pageTitle && (
+                {/* /rejoindre : pas de titre, il ne tient pas a 360 px a cote des deux boutons. */}
+                {pageTitle && !pathname.startsWith("/rejoindre") && (
                   <span className="text-sm font-medium text-text-primary">{pageTitle}</span>
                 )}
               </>
@@ -634,6 +635,7 @@ export default function AppShell({
                     minHeight: 44,
                     display: "flex",
                     alignItems: "center",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   Se connecter
