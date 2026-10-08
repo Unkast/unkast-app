@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
@@ -50,25 +51,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Notify project owner
-  const { data: project } = await supabase
+  // Notifie les gestionnaires du film : Responsable (absent si le film n'en a
+  // plus) et co-gestionnaires. Lecture par le client de confiance : le demandeur
+  // ne lit pas project_managers.
+  const admin = createAdminClient();
+  const { data: project } = await admin
     .from("projects")
     .select("profile_id, title")
     .eq("id", project_id)
     .single();
 
-  const { data: requester } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
-
   if (project) {
-    sendPushToUser(project.profile_id, {
-      title: "Nouvelle demande de credit",
-      body: `${requester?.full_name || "Quelqu'un"} veut etre credite sur "${project.title}"`,
-      url: "/dashboard/projets",
-    }).catch(() => {});
+    const { data: managers } = await admin
+      .from("project_managers")
+      .select("profile_id")
+      .eq("project_id", project_id);
+
+    const recipients = new Set<string>((managers ?? []).map((m) => m.profile_id));
+    if (project.profile_id) recipients.add(project.profile_id);
+
+    for (const recipientId of recipients) {
+      sendPushToUser(recipientId, {
+        title: "Nouvelle demande de credit",
+        body: `${guard.profile.full_name || "Quelqu'un"} veut etre credite sur "${project.title}"`,
+        url: "/dashboard/projets",
+      }).catch(() => {});
+    }
   }
 
   return NextResponse.json({ success: true }, { status: 201 });

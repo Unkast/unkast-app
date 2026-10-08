@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { slugify, extractVideoKey } from "@/lib/utils";
-import { MAX_PROJECTS_FREE } from "@/lib/constants";
+import { slugify } from "@/lib/utils";
+import {
+  MAX_PROJECTS_FREE,
+  DECLARED_ROLES,
+  CLIENT_AUTHORIZATION_CATEGORIES,
+  RIGHTS_DECLARATION_VERSION,
+} from "@/lib/constants";
+import { fetchVideoMeta } from "@/lib/oembed";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
@@ -140,9 +146,11 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Create first project if provided (creator only)
-  // Anti-vol d'œuvre (chantier 9) : si la vidéo est déjà référencée, on NE bloque
-  // PAS l'inscription — le compte est créé, mais le film est sauté et l'UI prévient.
-  let videoSkipped = false;
+  // La publication passe par publish_project (service role) : declaration de
+  // droits, doublon, plafond, film et credits en une seule transaction.
+  // On NE bloque JAMAIS l'inscription : declaration manquante, video privee ou
+  // doublon -> le compte est cree, le film est saute et l'UI previent.
+  let videoSkippedReason: "duplicate" | "rights" | "private" | null = null;
   if (
     account_type === "creator" &&
     project &&
@@ -150,73 +158,68 @@ export async function POST(request: NextRequest) {
     project.video_url &&
     project.category
   ) {
-    const { count } = await supabase
-      .from("projects")
-      .select("id", { count: "exact", head: true })
-      .eq("profile_id", userId);
+    const declaredCredit = DECLARED_ROLES.find((r) => r.value === project.declared_role);
+    const clientAuthorizationMissing =
+      (CLIENT_AUTHORIZATION_CATEGORIES as string[]).includes(project.category) &&
+      project.client_authorized !== true;
 
-    // Doublon ? Identifiant canonique (youtube:<id> / vimeo:<id>), pas l'URL brute.
-    const video_key = extractVideoKey(project.video_url);
-    let isDuplicate = false;
-    if (video_key) {
-      const { data: dup } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("video_key", video_key)
-        .limit(1)
-        .maybeSingle();
-      isDuplicate = !!dup;
-    }
+    const meta =
+      project.rights_accepted === true && declaredCredit && !clientAuthorizationMissing
+        ? await fetchVideoMeta(project.video_url)
+        : null;
 
-    // Nouveau compte = toujours 'free' a l'inscription (le passage Pro se fait
-    // ensuite via l'admin) -> plafond gratuit. Un seul projet cree ici de toute facon.
-    if (isDuplicate) {
-      videoSkipped = true;
-    } else if ((count ?? 0) < MAX_PROJECTS_FREE) {
-      const projectSlug = slugify(project.title) + "-" + Date.now().toString(36);
+    if (!meta || !declaredCredit) {
+      videoSkippedReason = "rights";
+    } else if (!meta.ok) {
+      videoSkippedReason = "private";
+    } else {
+      // p_credits : credit automatique du role declare, owner_role s'il en
+      // differe, puis credits fantomes. (Meme construction dans api/dashboard/projects.)
+      const ownerRole = typeof project.owner_role === "string" ? project.owner_role.trim() : "";
+      const credits = [
+        ...(declaredCredit.credit
+          ? [{ profile_id: userId, ghost_name: null, role: declaredCredit.credit }]
+          : []),
+        ...(ownerRole && ownerRole.toLowerCase() !== declaredCredit.credit?.toLowerCase()
+          ? [{ profile_id: userId, ghost_name: null, role: ownerRole }]
+          : []),
+        ...(Array.isArray(project.credits) ? project.credits : [])
+          .filter((c: { name: string; role: string }) => c?.name && c?.role)
+          .map((c: { name: string; role: string }) => ({ profile_id: null, ghost_name: c.name, role: c.role })),
+      ];
 
-      const { data: projectData, error: projectError } = await supabase
-        .from("projects")
-        .insert({
-          profile_id: userId,
-          title: project.title,
-          slug: projectSlug,
-          description: project.description || null,
-          category: project.category,
-          year: project.year || new Date().getFullYear(),
-          video_url: project.video_url,
-          video_key,
-          status: "pending",
-        })
-        .select("id")
-        .single();
+      // Nouveau compte = toujours 'free' a l'inscription (le passage Pro se fait
+      // ensuite via l'admin) -> plafond gratuit.
+      const { data: result, error: projectError } = await supabase.rpc("publish_project", {
+        p_profile_id: userId,
+        p_title: project.title,
+        p_slug: slugify(project.title) + "-" + Date.now().toString(36),
+        p_description: project.description || null,
+        p_category: project.category,
+        p_year: project.year || new Date().getFullYear(),
+        p_video_url: project.video_url,
+        p_declared_role: project.declared_role,
+        p_text_version: RIGHTS_DECLARATION_VERSION,
+        p_client_authorized: project.client_authorized === true,
+        p_limit: MAX_PROJECTS_FREE,
+        p_source_title: meta.title,
+        p_source_author: meta.author,
+        p_credits: credits,
+      });
 
-      // Filet 23505 : course gagnée par l'index unique → on saute le film, compte gardé.
-      if (projectError?.code === "23505") {
-        videoSkipped = true;
-      }
-
-      if (!projectError && projectData) {
-        const credits = project.credits as { name: string; role: string }[] | undefined;
-        if (credits && credits.length > 0) {
-          const creditInserts = credits.map((c: { name: string; role: string }) => ({
-            project_id: projectData.id,
-            ghost_name: c.name,
-            role_on_project: c.role,
-          }));
-          await supabase.from("project_credits").insert(creditInserts);
-        }
-
-        if (project.owner_role) {
-          await supabase.from("project_credits").insert({
-            project_id: projectData.id,
-            profile_id: userId,
-            role_on_project: project.owner_role,
-          });
-        }
+      if (projectError) {
+        console.error("[signup] publish_project error:", projectError);
+      } else if (result?.code === "duplicate") {
+        videoSkippedReason = "duplicate";
+      } else if (
+        result?.code === "rights_declaration_required" ||
+        result?.code === "client_authorization_required"
+      ) {
+        videoSkippedReason = "rights";
       }
     }
   }
+  const videoSkipped = videoSkippedReason !== null;
 
   // 5. Create credit request if provided (talent)
   if (
@@ -289,6 +292,7 @@ export async function POST(request: NextRequest) {
     success: true,
     slug: profileSlug,
     video_skipped: videoSkipped,
+    video_skipped_reason: videoSkippedReason,
     needs_confirmation: true,
     confirmation_sent: confirmationSent,
   });

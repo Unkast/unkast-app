@@ -59,11 +59,24 @@ export async function GET(request: NextRequest) {
 
     // Enrich with reporter name and target info
     const enriched = await Promise.all((reports ?? []).map(async (r) => {
-      const { data: reporter } = await admin.from("profiles").select("full_name, slug").eq("id", r.reporter_id).single();
+      // reporter_id NULL = signalement automatique (detecteur de coordonnees).
+      const { data: reporter } = r.reporter_id
+        ? await admin.from("profiles").select("full_name, slug").eq("id", r.reporter_id).single()
+        : { data: { full_name: "Détection automatique", slug: "" } };
       let targetName = "";
       let targetSlug = "";
       let targetOwnerId = "";
-      if (r.target_type === "profile") {
+      // Entree du Parcours : son contenu, et le profil concerne (target_name /
+      // target_slug / target_owner_id portent le PROFIL, seule page ou l'ouvrir).
+      let careerEntry: { title: string; role: string; year: number; production: string | null } | null = null;
+      if (r.target_type === "career_entry") {
+        const { data: t } = await admin.from("career_entries").select("title, role, year, production, profile_id").eq("id", r.target_id).maybeSingle();
+        if (t) {
+          const { data: owner } = await admin.from("profiles").select("full_name, slug").eq("id", t.profile_id).single();
+          targetName = owner?.full_name || ""; targetSlug = owner?.slug || ""; targetOwnerId = t.profile_id;
+          careerEntry = { title: t.title, role: t.role, year: t.year, production: t.production };
+        }
+      } else if (r.target_type === "profile") {
         const { data: t } = await admin.from("profiles").select("full_name, slug").eq("id", r.target_id).single();
         targetName = t?.full_name || ""; targetSlug = t?.slug || ""; targetOwnerId = r.target_id;
       } else if (r.target_type === "project") {
@@ -74,7 +87,7 @@ export async function GET(request: NextRequest) {
       const { count } = await admin.from("reports").select("id", { count: "exact", head: true })
         .eq("target_type", r.target_type).eq("target_id", r.target_id).eq("status", "pending");
       const total = count || 1;
-      return { ...r, reporter_name: reporter?.full_name || "", target_name: targetName, target_slug: targetSlug, target_owner_id: targetOwnerId, total_reports: total, urgent: total >= 3 };
+      return { ...r, reporter_name: reporter?.full_name || "", target_name: targetName, target_slug: targetSlug, target_owner_id: targetOwnerId, career_entry: careerEntry, total_reports: total, urgent: total >= 3 };
     }));
 
     // Alerte prioritaire : les cibles les plus signalees remontent en tete
@@ -114,11 +127,77 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     const enriched = await Promise.all((pending ?? []).map(async (p) => {
-      const { data: owner } = await admin.from("profiles").select("full_name, slug").eq("id", p.profile_id).single();
-      return { ...p, owner_name: owner?.full_name || "", owner_slug: owner?.slug || "" };
+      // profile_id NULL = film sans Responsable : owner_name / owner_slug vides.
+      const { data: owner } = p.profile_id
+        ? await admin.from("profiles").select("full_name, slug").eq("id", p.profile_id).single()
+        : { data: null };
+      // Titre et chaine renvoyes par oEmbed a la soumission (a comparer au film).
+      const { data: moderation } = await admin.from("project_moderation")
+        .select("source_title, source_author").eq("project_id", p.id).maybeSingle();
+      // Derniere declaration de droits.
+      const { data: declaration } = await admin.from("project_rights_declarations")
+        .select("declared_role").eq("project_id", p.id)
+        .order("declared_at", { ascending: false }).limit(1).maybeSingle();
+      return {
+        ...p,
+        owner_name: owner?.full_name || "",
+        owner_slug: owner?.slug || "",
+        source_title: moderation?.source_title ?? null,
+        source_author: moderation?.source_author ?? null,
+        declared_role: declaration?.declared_role ?? null,
+      };
     }));
 
-    return NextResponse.json({ films: enriched });
+    // Films approuves modifies depuis leur validation (trigger track_project_edit),
+    // plus recents d'abord. mark_film_edit_seen les retire de la liste.
+    const { data: edits } = await admin.from("project_moderation")
+      .select("project_id, edited_at, edited_by")
+      .not("edited_at", "is", null)
+      .order("edited_at", { ascending: false });
+
+    const edited = (await Promise.all((edits ?? []).map(async (m) => {
+      const { data: film } = await admin.from("projects").select("id, title, slug")
+        .eq("id", m.project_id).eq("status", "approved").maybeSingle();
+      if (!film) return null;
+      const { data: editor } = m.edited_by
+        ? await admin.from("profiles").select("full_name").eq("id", m.edited_by).single()
+        : { data: null };
+      return { ...film, edited_at: m.edited_at as string, edited_by_name: editor?.full_name || "" };
+    }))).filter((f) => f !== null);
+
+    // Films sans Responsable (compte supprime sans co-gestionnaire).
+    const { data: orphans } = await admin.from("projects")
+      .select("id, title, slug, status, visibility")
+      .is("profile_id", null)
+      .order("created_at", { ascending: false });
+
+    return NextResponse.json({ films: enriched, edited, orphans: orphans ?? [] });
+  }
+
+  if (tab === "claims") {
+    const { data: claims } = await admin.from("project_claims")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    const enriched = await Promise.all((claims ?? []).map(async (c) => {
+      const { data: film } = await admin.from("projects").select("title, slug").eq("id", c.project_id).single();
+      const { data: claimant } = await admin.from("profiles").select("full_name, slug").eq("id", c.claimant_id).single();
+      // Justificatif : bucket prive, lien signe valable 10 minutes.
+      const { data: signed } = c.document_path
+        ? await admin.storage.from("claims").createSignedUrl(c.document_path, 600)
+        : { data: null };
+      return {
+        ...c,
+        project_title: film?.title || "",
+        project_slug: film?.slug || "",
+        claimant_name: claimant?.full_name || "",
+        claimant_slug: claimant?.slug || "",
+        document_url: signed?.signedUrl ?? null,
+      };
+    }));
+
+    return NextResponse.json({ claims: enriched });
   }
 
   return NextResponse.json({ error: "Tab invalide." }, { status: 400 });
@@ -329,6 +408,14 @@ export async function PATCH(request: NextRequest) {
   // Approve film
   if (action === "approve_film") {
     const { error } = await admin.from("projects").update({ status: "approved" }).eq("id", target_id);
+    // L'index unique sur video_key exclut les films refuses : reapprouver un film
+    // refuse echoue si une autre fiche a pris sa video entre-temps.
+    if (error?.code === "23505") {
+      return NextResponse.json(
+        { error: "Une autre fiche utilise déjà cette vidéo : ce film ne peut pas être réapprouvé tel quel." },
+        { status: 409 }
+      );
+    }
     return finalize(error, "approve_film", "project");
   }
 
@@ -336,6 +423,52 @@ export async function PATCH(request: NextRequest) {
   if (action === "refuse_film") {
     const { error } = await admin.from("projects").update({ status: "refused" }).eq("id", target_id);
     return finalize(error, "refuse_film", "project", { reason });
+  }
+
+  // --- Gestion des films (migration 20261008_film_management.sql) ---
+
+  // Modification d'un film approuve : vue par l'admin, elle quitte la liste.
+  if (action === "mark_film_edit_seen") {
+    const { error } = await admin.from("project_moderation")
+      .update({ edited_at: null, edited_by: null }).eq("project_id", target_id);
+    return finalize(error, "mark_film_edit_seen", "project");
+  }
+
+  // Signalement / revendication d'un film : la decision seule. Attribuer le film
+  // au demandeur est une action distincte (assign_project_owner).
+  if (action === "accept_claim" || action === "reject_claim") {
+    const { error } = await admin.from("project_claims").update({
+      status: action === "accept_claim" ? "accepted" : "rejected",
+      reviewed_by: adminId,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", target_id);
+    return finalize(error, action, "project_claim", { reason });
+  }
+
+  // Poser le Responsable d'un film (film sans Responsable, revendication
+  // acceptee). Ne touche ni a status ni a visibility.
+  if (action === "assign_project_owner") {
+    const { profile_id } = body;
+    const { data: film } = await admin.from("projects").select("id, profile_id").eq("id", target_id).maybeSingle();
+    if (!film) return NextResponse.json({ error: "Film introuvable." }, { status: 404 });
+    const { data: newOwner } = profile_id
+      ? await admin.from("profiles").select("id").eq("id", profile_id).maybeSingle()
+      : { data: null };
+    if (!newOwner) return NextResponse.json({ error: "Profil introuvable." }, { status: 404 });
+
+    const { error } = await admin.from("projects").update({ profile_id }).eq("id", target_id);
+    if (error) return finalize(error, "assign_project_owner", "project");
+
+    // Le Responsable ne figure jamais parmi les co-gestionnaires.
+    const { error: managerError } = await admin.from("project_managers")
+      .delete().eq("project_id", target_id).eq("profile_id", profile_id);
+    return finalize(managerError, "assign_project_owner", "project", { profile_id, previous_profile_id: film.profile_id });
+  }
+
+  // Supprimer une entree du Parcours (signalement).
+  if (action === "delete_career_entry") {
+    const { error } = await admin.from("career_entries").delete().eq("id", target_id);
+    return finalize(error, "delete_career_entry", "career_entry", { reason });
   }
 
   // --- Re-verification de la description pro d'un recruteur (chantier 2) ---

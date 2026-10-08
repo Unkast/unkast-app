@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 // GET: fetch credit data for dashboard
 // Returns:
-// - received: credit requests received on user's projects (for creators)
+// - received: credit requests received on the projects the user manages
 // - my_credits: projects where user is credited (for talents)
 // - my_requests: credit requests sent by user (for talents)
 export async function GET() {
@@ -14,37 +14,29 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  // 1. Credit requests received on user's projects
-  const { data: userProjects } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("profile_id", user.id);
+  // 1. Demandes recues sur les films geres (Responsable ou co-gestionnaire).
+  // La RLS ne rend que les demandes des films geres et les siennes : on ecarte
+  // les siennes.
+  const { data: reqs } = await supabase
+    .from("credit_requests")
+    .select("*")
+    .neq("requester_id", user.id)
+    .order("created_at", { ascending: false });
 
-  const projectIds = (userProjects ?? []).map((p) => p.id);
-
-  let received: Record<string, unknown>[] = [];
-  if (projectIds.length > 0) {
-    const { data: reqs } = await supabase
-      .from("credit_requests")
-      .select("*")
-      .in("project_id", projectIds)
-      .order("created_at", { ascending: false });
-
-    // Enrich with requester name
-    received = await Promise.all(
-      (reqs ?? []).map(async (req) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", req.requester_id)
-          .single();
-        return {
-          ...req,
-          requester_name: profile?.full_name || null,
-        };
-      })
-    );
-  }
+  // Enrich with requester name
+  const received = await Promise.all(
+    (reqs ?? []).map(async (req) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", req.requester_id)
+        .single();
+      return {
+        ...req,
+        requester_name: profile?.full_name || null,
+      };
+    })
+  );
 
   // 2. My credits (projects where I'm in project_credits)
   const { data: rawCredits } = await supabase

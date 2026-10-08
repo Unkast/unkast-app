@@ -9,7 +9,7 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 // POST: inviter PAR EMAIL un collaborateur absent d'Unkast (chantier 10, cas b).
 //
 // Garde-fous :
-//  - creator UNIQUEMENT, et seulement sur un projet qu'il possède ;
+//  - seulement sur un film géré par l'inviteur (Responsable ou co-gestionnaire) ;
 //  - invitation TOUJOURS liée à un crédit réel : on crée le ghost credit dans le
 //    même appel (pas de formulaire d'envoi d'email ouvert) ;
 //  - double rate-limit : 5/jour par inviteur + 200/jour global (anti-spam
@@ -20,10 +20,6 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { user, profile, error: guardError, status } = await getActiveUser(supabase);
   if (!user) return NextResponse.json({ error: guardError }, { status });
-
-  if (profile.account_type !== "creator") {
-    return NextResponse.json({ error: "Seuls les créateurs peuvent inviter." }, { status: 403 });
-  }
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();
@@ -38,13 +34,11 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // 1) Le projet doit appartenir à l'inviteur (invitation liée à SON film).
-  const { data: project } = await admin
-    .from("projects")
-    .select("id, title, profile_id")
-    .eq("id", project_id)
-    .eq("profile_id", user.id)
-    .single();
+  // 1) Le film doit être géré par l'inviteur (Responsable ou co-gestionnaire).
+  const { data: isManager } = await supabase.rpc("is_project_manager", { p_project_id: project_id });
+  const { data: project } = isManager
+    ? await admin.from("projects").select("id, title").eq("id", project_id).single()
+    : { data: null };
   if (!project) {
     return NextResponse.json({ error: "Projet introuvable ou non autorisé." }, { status: 403 });
   }

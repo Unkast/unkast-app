@@ -4,7 +4,7 @@ import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
-// PATCH: accept or refuse a credit request (project owner only)
+// PATCH: accept or refuse a credit request (gestionnaires du film)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,7 +15,6 @@ export async function PATCH(
   if (!guard.user) {
     return NextResponse.json({ error: guard.error }, { status: guard.status });
   }
-  const user = guard.user;
 
   const { id } = await params;
   const body = await readJsonBody(request);
@@ -29,7 +28,7 @@ export async function PATCH(
   // Fetch the credit request
   const { data: creditReq, error: fetchError } = await supabase
     .from("credit_requests")
-    .select("*, projects!inner(profile_id, id)")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -37,9 +36,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
   }
 
-  // Verify user is project owner
-  const project = creditReq.projects as { profile_id: string; id: string };
-  if (project.profile_id !== user.id) {
+  // Gestionnaire du film : Responsable ou co-gestionnaire (la fonction parle de
+  // l'appelant, d'ou le client utilisateur).
+  const { data: isManager } = await supabase.rpc("is_project_manager", { p_project_id: creditReq.project_id });
+  if (!isManager) {
     return NextResponse.json({ error: "Non autorise." }, { status: 403 });
   }
 
@@ -95,14 +95,19 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const { error } = await supabase
+  // La policy ne laisse supprimer que sa propre demande en attente.
+  const { data: deleted, error } = await supabase
     .from("credit_requests")
     .delete()
     .eq("id", id)
-    .eq("requester_id", user.id);
+    .eq("requester_id", user.id)
+    .select("id");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!deleted || deleted.length === 0) {
+    return NextResponse.json({ error: "Demande introuvable ou déjà traitée." }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });

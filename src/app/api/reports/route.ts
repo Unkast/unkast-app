@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "target_type, target_id et reason requis." }, { status: 400 });
   }
 
-  if (!["profile", "project", "message"].includes(target_type)) {
+  if (!["profile", "project", "message", "career_entry"].includes(target_type)) {
     return NextResponse.json({ error: "target_type invalide." }, { status: 400 });
   }
 

@@ -17,6 +17,8 @@ import {
   type ConversationRow,
 } from "@/lib/messaging";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { detectContact, type ContactVerdict } from "@/lib/contact-detector";
+import { flagContactInfo } from "@/lib/contact-flag";
 
 // RÈGLE 1 : Un compte gratuit peut contacter 2 PERSONNES (quota à vie) ; le Pro
 //           est illimité. Voir FREE_CONTACT_LIMIT. Remplace, le 2026-08-10,
@@ -44,8 +46,6 @@ function countUnavailable() {
     { status: 503 }
   );
 }
-
-const CONTACT_REGEX = /(\b06|\b07|\+33|@\w+\.\w+|https?:\/\/|www\.)/i;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -212,7 +212,11 @@ export async function POST(request: NextRequest) {
     .select("id", { count: "exact", head: true })
     .eq("conversation_id", convId);
 
-  if ((totalMsgs ?? 0) < 3 && CONTACT_REGEX.test(content)) {
+  // Détecteur partagé (lib/contact-detector). Évident : refusé. Douteux : envoyé
+  // puis signalé à l'admin. Après les 3 premiers messages : aucun contrôle.
+  const contact: ContactVerdict = (totalMsgs ?? 0) < 3 ? detectContact(content) : { level: "none" };
+
+  if (contact.level === "obvious") {
     return NextResponse.json({
       error: "coordinates_blocked",
       message: "Les coordonnées personnelles ne peuvent pas être partagées dans les premiers échanges. Établis d'abord une relation de confiance sur Unkast.",
@@ -227,6 +231,10 @@ export async function POST(request: NextRequest) {
   }).select("*").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (contact.level === "doubtful") {
+    await flagContactInfo(admin, "message", newMsg.id, contact.reason, content);
+  }
 
   // Update conversation timestamp
   await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", convId);

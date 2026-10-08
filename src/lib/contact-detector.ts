@@ -105,7 +105,8 @@ function numericRuns(norm: string): Token[][] {
   return runs;
 }
 
-const isYear = (d: string) => /^(19|20)\d{2}$/.test(d);
+// Annee plausible (1900 a 2100) : « 2019-2021 » ou « 2019/2021 » ne sont pas un numero.
+const isYear = (d: string) => /^(19\d{2}|20\d{2}|2100)$/.test(d);
 
 export function detectContact(text: string | null | undefined): ContactVerdict {
   if (!text) return { level: "none" };

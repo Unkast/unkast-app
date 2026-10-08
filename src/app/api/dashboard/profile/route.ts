@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { sendPushToUser } from "@/lib/push";
-import { ALL_ROLES } from "@/lib/constants";
+import { ALL_ROLES, CONTACT_REFUSED_MESSAGE } from "@/lib/constants";
+import { detectContact } from "@/lib/contact-detector";
+import { flagContactInfo } from "@/lib/contact-flag";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // recruiting_roles arrive librement du client : on ne garde que des roles
@@ -166,6 +168,18 @@ export async function PATCH(request: NextRequest) {
   // de validation admin (bio_pending), le public continue de voir `bio` validee.
   // Pour les autres comptes (talent/creator), publication directe comme avant.
   let pendingReview = false;
+  // Coordonnees dans la bio (lib/contact-detector) : evidentes = refus, rien
+  // n'est enregistre (aucune ecriture n'a encore eu lieu) ; douteuses = bio
+  // enregistree puis signalee a l'admin, plus bas. Les champs de contact
+  // (instagram_url, website_url, contact_email, contact_phone) ne sont pas
+  // controles : ils sont faits pour ca.
+  // Controle uniquement quand la bio change : une bio existante n'est pas
+  // repassee au detecteur, et ne bloque pas l'enregistrement des autres champs.
+  const bioChanged = typeof bio === "string" && bio !== (me?.bio ?? null);
+  const bioContact = bioChanged ? detectContact(bio) : null;
+  if (bioContact?.level === "obvious") {
+    return NextResponse.json({ code: "contact_refused", error: CONTACT_REFUSED_MESSAGE }, { status: 400 });
+  }
   if (bio !== undefined) {
     const isRecruiter = effectiveAccountType === "recruiter";
     if (isRecruiter && (bio ?? null) !== (me?.bio ?? null)) {
@@ -266,6 +280,13 @@ export async function PATCH(request: NextRequest) {
         }).catch(() => {});
       }
     }
+  }
+
+  // Bio douteuse : enregistree ci-dessus, signalee a l'admin (best-effort).
+  // Seulement si elle a change : une bio deja examinee n'est pas re-signalee a
+  // chaque enregistrement du profil.
+  if (bioContact?.level === "doubtful" && (bio ?? null) !== (me?.bio ?? null)) {
+    await flagContactInfo(createAdminClient(), "profile", user.id, bioContact.reason, bio);
   }
 
   // Update roles if provided

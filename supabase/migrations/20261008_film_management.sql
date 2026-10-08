@@ -1137,8 +1137,11 @@ grant execute on function public.transfer_project(uuid, uuid, uuid, integer) to 
 --   - refuse les suffixes de domaine colles a un mot (.com, .fr, .net, .org, .io,
 --     .eu, .be, .ch, .ca, .tv, .me, .co) et leur forme ecrite (« point com »,
 --     « point fr »...)
---   - refuse toute suite de 8 chiffres ou plus, espaces, points et tirets ignores
---   Consequences assumees : « 2019-2021 » ou un titre comme « Dot.com » sont refuses.
+--   Les numeros de telephone ne sont PAS traites ici : une regle sur les chiffres
+--   refusait « 2019-2021 ». Ils relevent du detecteur serveur, qui laisse passer
+--   les annees et les plages d'annees.
+--   Consequence assumee : un titre comme « Dot.com » est refuse (la route repond
+--   « Ce texte ressemble a un lien, reformule-le. »).
 create or replace function public.career_text_ok(p_text text)
 returns boolean
 language sql
@@ -1151,7 +1154,6 @@ as $$
         and position('@' in p_text) = 0
         and p_text !~* '\.(com|fr|net|org|io|eu|be|ch|ca|tv|me|co)\M'
         and p_text !~* '\mpoint\s*(com|fr|net|org|io|eu|be|ch|ca|tv|me|co)\M'
-        and regexp_replace(p_text, '[ .-]', '', 'g') !~ '[0-9]{8,}'
       );
 $$;
 

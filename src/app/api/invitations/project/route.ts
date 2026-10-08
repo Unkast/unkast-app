@@ -5,7 +5,7 @@ import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
-// POST: create a project invitation (creator only)
+// POST: create a project invitation (gestionnaires du film)
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   // Garde commun : authentifie + bloque les comptes suspendus (chantier 3).
@@ -16,10 +16,6 @@ export async function POST(request: NextRequest) {
   const user = guard.user;
 
   const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("account_type, full_name").eq("id", user.id).single();
-  if (profile?.account_type !== "creator") {
-    return NextResponse.json({ error: "Seuls les créateurs peuvent inviter." }, { status: 403 });
-  }
 
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();
@@ -29,8 +25,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "project_id, invited_profile_id et role requis." }, { status: 400 });
   }
 
-  // Verify project belongs to creator
-  const { data: project } = await admin.from("projects").select("id, title, profile_id").eq("id", project_id).eq("profile_id", user.id).single();
+  // Le film doit etre gere par l'utilisateur (Responsable ou co-gestionnaire).
+  const { data: isManager } = await supabase.rpc("is_project_manager", { p_project_id: project_id });
+  const { data: project } = isManager
+    ? await admin.from("projects").select("id, title").eq("id", project_id).single()
+    : { data: null };
   if (!project) return NextResponse.json({ error: "Projet introuvable." }, { status: 404 });
 
   // Insert invitation
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
   // Push notification
   sendPushToUser(invited_profile_id, {
     title: "Nouvelle invitation",
-    body: `${profile.full_name} t'invite à rejoindre "${project.title}"`,
+    body: `${guard.profile.full_name} t'invite à rejoindre "${project.title}"`,
     url: "/moi",
   }).catch(() => {});
 
