@@ -314,7 +314,7 @@ export default function ProfileClient({
                 {userStatus === "anonymous" ? (
                   <>
                     <p style={{ fontSize: 12, color: "#777", margin: 0, marginBottom: 12, lineHeight: 1.5 }}>
-                      Connecte-toi pour indiquer à {profile.full_name.split(" ")[0]} que tu es disponible pour un poste.
+                      Connecte-toi pour indiquer à {profile.full_name} que tu es disponible pour un poste.
                     </p>
                     <Button onClick={() => router.push("/rejoindre")} className="w-full">
                       Rejoindre Unkast
@@ -383,7 +383,7 @@ export default function ProfileClient({
               {/* Anonymous: signup CTA */}
               {userStatus === "anonymous" && (
                 <div style={{ maxWidth: 240 }}>
-                  <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", marginBottom: 6 }}>Contacter {profile.full_name.split(" ")[0]}</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", marginBottom: 6 }}>Envoyer un message</p>
                   <p style={{ fontSize: 12, color: "#555", marginBottom: 14, lineHeight: 1.5 }}>Crée un compte gratuit pour entrer en contact avec les talents.</p>
                   <Button onClick={() => router.push("/rejoindre")} className="w-full">Rejoindre Unkast</Button>
                 </div>
@@ -396,7 +396,7 @@ export default function ProfileClient({
                   supplémentaire. Le compteur vit sur /messages. */}
               {(userStatus === "free" || userStatus === "pro") && (
                 <Button onClick={openConversation} disabled={contacting} className="max-w-[240px]">
-                  {contacting ? "…" : `Contacter ${profile.full_name.split(" ")[0]}`}
+                  {contacting ? "…" : "Envoyer un message"}
                 </Button>
               )}
               <div className="relative">
@@ -667,7 +667,7 @@ export default function ProfileClient({
       {showInviteModal && (
         <div onClick={() => setShowInviteModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="glass rounded-panel" style={{ width: "100%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto", padding: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, color: "#f0f0f0", marginBottom: 20 }}>Inviter {profile.full_name.split(" ")[0]}</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: "#f0f0f0", marginBottom: 20 }}>Inviter {profile.full_name}</h3>
 
             {inviteProjects.length === 0 ? (
               <div style={{ textAlign: "center", padding: "12px 0" }}>

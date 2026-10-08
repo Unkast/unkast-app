@@ -135,6 +135,14 @@ Avec deux comptes de test (A et B), plus le compte admin.
       personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
       A traiter : droits par colonne et nom d'affichage calcule en base.
 - [ ] Refuser une demande de credit sur un film non visible.
+- [ ] **Recherche sur le nom d'affichage.** `/api/search` filtre et trie encore sur `full_name` :
+      chercher le vrai nom d'une personne la fait remonter sous son nom de scene, et on ne la
+      trouve pas par son nom de scene. La recherche doit porter sur le nom d'affichage, jamais
+      sur le vrai nom.
+- [ ] **Adresse du profil issue du nom d'affichage.** Le `slug` (`/profil/<slug>`) est derive du
+      vrai nom a l'inscription. Il doit venir du nom d'affichage, avec une solution pour les
+      adresses existantes qui contiennent un vrai nom (nouvelle adresse et redirection de
+      l'ancienne, ou autre : a decider).
 
 ## 5. En cas de probleme
 
