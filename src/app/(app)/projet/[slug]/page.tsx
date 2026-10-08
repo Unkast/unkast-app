@@ -8,6 +8,7 @@ import type {
   Project,
   ProjectCredit,
 } from "@/types/database";
+import { TEAM_SELECT, fetchVisitorCredits, loadFilmTeams, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import ProjetClient from "./ProjetClient";
 
 export const revalidate = 120; // Cache 2 minutes
@@ -21,86 +22,80 @@ type CreditWithProfile = ProjectCredit & {
     | null;
 };
 
+// Le Responsable du film (profile_id, qui peut être null) n'est pas envoyé au
+// client comme auteur : le réalisateur se lit dans les crédits de réalisation.
 type ProjectFull = Project & {
   credits: CreditWithProfile[];
-  owner: Pick<Profile, "id" | "full_name" | "slug" | "avatar_url" | "location" | "is_available"> & {
-    roles: ProfileRole[];
-  };
 };
 
 type RelatedProject = Project & {
-  owner_name: string;
-  owner_slug: string;
+  director_name: string;
   common_collaborators: number;
+};
+
+type RawCredit = ProjectCredit & {
+  profiles: Pick<Profile, "id" | "full_name" | "slug" | "avatar_url" | "location"> | null;
 };
 
 async function getProject(slug: string): Promise<{
   project: ProjectFull;
   relatedProjects: RelatedProject[];
+  isVisitor: boolean;
 } | null> {
   const supabase = await createClient();
 
-  // Single query: project + owner profile + owner roles + credits with profiles
-  const { data: project } = await supabase
-    .from("projects")
-    .select(`
-      *,
-      profiles!projects_profile_id_fkey (
-        id, full_name, slug, avatar_url, location, is_available, is_suspended,
-        profile_roles ( * )
-      ),
-      project_credits (
+  // Client utilisateur : la RLS décide de ce qui est lisible (visiteur : approuvé
+  // et public ; membre : approuvé, public ou membres seulement ; gestionnaires :
+  // toujours le leur). Un film non lisible ne revient pas => page introuvable.
+  const [{ data: { user } }, { data: project }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("projects")
+      .select(`
         *,
-        profiles ( id, full_name, slug, avatar_url, location )
-      )
-    `)
-    .eq("slug", slug)
-    .single();
+        profiles!projects_profile_id_fkey ( is_suspended ),
+        project_credits (
+          *,
+          profiles ( id, full_name, slug, avatar_url, location )
+        )
+      `)
+      .eq("slug", slug)
+      .single(),
+  ]);
 
   if (!project) return null;
 
-  // SÉCURITÉ : un projet non approuvé (pending/refused) ne doit pas être accessible
-  // publiquement par slug. Seul son propriétaire peut le prévisualiser (la bannière
-  // "Aperçu — en attente de validation" repose sur cet accès).
+  // SÉCURITÉ : un film non approuvé (pending/refused) ne doit pas être accessible
+  // publiquement par slug. Seuls ses gestionnaires (Responsable ou co-gestionnaire)
+  // peuvent le prévisualiser (la bannière « Aperçu » repose sur cet accès).
   if (project.status !== "approved") {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== project.profile_id) return null;
+    if (!user) return null;
+    if (user.id !== project.profile_id) {
+      const { data: isManager } = await supabase.rpc("is_project_manager", { p_project_id: project.id });
+      if (isManager !== true) return null;
+    }
   }
 
-  const ownerData = project.profiles as unknown as {
-    id: string; full_name: string; slug: string; avatar_url: string | null;
-    location: string | null; is_available: boolean; is_suspended: boolean | null;
-    profile_roles: ProfileRole[];
-  };
+  // Responsable suspendu => film retiré de la vue publique (chantier 3).
+  // Film sans Responsable (profile_id null) : pas de profil joint, rien à tester.
+  const responsable = project.profiles as unknown as { is_suspended: boolean | null } | null;
+  if (responsable?.is_suspended) return null;
 
-  if (!ownerData) return null;
-
-  // Proprietaire suspendu => film retire de la vue publique (chantier 3).
-  // (Le proprietaire lui-meme est de toute facon redirige par le middleware.)
-  if (ownerData.is_suspended) return null;
-
-  const owner = {
-    id: ownerData.id,
-    full_name: ownerData.full_name,
-    slug: ownerData.slug,
-    avatar_url: ownerData.avatar_url,
-    location: ownerData.location,
-    is_available: ownerData.is_available,
-    roles: ownerData.profile_roles ?? [],
-  };
-
-  // Enrich credits — batch fetch roles and project counts for credited profiles
-  const rawCredits = (project.project_credits ?? []) as (ProjectCredit & {
-    profiles: Pick<Profile, "id" | "full_name" | "slug" | "avatar_url" | "location"> | null;
-  })[];
+  // Équipe. Membre connecté : project_credits, comme avant. Visiteur non connecté :
+  // la RLS ne lui renvoie aucune ligne, l'équipe vient de public_project_credits
+  // (initiales, sauf crédits de réalisation : nom complet et profil).
+  const isVisitor = !user;
+  const rawCredits: RawCredit[] = isVisitor
+    ? (await fetchVisitorCredits(supabase, [project.id])).map(visitorCreditAsMemberCredit)
+    : ((project.project_credits ?? []) as RawCredit[]);
 
   const profileIds = rawCredits
     .map((c) => c.profiles?.id)
     .filter((id): id is string => !!id);
 
   // Batch fetch roles for all credited profiles
-  let rolesMap = new Map<string, ProfileRole[]>();
-  let projectCountMap = new Map<string, number>();
+  const rolesMap = new Map<string, ProfileRole[]>();
+  const projectCountMap = new Map<string, number>();
 
   if (profileIds.length > 0) {
     const [rolesResult, countsResult] = await Promise.all([
@@ -170,25 +165,23 @@ async function getProject(slug: string): Promise<{
         .map(([id]) => id);
 
       if (sortedProjectIds.length > 0) {
-        // Single query with join for related projects + their owners
+        // Films liés et leurs crédits (réalisateur). Client utilisateur : la RLS
+        // applique la visibilité.
         const { data: relProjects } = await supabase
           .from("projects")
-          .select(`
-            *,
-            profiles!projects_profile_id_fkey ( full_name, slug )
-          `)
+          .select(`*, ${TEAM_SELECT}`)
           .in("id", sortedProjectIds)
           .eq("status", "approved");
 
         if (relProjects) {
-          relatedProjects = relProjects.map((rp: Record<string, unknown>) => {
-            const rpOwner = rp.profiles as { full_name: string; slug: string } | null;
+          const rows = relProjects as unknown as (Record<string, unknown> & { id: string })[];
+          const teamOf = await loadFilmTeams(supabase, isVisitor, rows);
+          relatedProjects = rows.map((rp) => {
             return {
               ...rp,
-              profiles: undefined,
-              owner_name: rpOwner?.full_name ?? "",
-              owner_slug: rpOwner?.slug ?? "",
-              common_collaborators: projectCollabMap.get(rp.id as string)?.size ?? 0,
+              project_credits: undefined,
+              director_name: teamOf(rp.id).director_name,
+              common_collaborators: projectCollabMap.get(rp.id)?.size ?? 0,
             } as unknown as RelatedProject;
           });
           relatedProjects.sort((a, b) => b.common_collaborators - a.common_collaborators);
@@ -203,9 +196,9 @@ async function getProject(slug: string): Promise<{
       profiles: undefined,
       project_credits: undefined,
       credits: creditsWithProfiles,
-      owner,
     } as unknown as ProjectFull,
     relatedProjects,
+    isVisitor,
   };
 }
 
@@ -233,6 +226,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "video.other",
       locale: "fr_FR",
     },
+    // Film « membres seulement » ou dépublié : jamais indexé.
+    ...((project.visibility === "members" || project.visibility === "unpublished") && {
+      robots: { index: false, follow: false },
+    }),
   };
 }
 
@@ -246,6 +243,7 @@ export default async function ProjetPage({ params }: Props) {
     <ProjetClient
       project={result.project}
       relatedProjects={result.relatedProjects}
+      isVisitor={result.isVisitor}
       categoryLabels={CATEGORY_LABELS}
       categoryColors={CATEGORY_COLORS}
     />

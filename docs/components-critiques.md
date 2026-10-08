@@ -113,6 +113,7 @@ Composants / modules utilises par 3+ features.
 ## ReportModal
 
 - **Fichier** : `src/components/ReportModal.tsx`
+- **Cibles** (08/10/2026) : `profile`, `project`, `message`, `career_entry` (entrée du Parcours, depuis `ProfileClient`). La revendication d'un film passe par `projet/[slug]/ClaimModal.tsx`, pas par ce composant.
 - **Role** : Signalement de profil/projet/message
 - **Consommateurs** : `ProfileClient`, `ProjetClient` (+ messagerie)
 - **Risque si modifie** : **MODERE** — affecte le flux de moderation

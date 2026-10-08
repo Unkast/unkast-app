@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
+import type { ManagerRequestKind, ManagerRequestStatus, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoEmbed from "@/components/VideoEmbed";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList, ModalBackdrop } from "@/components/motion";
@@ -16,6 +16,8 @@ import GlassCard from "@/components/ui/GlassCard";
 import ReportModal from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
+import { isDirectorRole } from "@/lib/credits";
+import ClaimModal from "./ClaimModal";
 
 type CreditWithProfile = ProjectCredit & {
   profile: (Pick<Profile, "id" | "full_name" | "slug" | "avatar_url" | "location"> & { roles: ProfileRole[]; project_count: number }) | null;
@@ -23,14 +25,32 @@ type CreditWithProfile = ProjectCredit & {
 
 type ProjectFull = Project & {
   credits: CreditWithProfile[];
-  owner: Pick<Profile, "id" | "full_name" | "slug" | "avatar_url" | "location" | "is_available"> & { roles: ProfileRole[] };
 };
 
-type RelatedProject = Project & { owner_name: string; owner_slug: string; common_collaborators: number };
+type RelatedProject = Project & { director_name: string; common_collaborators: number };
+
+// Réponse de GET /api/credits/status. isOwner = Responsable ; isManager =
+// Responsable ou co-gestionnaire.
+type FilmStatus = {
+  isCredited: boolean;
+  hasPendingRequest: boolean;
+  isOwner: boolean;
+  isManager: boolean;
+  managerRequest: { id?: string; status: ManagerRequestStatus; kind: ManagerRequestKind } | null;
+  claimPending: boolean;
+};
+
+const NO_STATUS: FilmStatus = {
+  isCredited: false, hasPendingRequest: false, isOwner: false,
+  isManager: false, managerRequest: null, claimPending: false,
+};
 
 interface Props {
   project: ProjectFull;
   relatedProjects: RelatedProject[];
+  // Visiteur non connecté (décidé côté serveur) : l'équipe reçue est déjà masquée
+  // (initiales), sauf les crédits de réalisation.
+  isVisitor: boolean;
   categoryLabels: Record<ProjectCategory, string>;
   categoryColors: Record<ProjectCategory, string>;
 }
@@ -43,7 +63,7 @@ const SEPARATOR = "h-px bg-white/[0.06] my-5";
 const SECTION_TITLE = "text-base font-semibold text-text-primary";
 const PLAY_ICON = "M8 5v14l11-7z";
 
-export default function ProjetClient({ project, relatedProjects, categoryLabels, categoryColors }: Props) {
+export default function ProjetClient({ project, relatedProjects, isVisitor, categoryLabels, categoryColors }: Props) {
   const router = useRouter();
   const reduced = useReducedMotion();
   const [showVideo, setShowVideo] = useState(false);
@@ -56,7 +76,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
   const userStatus = useUserStatus();
 
   // Credit request state
-  const [creditStatus, setCreditStatus] = useState({ isCredited: false, hasPendingRequest: false, isOwner: false });
+  const [creditStatus, setCreditStatus] = useState<FilmStatus>(NO_STATUS);
   const [creditStatusLoaded, setCreditStatusLoaded] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [creditRole, setCreditRole] = useState("");
@@ -64,13 +84,17 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
   const [creditSending, setCreditSending] = useState(false);
   const [creditToast, setCreditToast] = useState("");
 
+  // Co-gestion et signalement de droits / revendication
+  const [managerBusy, setManagerBusy] = useState(false);
+  const [claimOpen, setClaimOpen] = useState(false);
+
   // Video modal touch swipe
   const videoTouchY = useRef<number | null>(null);
 
   useEffect(() => {
     fetch(`/api/credits/status?project_id=${project.id}`)
       .then((r) => r.json())
-      .then((data) => { setCreditStatus(data); setCreditStatusLoaded(true); })
+      .then((data) => { setCreditStatus({ ...NO_STATUS, ...data }); setCreditStatusLoaded(true); })
       .catch(() => setCreditStatusLoaded(true));
   }, [project.id]);
 
@@ -92,7 +116,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
     return () => document.removeEventListener("mousedown", handler);
   }, [showOptions]);
 
-  const showCreditButton = userStatus === "free" && creditStatusLoaded && !creditStatus.isCredited && !creditStatus.hasPendingRequest && !creditStatus.isOwner;
+  const showCreditButton = userStatus === "free" && creditStatusLoaded && !creditStatus.isCredited && !creditStatus.hasPendingRequest && !creditStatus.isManager;
   const showConversionCTA = userStatus === "anonymous";
 
   function toast(msg: string) { setCreditToast(msg); setTimeout(() => setCreditToast(""), 4000); }
@@ -109,15 +133,96 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
       if (res.ok) {
         setShowCreditModal(false); setCreditRole(""); setCreditMessage("");
         setCreditStatus({ ...creditStatus, hasPendingRequest: true });
-        toast("Demande envoyée ! Le réalisateur sera notifié.");
+        toast("Demande envoyée ! Les gestionnaires du film seront notifiés.");
       } else toast(data.error || "Erreur");
     } catch { toast("Erreur réseau"); }
     finally { setCreditSending(false); }
   }
 
+  // Co-gestion : POST = demander à co-gérer, DELETE = annuler sa demande,
+  // PATCH = répondre à une invitation (accept requis).
+  async function managerAction(method: "POST" | "DELETE" | "PATCH", accept = false) {
+    const base = `/api/projects/${project.id}/managers`;
+    const requestId = creditStatus.managerRequest?.id;
+    setManagerBusy(true);
+    try {
+      const res = await fetch(method === "DELETE" ? `${base}?request_id=${requestId}` : base, {
+        method,
+        ...(method === "PATCH" && {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: requestId, accept }),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast(data.error || "Erreur"); return; }
+      if (method === "POST") {
+        setCreditStatus((s) => ({ ...s, managerRequest: { id: data.request_id, status: "pending", kind: data.kind } }));
+        toast("Demande envoyée au Responsable du film.");
+      } else if (method === "DELETE") {
+        setCreditStatus((s) => ({ ...s, managerRequest: null }));
+        toast("Demande annulée.");
+      } else {
+        setCreditStatus((s) => ({ ...s, isManager: accept || s.isManager, managerRequest: null }));
+        toast(accept ? "Tu co-gères maintenant ce film." : "Invitation refusée.");
+      }
+    } catch { toast("Erreur réseau"); }
+    finally { setManagerBusy(false); }
+  }
+
   const catColor = categoryColors[project.category];
-  const ownerCredit = project.credits.find((c) => c.profile_id === project.owner.id);
-  const ownerRole = ownerCredit?.role_on_project || (project.owner.roles[0]?.role_name ?? "Réalisateur");
+  // Réalisateurs : crédits de réalisation du film (jamais son Responsable).
+  // Aucun crédit de réalisation = aucun nom, le bloc « Réalisé par » disparaît.
+  const directors = project.credits
+    .filter((c) => isDirectorRole(c.role_on_project) && (c.profile?.full_name ?? c.ghost_name))
+    .map((c) => ({
+      id: c.id,
+      name: (c.profile?.full_name ?? c.ghost_name) as string,
+      slug: c.profile?.slug ?? null,
+      avatar_url: c.profile?.avatar_url ?? null,
+      role: c.role_on_project,
+    }));
+
+  // Actions d'un membre connecté sur le film (rendues en mobile et dans la sidebar).
+  const pendingManagerRequest = creditStatus.managerRequest?.status === "pending" ? creditStatus.managerRequest : null;
+  const canAskToManage = creditStatus.isCredited && !creditStatus.isManager && !pendingManagerRequest && Boolean(project.profile_id);
+  const memberActions = !isVisitor && creditStatusLoaded && !creditStatus.isManager && (
+    <div className="space-y-3">
+      {pendingManagerRequest?.kind === "invite" && (
+        <GlassCard className="p-4">
+          <p className="mb-3 text-sm text-text-primary">Tu es invité à devenir co-gestionnaire de ce film.</p>
+          {pendingManagerRequest.id && (
+            <div className="flex gap-2">
+              <Button size="sm" disabled={managerBusy} onClick={() => managerAction("PATCH", true)} className="flex-1">Accepter</Button>
+              <Button size="sm" variant="glass" disabled={managerBusy} onClick={() => managerAction("PATCH", false)} className="flex-1">Refuser</Button>
+            </div>
+          )}
+        </GlassCard>
+      )}
+      {pendingManagerRequest?.kind === "request" && (
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+          <Badge variant="pending">Demande de co-gestion en attente</Badge>
+          {pendingManagerRequest.id && (
+            <button type="button" disabled={managerBusy} onClick={() => managerAction("DELETE")} className="text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary disabled:opacity-50">
+              Annuler
+            </button>
+          )}
+        </div>
+      )}
+      {canAskToManage && (
+        <Button variant="glass" size="sm" disabled={managerBusy} onClick={() => managerAction("POST")} className="w-full">
+          Demander à co-gérer ce film
+        </Button>
+      )}
+      {creditStatus.claimPending ? (
+        <p className="text-center text-xs text-text-tertiary">Ta demande est en cours de traitement par l&apos;équipe.</p>
+      ) : (
+        <button type="button" onClick={() => setClaimOpen(true)} className="block w-full py-1 text-center font-mono text-xs text-text-tertiary hover:text-text-secondary">
+          Signaler / revendiquer ce film
+        </button>
+      )}
+    </div>
+  );
+
   const desc = project.description || "";
   const descLong = desc.length > 120;
 
@@ -129,6 +234,12 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
         {project.status && project.status !== "approved" && (
           <GlassCard className="mb-3 border-l-[3px] border-l-[#f97316] px-3.5 py-2.5 font-mono text-[11px] text-[#f97316]">
             {project.status === "pending" ? "Aperçu — Ce film est en attente de validation." : "Ce film a été refusé."}
+          </GlassCard>
+        )}
+
+        {project.status === "approved" && project.visibility === "unpublished" && (
+          <GlassCard className="mb-3 border-l-[3px] border-l-[#f97316] px-3.5 py-2.5 font-mono text-[11px] text-[#f97316]">
+            Film dépublié : seuls ses gestionnaires le voient.
           </GlassCard>
         )}
 
@@ -159,7 +270,11 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
             {showOptions && (
               <GlassCard strong className="absolute top-12 right-0 z-20 w-[180px] bg-black/50 p-1">
                 <button onClick={() => { navigator.clipboard.writeText(window.location.href); setShowOptions(false); toast("Lien copié !"); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-primary hover:bg-white/[0.06]">Partager ce film</button>
-                <button onClick={() => { setShowOptions(false); setReportOpen(true); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler un probleme</button>
+                <button onClick={() => { setShowOptions(false); setReportOpen(true); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler un problème</button>
+                {/* Droits et revendication : circuit séparé (ClaimModal), membres connectés non gestionnaires. */}
+                {!isVisitor && creditStatusLoaded && !creditStatus.isManager && !creditStatus.claimPending && (
+                  <button onClick={() => { setShowOptions(false); setClaimOpen(true); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler / revendiquer</button>
+                )}
               </GlassCard>
             )}
           </div>
@@ -244,12 +359,10 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
             >
               {project.credits.map((c) => {
                 const fullName = c.profile?.full_name ?? c.ghost_name ?? "Inconnu";
-                const isAnon = userStatus === "anonymous";
-                // Anonymous: show "L. M." style initials only
-                const maskedName = isAnon
-                  ? fullName.split(" ").map((w) => w[0] + ".").join(" ")
-                  : fullName;
-                const displayName = isAnon ? maskedName : fullName;
+                // Visiteur : le serveur n'envoie que des initiales (« L. M. »), sauf pour
+                // les crédits de réalisation (nom complet, profil cliquable s'il existe).
+                const isAnon = isVisitor && !isDirectorRole(c.role_on_project);
+                const displayName = fullName;
 
                 const card = (
                   <GlassCard className="w-[104px] px-2.5 py-3 text-center transition-colors duration-fast group-hover:border-white/20">
@@ -283,22 +396,17 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
           )}
           </EnterItem>
 
+          {directors.length > 0 && (
           <EnterItem className="lg:hidden">
           <div className={SEPARATOR} />
 
           {/* Director */}
           <h2 className={`${SECTION_TITLE} mb-3`}>Réalisé par</h2>
-          <Link href={`/profil/${project.owner.slug}`} style={{ textDecoration: "none" }}>
-            <GlassCard className="flex items-center gap-3.5 px-4 py-3.5">
-              <Avatar url={project.owner.avatar_url} name={project.owner.full_name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[15px] font-medium text-text-primary" style={{ margin: 0 }}>{project.owner.full_name}</p>
-                <p className="mt-0.5 text-xs text-text-secondary">{ownerRole}</p>
-              </div>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
-            </GlassCard>
-          </Link>
+          <div className="space-y-2.5">
+            {directors.map((d) => <DirectorCard key={d.id} director={d} />)}
+          </div>
           </EnterItem>
+          )}
 
           {/* Related projects */}
           {relatedProjects.length > 0 && (
@@ -336,7 +444,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                       <div className="mt-2.5 px-0.5">
                         <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{rp.title}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[11px] text-text-tertiary truncate">{rp.owner_name}</span>
+                          {rp.director_name && <span className="text-[11px] text-text-tertiary truncate">{rp.director_name}</span>}
                           <span className="text-[11px] text-text-tertiary/50 font-mono">{rp.year}</span>
                         </div>
                       </div>
@@ -363,6 +471,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
               <Badge variant="pending">Demande en attente</Badge>
             </div>
           )}
+          {memberActions && <div className="mt-4">{memberActions}</div>}
           </EnterItem>
 
           </div>{/* fin wrapper partagé */}
@@ -391,19 +500,13 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
             </EnterItem>
 
             {/* Réalisé par */}
+            {directors.length > 0 && (
             <EnterItem>
-            <Link href={`/profil/${project.owner.slug}`} className="block">
-              <GlassCard className="flex items-center gap-3 p-4 transition-colors duration-fast hover:border-white/20">
-                <Avatar url={project.owner.avatar_url} name={project.owner.full_name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[10px] uppercase tracking-wide text-text-tertiary mb-0.5">Réalisé par</p>
-                  <p className="text-sm font-medium text-text-primary truncate">{project.owner.full_name}</p>
-                  <p className="text-xs text-text-secondary truncate">{ownerRole}</p>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M9 5l7 7-7 7" /></svg>
-              </GlassCard>
-            </Link>
+            <div className="space-y-2.5">
+              {directors.map((d) => <DirectorCard key={d.id} director={d} label="Réalisé par" />)}
+            </div>
             </EnterItem>
+            )}
 
             {/* Crédit + statut */}
             {showCreditButton && (
@@ -416,6 +519,7 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
                 <Badge variant="pending">Demande en attente</Badge>
               </div>
             )}
+            {memberActions}
           </aside>
 
           </div>{/* fin grille */}
@@ -489,6 +593,23 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
         )}
       </AnimatePresence>
 
+      {/* Signalement de droits / revendication (traité par l'équipe) */}
+      <AnimatePresence>
+        {claimOpen && (
+          <ClaimModal
+            open={claimOpen}
+            onClose={() => setClaimOpen(false)}
+            projectId={project.id}
+            projectTitle={project.title}
+            onSent={() => {
+              setClaimOpen(false);
+              setCreditStatus((s) => ({ ...s, claimPending: true }));
+              toast("Demande envoyée. L'équipe Unkast la traite.");
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Report Modal */}
       <ReportModal
         open={reportOpen}
@@ -498,4 +619,24 @@ export default function ProjetClient({ project, relatedProjects, categoryLabels,
       />
     </>
   );
+}
+
+type Director = { id: string; name: string; slug: string | null; avatar_url: string | null; role: string };
+
+// Carte d'un réalisateur (crédit de réalisation). Cliquable seulement s'il a un profil.
+function DirectorCard({ director, label }: { director: Director; label?: string }) {
+  const card = (
+    <GlassCard className={`flex items-center gap-3.5 px-4 py-3.5 ${director.slug ? "transition-colors duration-fast hover:border-white/20" : ""}`}>
+      <Avatar url={director.avatar_url} name={director.name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
+      <div className="min-w-0 flex-1">
+        {label && <p className="font-mono text-[10px] uppercase tracking-wide text-text-tertiary mb-0.5">{label}</p>}
+        <p className="truncate text-[15px] font-medium text-text-primary">{director.name}</p>
+        <p className="mt-0.5 truncate text-xs text-text-secondary">{director.role}</p>
+      </div>
+      {director.slug && (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M9 5l7 7-7 7" /></svg>
+      )}
+    </GlassCard>
+  );
+  return director.slug ? <Link href={`/profil/${director.slug}`} className="block">{card}</Link> : card;
 }

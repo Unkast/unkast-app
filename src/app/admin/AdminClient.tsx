@@ -3,22 +3,37 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-plan";
+import { DECLARED_ROLES } from "@/lib/constants";
 
-type Tab = "recruiters" | "reports" | "users" | "films";
+type Tab = "recruiters" | "reports" | "users" | "films" | "claims";
 
 // `plan` (2026-08-10) : le badge « verifie » n'est affiche au public que si le
 // toggle est pose ET le compte Pro. L'admin doit voir les deux — voir VerifiedPill.
 interface Recruiter { id: string; full_name: string; slug: string; email: string; recruiter_company: string | null; recruiter_role: string | null; recruiter_website: string | null; recruiter_status: string; recruiter_verified?: boolean; plan?: string | null; is_suspended?: boolean; created_at: string; }
 interface RecruiterEdit { id: string; full_name: string; slug: string; bio: string | null; bio_pending: string | null; recruiter_verified: boolean; plan?: string | null; recruiter_company: string | null; created_at: string; }
-interface Report { id: string; reporter_id: string; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; target_owner_id: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; }
+// reporter_id null = signalement automatique (detecteur de coordonnees).
+// career_entry : contenu de l'entree du Parcours signalee (null si deja supprimee).
+// message_recipient : destinataire du message signale (target_* = expediteur).
+interface Report { id: string; reporter_id: string | null; reporter_name: string; target_type: string; target_id: string; target_name: string; target_slug: string; target_owner_id: string; reason: string; description: string | null; total_reports: number; urgent?: boolean; created_at: string; career_entry?: { title: string; role: string; year: number; production: string | null } | null; message_recipient?: string | null; }
 // pro_grant_type / pro_grant_expires_at / subscription_status : chantier grants
 // (2026-08-10) — necessaires pour afficher l'ORIGINE du Pro (Stripe / offert /
 // recruteur), pas seulement le badge `plan` opaque. Voir GET tab=users
 // (src/app/api/admin/route.ts) qui les selectionne desormais.
 interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; pro_grant_type: string | null; pro_grant_expires_at: string | null; subscription_status: string | null; }
-interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; }
+interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; declared_role: string | null; }
+// Gestion des films (lot 2 de la route) : films approuves modifies, films sans
+// Responsable, signalements / revendications de films.
+interface EditedFilm { id: string; title: string; slug: string; edited_at: string; edited_by_name: string; }
+interface OrphanFilm { id: string; title: string; slug: string; status: string; visibility: string; }
+interface Claim { id: string; project_id: string; claimant_id: string; kind: "report" | "claim"; message: string; created_at: string; project_title: string; project_slug: string; claimant_name: string; claimant_slug: string; document_url: string | null; }
+// Attribution d'un Responsable : `preset` = demandeur d'une revendication acceptee.
+interface AssignTarget { projectId: string; title: string; preset?: { id: string; name: string }; }
+interface AssignCandidate { id: string; full_name: string; email: string; account_type: string; }
 
-const REASON_LABELS: Record<string, string> = { spam: "Spam", inappropriate: "Inapproprié", fake: "Faux profil", harassment: "Harcèlement", copyright: "Arnaque", other: "Autre" };
+const REASON_LABELS: Record<string, string> = { spam: "Spam", inappropriate: "Inapproprié", fake: "Faux profil", harassment: "Harcèlement", copyright: "Arnaque", other: "Autre", contact_info: "Coordonnées" };
+const TARGET_LABELS: Record<string, string> = { profile: "Profil", project: "Film", message: "Message", career_entry: "Parcours" };
+const FILM_STATUS_LABELS: Record<string, string> = { pending: "En attente", approved: "Approuvé", refused: "Refusé" };
+const VISIBILITY_LABELS: Record<string, string> = { public: "Public", members: "Membres seulement", unpublished: "Dépublié" };
 
 // Statuts Stripe consideres "actif" — miroir de PRO_STATUSES (webhook) et de
 // la RPC recompute_plan, uniquement pour l'AFFICHAGE du badge composite.
@@ -115,8 +130,19 @@ export default function AdminClient() {
   const [users, setUsers] = useState<User[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [films, setFilms] = useState<Film[]>([]);
+  const [editedFilms, setEditedFilms] = useState<EditedFilm[]>([]);
+  const [orphanFilms, setOrphanFilms] = useState<OrphanFilm[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
 
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 3000); }
+  // Modal "Attribuer un Responsable" : recherche d'un membre par nom
+  // (GET tab=users&q=), puis assign_project_owner avec son id.
+  const [assign, setAssign] = useState<AssignTarget | null>(null);
+  const [assignQuery, setAssignQuery] = useState("");
+  const [assignResults, setAssignResults] = useState<AssignCandidate[] | null>(null);
+  const [assignSearching, setAssignSearching] = useState(false);
+
+  // Les erreurs (messages serveur, parfois longs) restent affichees plus longtemps.
+  function showToast(msg: string, ms = 3000) { setToast(msg); setTimeout(() => setToast(""), ms); }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -126,28 +152,60 @@ export default function AdminClient() {
       if (tab === "recruiters") { setPendingRecruiters(data.pending || []); setApprovedRecruiters(data.approved || []); setRecruiterEdits(data.edits || []); }
       if (tab === "reports") setReports(data.reports || []);
       if (tab === "users") setUsers(data.users || []);
-      if (tab === "films") setFilms(data.films || []);
+      if (tab === "films") { setFilms(data.films || []); setEditedFilms(data.edited || []); setOrphanFilms(data.orphans || []); }
+      if (tab === "claims") setClaims(data.claims || []);
     }
     setLoading(false);
   }, [tab, userSearch]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  async function doAction(action: string, targetId: string, reason?: string) {
+  // Renvoie true si l'action a porte. `extra` : champs propres a une action
+  // (profile_id pour assign_project_owner). Le message d'erreur du serveur est
+  // affiche tel quel (dont le 409 de approve_film : video deja prise).
+  async function doAction(action: string, targetId: string, reason?: string, extra?: Record<string, unknown>): Promise<boolean> {
     setActionLoading(targetId);
     const res = await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, target_id: targetId, reason }),
+      body: JSON.stringify({ action, target_id: targetId, reason, ...extra }),
     });
     setActionLoading(null);
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      showToast(data?.error || "Erreur inconnue");
-      return;
+      showToast(data?.error || "Erreur inconnue", 7000);
+      return false;
     }
     showToast("Action effectuee");
     fetchData();
+    return true;
+  }
+
+  function openAssign(target: AssignTarget) {
+    setAssign(target);
+    setAssignQuery("");
+    setAssignResults(null);
+  }
+
+  async function searchAssignCandidates() {
+    if (!assignQuery.trim()) return;
+    setAssignSearching(true);
+    const res = await fetch(`/api/admin?tab=users&q=${encodeURIComponent(assignQuery.trim())}`);
+    const data = res.ok ? await res.json() : null;
+    setAssignResults(data?.users || []);
+    setAssignSearching(false);
+  }
+
+  async function executeAssign(profileId: string) {
+    if (!assign) return;
+    if (await doAction("assign_project_owner", assign.projectId, undefined, { profile_id: profileId })) setAssign(null);
+  }
+
+  // Accepter ne transfere PAS le film (voulu, en deux gestes) : pour une
+  // revendication, on propose ensuite l'attribution au demandeur, sans la faire.
+  async function acceptClaim(c: Claim) {
+    if (!(await doAction("accept_claim", c.id))) return;
+    if (c.kind === "claim") openAssign({ projectId: c.project_id, title: c.project_title, preset: { id: c.claimant_id, name: c.claimant_name } });
   }
 
   function confirmAction(action: string, targetId: string, label: string) {
@@ -206,18 +264,22 @@ export default function AdminClient() {
     fetchData();
   }
 
-  const totalPending = pendingRecruiters.length + recruiterEdits.length + reports.length + films.length;
+  const filmsCount = films.length + editedFilms.length + orphanFilms.length;
+  const totalPending = pendingRecruiters.length + recruiterEdits.length + reports.length + filmsCount + claims.length;
   const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
   const btnApprove = { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
   const btnDanger = { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
+  const btnNeutral = { ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" } as const;
   const card = { background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 16, marginBottom: 12 } as const;
+  const sectionTitle = { fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 14 } as const;
+  const pill = { fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#888", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace", whiteSpace: "nowrap" } as const;
 
   return (
     <div style={{ padding: "20px 16px 120px", maxWidth: 900, margin: "0 auto" }}>
       {/* Toast */}
       {toast && (
-        <div style={{ position: "fixed", top: 16, right: 16, zIndex: 50, padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
+        <div style={{ position: "fixed", top: 16, right: 16, zIndex: 150, maxWidth: "calc(100vw - 32px)", padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
           {toast}
         </div>
       )}
@@ -232,7 +294,8 @@ export default function AdminClient() {
           ["recruiters", "Recruteurs", pendingRecruiters.length + recruiterEdits.length],
           ["reports", "Signalements", reports.length],
           ["users", "Utilisateurs", 0],
-          ["films", "Films", films.length],
+          ["films", "Films", filmsCount],
+          ["claims", "Revendications", claims.length],
         ] as const).map(([key, label, count]) => (
           <button
             key={key}
@@ -360,19 +423,35 @@ export default function AdminClient() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     {r.urgent && <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", letterSpacing: "0.05em" }}>URGENT</span>}
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#888", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{r.target_type}</span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#888", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{TARGET_LABELS[r.target_type] || r.target_type}</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.target_name}</span>
                     {r.total_reports >= 3 && <span style={{ padding: "2px 6px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff" }}>{r.total_reports} signalements</span>}
                   </div>
-                  <p style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Signale par {r.reporter_name} · {REASON_LABELS[r.reason] || r.reason}</p>
+                  <p style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{r.reporter_id ? `Signalé par ${r.reporter_name}` : "Détection automatique"} · {REASON_LABELS[r.reason] || r.reason}</p>
                 </div>
                 <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
               </div>
-              {r.description && <p style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>{r.description}</p>}
-              <div style={{ display: "flex", gap: 8 }}>
+              {/* Entree du Parcours : son contenu (target_name = profil concerne). */}
+              {r.target_type === "career_entry" && (
+                <p style={{ fontSize: 13, color: "#888", marginBottom: 8, overflowWrap: "anywhere" }}>
+                  {r.career_entry
+                    ? <>Entrée du Parcours : <span style={{ color: "#f0f0f0" }}>{r.career_entry.title}</span> · {r.career_entry.role} · {r.career_entry.year}{r.career_entry.production ? ` · ${r.career_entry.production}` : ""}</>
+                    : "Entrée du Parcours déjà supprimée."}
+                </p>
+              )}
+              {/* Message : target_name = expediteur. */}
+              {r.target_type === "message" && (
+                <p style={{ fontSize: 13, color: "#888", marginBottom: 8, overflowWrap: "anywhere" }}>
+                  Message de <span style={{ color: "#f0f0f0" }}>{r.target_name || "expéditeur introuvable"}</span> à <span style={{ color: "#f0f0f0" }}>{r.message_recipient || "destinataire introuvable"}</span>
+                </p>
+              )}
+              {r.description && <p style={{ fontSize: 13, color: "#666", marginBottom: 8, overflowWrap: "anywhere" }}>{r.description}</p>}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(r.target_type === "career_entry" || r.target_type === "message") && r.target_slug && <Link href={`/profil/${r.target_slug}`} target="_blank" style={{ ...btnNeutral, textDecoration: "none", display: "inline-block" }}>Voir le profil</Link>}
+                {r.target_type === "career_entry" && r.career_entry && <button onClick={() => confirmAction("delete_career_entry", r.target_id, `Supprimer l'entrée « ${r.career_entry?.title} »`)} style={btnDanger}>Supprimer l&apos;entrée</button>}
                 {r.target_type === "profile" && <Link href={`/profil/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Voir le profil</Link>}
                 {r.target_type === "project" && <Link href={`/projet/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Voir le film</Link>}
-                <button onClick={() => confirmAction("suspend_user", r.target_owner_id, `Suspendre le compte`)} style={btnDanger}>Suspendre</button>
+                {r.target_owner_id && <button onClick={() => confirmAction("suspend_user", r.target_owner_id, `Suspendre le compte`)} style={btnDanger}>Suspendre</button>}
                 <button onClick={() => doAction("dismiss_report", r.id)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Ignorer</button>
               </div>
             </div>
@@ -431,8 +510,11 @@ export default function AdminClient() {
       {/* ===== FILMS ===== */}
       {!loading && tab === "films" && (
         <div>
+          <h2 style={sectionTitle}>À valider ({films.length})</h2>
           {films.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun film en attente.</p>}
-          {films.map((f) => (
+          {films.map((f) => {
+            const declaredRole = DECLARED_ROLES.find((r) => r.value === f.declared_role)?.label ?? f.declared_role;
+            return (
             <div key={f.id} style={{ ...card, display: "flex", gap: 14, alignItems: "flex-start" }}>
               <div style={{ width: 80, height: 60, borderRadius: 8, background: "#1a1a1a", flexShrink: 0, overflow: "hidden", position: "relative" }}>
                 {(f.preview_url || f.poster_url) ? (
@@ -444,17 +526,136 @@ export default function AdminClient() {
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>{f.title}</p>
-                <p style={{ fontSize: 11, color: "#555" }}>par <Link href={`/profil/${f.owner_slug}`} style={{ color: "#888", textDecoration: "none" }}>{f.owner_name}</Link> · {f.year} · {f.category}</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", marginBottom: 2, overflowWrap: "anywhere" }}>{f.title}</p>
+                <p style={{ fontSize: 11, color: "#555" }}>
+                  {f.owner_slug
+                    ? <>par <Link href={`/profil/${f.owner_slug}`} style={{ color: "#888", textDecoration: "none" }}>{f.owner_name}</Link></>
+                    : <span style={{ color: "#f97316" }}>sans Responsable</span>}
+                  {" "}· {f.year} · {f.category}
+                </p>
                 <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace", marginTop: 2 }}>{new Date(f.created_at).toLocaleDateString("fr-FR")}</p>
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                {/* Titre et chaine lus chez YouTube / Vimeo a la soumission : a
+                    comparer au titre saisi et au deposant (vol d'oeuvre). */}
+                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 10, marginTop: 8, fontSize: 12, color: "#888", lineHeight: 1.6, overflowWrap: "anywhere" }}>
+                  <p style={{ margin: 0 }}><span style={{ color: "#555" }}>Titre d&apos;origine :</span> {f.source_title || <span style={{ color: "#444" }}>non relevé</span>}</p>
+                  <p style={{ margin: 0 }}><span style={{ color: "#555" }}>Chaîne d&apos;origine :</span> {f.source_author || <span style={{ color: "#444" }}>non relevée</span>}</p>
+                  <p style={{ margin: 0 }}><span style={{ color: "#555" }}>Rôle déclaré :</span> {declaredRole || <span style={{ color: "#444" }}>aucune déclaration</span>}</p>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                   <button onClick={() => doAction("approve_film", f.id)} disabled={actionLoading === f.id} style={btnApprove}>Approuver</button>
                   <button onClick={() => confirmAction("refuse_film", f.id, `Refuser "${f.title}"`)} style={btnDanger}>Refuser</button>
                   <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ ...btnApprove, textDecoration: "none", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Lien video</a>
                 </div>
               </div>
             </div>
+            );
+          })}
+
+          {/* Films approuves modifies depuis leur validation */}
+          <h2 style={{ ...sectionTitle, marginTop: 32 }}>Modifiés récemment ({editedFilms.length})</h2>
+          {editedFilms.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucune modification à relire.</p>}
+          {editedFilms.map((f) => (
+            <div key={f.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ minWidth: 0, flex: "1 1 180px" }}>
+                <Link href={`/projet/${f.slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{f.title}</Link>
+                <p style={{ fontSize: 11, color: "#555" }}>Modifié par {f.edited_by_name || "un compte supprimé"} · {new Date(f.edited_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <Link href={`/projet/${f.slug}`} target="_blank" style={{ ...btnNeutral, textDecoration: "none", padding: "6px 12px", fontSize: 12 }}>Voir le film</Link>
+                <button onClick={() => doAction("mark_film_edit_seen", f.id)} disabled={actionLoading === f.id} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12 }}>Vu</button>
+              </div>
+            </div>
           ))}
+
+          {/* Films sans Responsable (compte supprime sans co-gestionnaire) */}
+          <h2 style={{ ...sectionTitle, marginTop: 32 }}>Sans Responsable ({orphanFilms.length})</h2>
+          {orphanFilms.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun film sans Responsable.</p>}
+          {orphanFilms.map((f) => (
+            <div key={f.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ minWidth: 0, flex: "1 1 180px" }}>
+                <Link href={`/projet/${f.slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{f.title}</Link>
+                <p style={{ fontSize: 11, color: "#555" }}>{FILM_STATUS_LABELS[f.status] || f.status} · {VISIBILITY_LABELS[f.visibility] || f.visibility}</p>
+              </div>
+              <button onClick={() => openAssign({ projectId: f.id, title: f.title })} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12 }}>Attribuer un Responsable</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ===== CLAIMS (signalements et revendications de films) ===== */}
+      {!loading && tab === "claims" && (
+        <div>
+          {claims.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucune demande en attente.</p>}
+          {claims.map((c) => (
+            <div key={c.id} style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={c.kind === "claim" ? { ...pill, background: "rgba(200,255,0,0.1)", color: "#C8FF00" } : pill}>{c.kind === "claim" ? "Revendication" : "Signalement"}</span>
+                    <Link href={`/projet/${c.project_slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{c.project_title || "Film introuvable"}</Link>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                    Demandé par <Link href={`/profil/${c.claimant_slug}`} target="_blank" style={{ color: "#888", textDecoration: "none" }}>{c.claimant_name || "compte introuvable"}</Link>
+                  </p>
+                </div>
+                <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{new Date(c.created_at).toLocaleDateString("fr-FR")}</p>
+              </div>
+              <p style={{ fontSize: 13, color: "#888", marginBottom: 8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.message}</p>
+              <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>
+                {c.document_url
+                  ? <><a href={c.document_url} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00" }}>Ouvrir le justificatif</a> (lien valable 10 minutes, recharge l&apos;onglet s&apos;il a expiré)</>
+                  : "Aucun justificatif joint."}
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => acceptClaim(c)} disabled={actionLoading === c.id} style={btnApprove}>Accepter</button>
+                <button onClick={() => confirmAction("reject_claim", c.id, `Refuser ${c.kind === "claim" ? "la revendication" : "le signalement"} de ${c.claimant_name}`)} style={btnDanger}>Refuser</button>
+              </div>
+              {c.kind === "claim" && <p style={{ fontSize: 11, color: "#555", marginTop: 8 }}>Accepter ne transfère pas le film : l&apos;attribution au demandeur est proposée ensuite.</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ===== ASSIGN OWNER MODAL ("Attribuer un Responsable") ===== */}
+      {assign && (
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) setAssign(null); }} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", padding: 16 }}>
+          <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6, overflowWrap: "anywhere" }}>Responsable de « {assign.title} »</h3>
+            <p style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>Le membre choisi devient le Responsable du film. S&apos;il y en a déjà un, il est remplacé.</p>
+
+            {assign.preset && (
+              <div style={{ background: "rgba(200,255,0,0.03)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: "#e8e8e8", marginBottom: 10 }}>Revendication acceptée. Attribuer le film à {assign.preset.name} ?</p>
+                <button onClick={() => executeAssign(assign.preset!.id)} disabled={actionLoading === assign.projectId} style={btnApprove}>Attribuer à {assign.preset.name}</button>
+              </div>
+            )}
+
+            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{assign.preset ? "Ou un autre membre" : "Chercher un membre"}</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                value={assignQuery}
+                onChange={(e) => setAssignQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") searchAssignCandidates(); }}
+                placeholder="Nom du membre..."
+                style={{ flex: 1, minWidth: 0, padding: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", outline: "none" }}
+              />
+              <button onClick={searchAssignCandidates} disabled={assignSearching || !assignQuery.trim()} style={{ ...btnNeutral, opacity: assignQuery.trim() ? 1 : 0.4 }}>Chercher</button>
+            </div>
+            {assignSearching && <p style={{ color: "#555", fontSize: 13, marginBottom: 12 }}>Recherche...</p>}
+            {!assignSearching && assignResults?.length === 0 && <p style={{ color: "#555", fontSize: 13, marginBottom: 12 }}>Aucun membre trouvé.</p>}
+            {!assignSearching && assignResults?.map((u) => (
+              <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 13, color: "#f0f0f0", overflowWrap: "anywhere" }}>{u.full_name} <span style={{ fontSize: 10, color: "#666", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{u.account_type}</span></p>
+                  <p style={{ fontSize: 11, color: "#555", overflowWrap: "anywhere" }}>{u.email}</p>
+                </div>
+                <button onClick={() => executeAssign(u.id)} disabled={actionLoading === assign.projectId} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12, flexShrink: 0 }}>Attribuer</button>
+              </div>
+            ))}
+
+            <button onClick={() => setAssign(null)} style={{ ...btnNeutral, width: "100%", marginTop: 16 }}>{assign.preset ? "Plus tard" : "Annuler"}</button>
+          </div>
         </div>
       )}
 

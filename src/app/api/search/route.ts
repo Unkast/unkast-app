@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { TEAM_SELECT, loadFilmTeams } from "@/lib/film-team";
 
 // Echappe les wildcards ILIKE (`%`, `_`, antislash) pour un matching
 // litteral : sans ca, un `%`/`_` saisi par l'utilisateur agit comme
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       .select(`
         id, full_name, slug, avatar_url, location, is_available, bio, created_at, plan,
         profile_roles ( role_name ),
-        projects ( id )
+        projects!projects_profile_id_fkey ( id )
       `)
       .eq("status", "approved")
       .not("is_suspended", "is", true); // chantier 3 : suspendus hors vue publique
@@ -149,12 +150,19 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Projects (single query with join) ---
+  // Client utilisateur (anon ou session) : la visibilite d'un film (public /
+  // membres seulement / depublie) est appliquee par la RLS. Ne JAMAIS passer
+  // cette lecture en service role sans filtrer status + visibility a la main.
   if (type === "all" || type === "projets") {
+    // Visiteur non connecte : son equipe passe par public_project_credits.
+    const { data: { user } } = await supabase.auth.getUser();
+
     let query = supabase
       .from("projects")
       .select(`
         id, title, slug, description, category, year, video_url, profile_id, created_at,
-        profiles!projects_profile_id_fkey ( full_name, slug, is_suspended )
+        profiles!projects_profile_id_fkey ( is_suspended ),
+        ${TEAM_SELECT}
       `)
       .eq("status", "approved");
 
@@ -178,28 +186,29 @@ export async function GET(request: NextRequest) {
     const { data } = await query;
 
     if (data) {
-      projects = data
-        // Retire les films dont le proprietaire est suspendu (chantier 3).
-        .filter((project: Record<string, unknown>) => {
+      const rows = (data as unknown as (Record<string, unknown> & { id: string })[])
+        // Retire les films dont le Responsable est suspendu (chantier 3). Film
+        // sans Responsable (profile_id null) : pas de profil joint, rien a tester.
+        .filter((project) => {
           const owner = project.profiles as { is_suspended?: boolean } | null;
           return !owner?.is_suspended;
-        })
-        .map((project: Record<string, unknown>) => {
-        const owner = project.profiles as { full_name: string; slug: string } | null;
-        return {
-          id: project.id,
-          title: project.title,
-          slug: project.slug,
-          description: project.description,
-          category: project.category,
-          year: project.year,
-          video_url: project.video_url,
-          profile_id: project.profile_id,
-          created_at: project.created_at,
-          owner_name: owner?.full_name ?? "",
-          owner_slug: owner?.slug ?? "",
-        };
-      });
+        });
+      const teamOf = await loadFilmTeams(supabase, !user, rows);
+
+      projects = rows.map((project) => ({
+        id: project.id,
+        title: project.title,
+        slug: project.slug,
+        description: project.description,
+        category: project.category,
+        year: project.year,
+        video_url: project.video_url,
+        profile_id: project.profile_id,
+        created_at: project.created_at,
+        // Realisateur : credits de realisation du film (chaine vide si aucun),
+        // plus le Responsable. Remplace owner_name / owner_slug.
+        director_name: teamOf(project.id).director_name,
+      }));
     }
   }
 

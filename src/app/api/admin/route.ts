@@ -482,6 +482,12 @@ export async function PATCH(request: NextRequest) {
   // Supprimer une entree du Parcours (signalement).
   if (action === "delete_career_entry") {
     const { error } = await admin.from("career_entries").delete().eq("id", target_id);
+    // L'entree n'existe plus : ses signalements en attente sont clos avec elle.
+    if (!error) {
+      await admin.from("reports")
+        .update({ status: "resolved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+        .eq("target_type", "career_entry").eq("target_id", target_id).eq("status", "pending");
+    }
     return finalize(error, "delete_career_entry", "career_entry", { reason });
   }
 

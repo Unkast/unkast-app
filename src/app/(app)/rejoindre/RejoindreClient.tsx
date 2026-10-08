@@ -4,8 +4,15 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
-import { CATEGORY_LABELS, MAX_PROJECTS_FREE } from "@/lib/constants";
-import type { ProjectCategory, AccountType } from "@/types/database";
+import {
+  CATEGORY_LABELS,
+  MAX_PROJECTS_FREE,
+  DECLARED_ROLES,
+  RIGHTS_DECLARATION_TEXT,
+  CLIENT_AUTHORIZATION_TEXT,
+  CLIENT_AUTHORIZATION_CATEGORIES,
+} from "@/lib/constants";
+import type { ProjectCategory, AccountType, DeclaredRole } from "@/types/database";
 import RoleSelector from "@/components/RoleSelector";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
@@ -15,6 +22,19 @@ import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import ProgressSteps from "@/components/ui/ProgressSteps";
 import Select from "@/components/ui/Select";
+import Toggle from "@/components/ui/Toggle";
+
+// Compte créé mais film non créé : message selon video_skipped_reason (api/signup).
+const VIDEO_SKIPPED_MESSAGES: Record<string, string> = {
+  duplicate:
+    "Cette vidéo est déjà sur Unkast : ton film n'a pas été ajouté. Une fois connecté·e, tu pourras demander à y être crédité·e ou le revendiquer depuis ton espace.",
+  rights:
+    "Ton film n'a pas été ajouté : la déclaration de droits est manquante. Tu pourras le publier depuis ton espace une fois connecté·e.",
+  private:
+    "Ton film n'a pas été ajouté : la vidéo est privée ou introuvable. Vérifie le lien, puis ajoute-le depuis ton espace une fois connecté·e.",
+};
+const VIDEO_SKIPPED_FALLBACK =
+  "Ton film n'a pas été ajouté. Tu pourras le publier depuis ton espace une fois connecté·e.";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -57,8 +77,7 @@ interface SearchProject {
   slug: string;
   category: ProjectCategory;
   year: number;
-  owner_name?: string;
-  owner_slug?: string;
+  director_name?: string | null;
 }
 
 export default function RejoindreClient() {
@@ -71,6 +90,7 @@ export default function RejoindreClient() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [videoSkipped, setVideoSkipped] = useState(false);
+  const [videoSkippedReason, setVideoSkippedReason] = useState<string | null>(null);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   async function resendConfirmation() {
@@ -108,6 +128,11 @@ export default function RejoindreClient() {
   const [projectYear, setProjectYear] = useState(String(new Date().getFullYear()));
   const [projectCategory, setProjectCategory] = useState<ProjectCategory>("court-metrage");
   const [showOlderYears, setShowOlderYears] = useState(false);
+  // Déclaration de droits : rôle déclaré + case(s) à cocher, exigés par
+  // api/signup pour créer le film (sinon video_skipped_reason = 'rights').
+  const [declaredRole, setDeclaredRole] = useState<DeclaredRole | "">("");
+  const [rightsAccepted, setRightsAccepted] = useState(false);
+  const [clientAuthorized, setClientAuthorized] = useState(false);
 
   // Step 4B (talent)
   const [searchQuery, setSearchQuery] = useState("");
@@ -221,11 +246,20 @@ export default function RejoindreClient() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [step]);
 
+  // Étape film : un film commencé ne part que complet.
+  const needsClientAuthorization = CLIENT_AUTHORIZATION_CATEGORIES.includes(projectCategory);
+  const filmStarted = !!projectTitle || !!projectUrl;
+  const filmReady =
+    !!projectTitle && !!projectUrl && !!declaredRole && rightsAccepted &&
+    (!needsClientAuthorization || clientAuthorized);
+
   function canProceed(): boolean {
     if (step === 1) return !!accountType;
     if (step === 2) return !!firstName && !!lastName && !!email && password.length >= 6;
     if (step === 3) return selectedRoles.length > 0;
-    if (step === 4) return true; // both 4A and 4B are optional
+    // 4A, 4B et 4C sont optionnelles. Seule exception : un film commencé (4A)
+    // doit être complet pour partir, sinon « Passer cette étape ».
+    if (step === 4) return accountType !== "creator" || !filmStarted || filmReady;
     return false;
   }
 
@@ -248,16 +282,24 @@ export default function RejoindreClient() {
         ...(invitationToken ? { invitation_token: invitationToken } : {}),
       };
 
-      // Creator: include project if filled
-      if (accountType === "creator" && projectTitle && projectUrl) {
+      // Creator: include project if complete (titre, lien, rôle déclaré, déclaration
+      // de droits, accord client si pub ou clip). Incomplet = pas de film envoyé.
+      if (accountType === "creator" && filmReady) {
+        // Réalisateur / producteur : le serveur crée ce crédit tout seul. Le
+        // premier métier ne part en owner_role que s'il en diffère (pas de doublon).
+        const autoCredit = DECLARED_ROLES.find((r) => r.value === declaredRole)?.credit ?? null;
+        const firstRole = selectedRoles[0] || "";
         payload.project = {
           title: projectTitle,
           category: projectCategory,
           year: parseInt(projectYear) || new Date().getFullYear(),
           video_url: projectUrl,
           description: null,
-          owner_role: selectedRoles[0] || "",
+          owner_role: firstRole.toLowerCase() === autoCredit?.toLowerCase() ? "" : firstRole,
           credits: [],
+          declared_role: declaredRole,
+          rights_accepted: rightsAccepted,
+          client_authorized: needsClientAuthorization && clientAuthorized,
         };
       }
 
@@ -290,10 +332,11 @@ export default function RejoindreClient() {
         throw new Error(data.error || "Erreur lors de l'inscription");
       }
 
-      // Anti-vol d'œuvre : le compte est créé, mais la vidéo était déjà référencée
-      // → le film a été sauté, on prévient sur l'écran de confirmation.
+      // Le compte est créé, mais le film a été sauté (doublon, déclaration
+      // manquante, vidéo privée) : on prévient sur l'écran de confirmation.
       if (data.video_skipped) {
         setVideoSkipped(true);
+        setVideoSkippedReason(data.video_skipped_reason ?? null);
       }
 
       goTo(5);
@@ -593,11 +636,31 @@ export default function RejoindreClient() {
                     )}
                   </div>
 
-                  <Select label="Catégorie" value={projectCategory} onChange={(e) => setProjectCategory(e.target.value as ProjectCategory)}>
+                  <Select label="Catégorie" value={projectCategory} onChange={(e) => { setProjectCategory(e.target.value as ProjectCategory); setClientAuthorized(false); }}>
                     {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </Select>
+
+                  <Select label="Ton rôle sur ce film" value={declaredRole} onChange={(e) => setDeclaredRole(e.target.value as DeclaredRole | "")}>
+                    <option value="">Sélectionne ton rôle</option>
+                    {DECLARED_ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </Select>
+
+                  <div className="rounded-card border border-white/10 bg-white/5 px-3.5 py-1.5">
+                    <Toggle checked={rightsAccepted} onChange={setRightsAccepted} label={RIGHTS_DECLARATION_TEXT} />
+                    {needsClientAuthorization && (
+                      <Toggle checked={clientAuthorized} onChange={setClientAuthorized} label={CLIENT_AUTHORIZATION_TEXT} className="border-t border-white/10" />
+                    )}
+                  </div>
+
+                  {filmStarted && !filmReady && (
+                    <p className="text-xs leading-relaxed text-text-secondary">
+                      Pour envoyer ce film, renseigne le titre, le lien et ton rôle, puis coche {needsClientAuthorization ? "les deux déclarations" : "la déclaration"}. Sinon, passe cette étape : tu pourras le publier plus tard.
+                    </p>
+                  )}
                 </div>
 
                 <InfoNote>
@@ -647,7 +710,7 @@ export default function RejoindreClient() {
                             onClick={() => {
                               setClaimProjectId(p.id);
                               setClaimProjectTitle(p.title);
-                              setClaimProjectOwner(p.owner_name || "");
+                              setClaimProjectOwner(p.director_name || "");
                               setSearchQuery("");
                               setSearchResults([]);
                             }}
@@ -655,7 +718,7 @@ export default function RejoindreClient() {
                           >
                             <p className="text-sm font-medium text-text-primary">{p.title}</p>
                             <p className="text-xs text-text-secondary">
-                              {p.owner_name && `par ${p.owner_name} · `}
+                              {p.director_name && `de ${p.director_name} · `}
                               {CATEGORY_LABELS[p.category]} · {p.year}
                             </p>
                           </button>
@@ -673,7 +736,7 @@ export default function RejoindreClient() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-text-primary">{claimProjectTitle}</p>
                         {claimProjectOwner && (
-                          <p className="truncate text-xs text-text-secondary">par {claimProjectOwner}</p>
+                          <p className="truncate text-xs text-text-secondary">de {claimProjectOwner}</p>
                         )}
                       </div>
                       <Button
@@ -769,7 +832,7 @@ export default function RejoindreClient() {
                 {videoSkipped && (
                   <div className="mx-auto mb-5 max-w-[360px] rounded-card border border-yellow-500/30 bg-yellow-500/10 px-4 py-3.5 text-left">
                     <p className="text-[13px] leading-relaxed text-yellow-400">
-                      Note : cette vidéo était déjà référencée sur Unkast, ton film n&apos;a pas été ajouté. Tu pourras en ajouter un autre une fois connecté·e.
+                      {(videoSkippedReason && VIDEO_SKIPPED_MESSAGES[videoSkippedReason]) || VIDEO_SKIPPED_FALLBACK}
                     </p>
                   </div>
                 )}

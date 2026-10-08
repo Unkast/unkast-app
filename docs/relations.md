@@ -182,6 +182,20 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | **Securite** | | |
 | `/api/signup`, `/api/waitlist` | [depend de] | `lib/rate-limit.ts` (RPC `check_rate_limit`) |
 
+## Gestion des films (lots 2 et 3, 08/10/2026)
+
+| Source | Destination | Nature |
+|---|---|---|
+| `moi/FilmsSection`, `FilmCard`, `PublishForm` | `/api/dashboard/projects` | liste, publication, modification, visibilité, suppression |
+| `moi/FilmManagers`, `projet/ProjetClient` | `/api/projects/[id]/managers`, `/transfer` | co-gestion et transfert |
+| `moi/DuplicateFilm`, `projet/ClaimModal` | `/api/projects/[id]/claims`, `/api/credits/request` | revendication, signalement, demande de crédit |
+| `moi/CareerSection` | `/api/dashboard/career` | Parcours |
+| `profil/[slug]/page` | `career_entries` | lecture du Parcours ; signalement par `ReportModal` (cible `career_entry`) |
+| `feed`, `categories`, `recherche`, `profil`, `projet` | `lib/film-team` → `project_credits` ou `public_project_credits` | réalisateur et équipe |
+| `rejoindre/RejoindreClient` | `/api/signup`, `/api/search` (`director_name`) | film à l'inscription avec déclaration |
+| `admin/AdminClient` | `/api/admin` (`tab=films`, `tab=claims`, `tab=reports`) | validation, modifiés récemment, sans Responsable, revendications |
+| routes de publication | RPC `publish_project` (service role) | seule voie de création d'un film |
+
 ## Relations base de donnees
 
 | Table source | FK | Table cible | ON DELETE |

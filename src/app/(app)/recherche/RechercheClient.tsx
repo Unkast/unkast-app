@@ -31,7 +31,7 @@ interface ProjectResult {
   slug: string;
   category: ProjectCategory;
   year: number;
-  owner_name: string;
+  director_name: string;
   poster_url?: string | null;
   preview_url?: string | null;
 }
@@ -452,7 +452,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                                 {CATEGORY_LABELS[p.category]}
                               </span>
                             </div>
-                            <p className="text-xs text-text-secondary truncate">{p.owner_name} · {p.year}</p>
+                            <p className="text-xs text-text-secondary truncate">{p.director_name && `${p.director_name} · `}{p.year}</p>
                           </div>
                           <svg className="w-4 h-4 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -487,7 +487,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                           <div className="mt-2.5 px-1 pb-0.5">
                             <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[11px] text-text-secondary truncate">{p.owner_name}</span>
+                              {p.director_name && <span className="text-[11px] text-text-secondary truncate">{p.director_name}</span>}
                               <span className="text-[11px] text-text-tertiary font-mono">{p.year}</span>
                             </div>
                           </div>

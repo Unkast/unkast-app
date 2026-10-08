@@ -1,7 +1,11 @@
 # Mise en ligne : gestion des films (Responsable, co-gestionnaires, droits)
 
-> Liste de controle pour Maxime. Version du 08/10/2026, ecrite avant le code des lots 2 et 3 :
-> les parcours de l'etape 4 seront completes quand les ecrans existeront.
+> Liste de controle pour Maxime. Version du 08/10/2026, a jour des lots 2 et 3.
+> Aucun parcours de l'etape 4 n'a ete execute : le code a ete verifie par les types, ESLint et
+> le build, la migration par une base locale jetable. Cette liste est le premier vrai test.
+>
+> **Beta en cours** : la production tourne sur la branche `release/beta` (commit `67ce9b8`,
+> base sans la migration). `main` ne doit pas partir en production avant l'etape 2.
 > Migration : `supabase/migrations/20261008_film_management.sql`
 > Rollback : `supabase/migrations/20261008_film_management_rollback.sql`
 
@@ -31,7 +35,9 @@ les deux sans pause, a une heure creuse.
 
 ## 3. Deploiement
 
-- [ ] Deployer sur Vercel immediatement apres la migration.
+- [ ] Vercel, Settings, Environments, Production : remettre la branche de production sur `main`.
+- [ ] Deployer `main` sur Vercel immediatement apres la migration.
+- [ ] Reporter sur `main` les correctifs faits sur `release/beta` pendant la beta, s'il y en a.
 - [ ] Ouvrir https://app.unkast.com : feed, une page projet, une page profil s'affichent.
 
 ## 4. Parcours a tester en production
@@ -73,6 +79,27 @@ Avec deux comptes de test (A et B), plus le compte admin.
       apparait en clair avec le lien vers son profil ; le reste de l'equipe en initiales,
       sans lien. Connecte, les noms complets reviennent.
 - [ ] **Annuler une demande de credit** en attente : elle disparait vraiment.
+- [ ] **Pages profil, feed, recherche** : elles s'affichent (les lectures liant profils et films
+      ont ete qualifiees pour la nouvelle table des co-gestionnaires ; c'est le point a verifier
+      en premier, une erreur ici donne des pages profil introuvables).
+- [ ] **Passage en publicite ou en clip** (A) : modifier la categorie d'un film publie dans une
+      autre categorie. La case « client ou label » est exigee ; B, co-gestionnaire, est refuse.
+- [ ] **Annuler une invitation ou une demande de co-gestion** en attente : son auteur le peut,
+      depuis le panneau Gestion de /moi ou la page du film.
+- [ ] **Invitation a co-gerer recue** (B) : elle apparait en haut de « Mes films », avec
+      Accepter et Refuser.
+- [ ] **Publication par un talent et par un recruteur** : l'onglet « Mes films » leur est ouvert.
+- [ ] **Coordonnees** : un email ou un numero dans la bio, le Parcours ou la description d'un
+      film est refuse avec le renvoi vers la section Contact. Un cas douteux (« insta » seul)
+      est enregistre et arrive dans l'onglet Signalements de l'admin, motif « Coordonnees ».
+      Dans les 3 premiers messages d'une conversation, meme controle.
+- [ ] **Admin, revendication** : accepter une revendication propose d'attribuer le film au
+      demandeur ; rien n'est transfere sans ce second clic.
+- [ ] **Admin, films** : sections « A valider » (titre et chaine d'origine, role declare),
+      « Modifies recemment » (bouton Vu), « Sans Responsable » (attribution par recherche).
+- [ ] **Inscription d'un createur avec un film** : role et declaration exiges ; si la video est
+      deja sur Unkast, privee, ou la declaration manquante, le compte est cree et un message
+      explique pourquoi le film ne l'est pas.
 
 ## 5. En cas de probleme
 

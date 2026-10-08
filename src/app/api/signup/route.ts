@@ -151,6 +151,9 @@ export async function POST(request: NextRequest) {
   // On NE bloque JAMAIS l'inscription : declaration manquante, video privee ou
   // doublon -> le compte est cree, le film est saute et l'UI previent.
   let videoSkippedReason: "duplicate" | "rights" | "private" | null = null;
+  // Film demande mais non cree pour une autre raison (erreur, plafond) : le compte
+  // est garde, et l'interface previent avec son message generique.
+  let videoFailed = false;
   if (
     account_type === "creator" &&
     project &&
@@ -209,6 +212,7 @@ export async function POST(request: NextRequest) {
 
       if (projectError) {
         console.error("[signup] publish_project error:", projectError);
+        videoFailed = true;
       } else if (result?.code === "duplicate") {
         videoSkippedReason = "duplicate";
       } else if (
@@ -216,10 +220,12 @@ export async function POST(request: NextRequest) {
         result?.code === "client_authorization_required"
       ) {
         videoSkippedReason = "rights";
+      } else if (!result?.ok) {
+        videoFailed = true;
       }
     }
   }
-  const videoSkipped = videoSkippedReason !== null;
+  const videoSkipped = videoSkippedReason !== null || videoFailed;
 
   // 5. Create credit request if provided (talent)
   if (

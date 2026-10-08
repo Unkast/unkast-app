@@ -8,6 +8,7 @@ import Avatar from "@/components/Avatar";
 import GlassCard from "@/components/ui/GlassCard";
 import HeroCarousel from "./HeroCarousel";
 import ConversionBanner from "./ConversionBanner";
+import { TEAM_SELECT, loadFilmTeams, type FilmTeam } from "@/lib/film-team";
 
 export const revalidate = 300; // Cache 5 minutes
 
@@ -19,8 +20,9 @@ interface ProjectCard {
   year: number;
   description: string | null;
   video_url: string;
-  owner_name: string;
-  owner_slug: string;
+  // Realisateur : credits de realisation du film, jamais son Responsable.
+  director_name: string;
+  director_slug: string | null;
   team_size: number;
   poster_url?: string | null;
   preview_url?: string | null;
@@ -43,42 +45,70 @@ interface ContentRow {
   items: ProjectCard[];
 }
 
+// Films d'une liste. La visibilite (public / membres seulement / depublie) est
+// appliquee par la RLS : toutes les lectures de cette page passent par le client
+// utilisateur, aucune par le service role.
+const PROJECT_SELECT = `
+  id, title, slug, category, year, description, video_url, poster_url, preview_url,
+  profiles!projects_profile_id_fkey ( is_suspended ),
+  ${TEAM_SELECT}
+`;
+
+type RawProject = Record<string, unknown> & { id: string };
+
+// Retire les films dont le Responsable est suspendu (chantier 3). Un film sans
+// Responsable (profile_id null) n'a pas de profil joint : rien a tester.
+function notSuspended(p: RawProject) {
+  return !(p.profiles as { is_suspended?: boolean } | null)?.is_suspended;
+}
+
+function toCard(p: RawProject, team: FilmTeam): ProjectCard {
+  return {
+    id: p.id,
+    title: p.title as string,
+    slug: p.slug as string,
+    category: p.category as ProjectCategory,
+    year: p.year as number,
+    description: p.description as string | null,
+    video_url: p.video_url as string,
+    ...team,
+    poster_url: (p.poster_url as string | null) ?? null,
+    preview_url: (p.preview_url as string | null) ?? null,
+  };
+}
+
 async function getHomeData() {
   const supabase = await createClient();
+  // Visiteur non connecte : il ne lit aucune ligne de project_credits (RLS),
+  // son equipe passe par public_project_credits (un seul appel pour la page).
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // Single query with joins for all recent projects
-  const { data: recentRaw } = await supabase
-    .from("projects")
-    .select(`
-      id, title, slug, category, year, description, video_url, poster_url, preview_url,
-      profiles!projects_profile_id_fkey ( full_name, slug, is_suspended ),
-      project_credits ( id )
-    `)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false })
-    .limit(12);
+  const categoriesToShow: ProjectCategory[] = ["court-metrage", "publicite", "clip", "documentaire"];
 
-  const recentAll: ProjectCard[] = (recentRaw ?? [])
-    // Retire les films dont le proprietaire est suspendu (chantier 3).
-    .filter((p: Record<string, unknown>) => !((p.profiles as { is_suspended?: boolean } | null)?.is_suspended))
-    .map((p: Record<string, unknown>) => {
-    const owner = p.profiles as { full_name: string; slug: string } | null;
-    const credits = p.project_credits as { id: string }[] | null;
-    return {
-      id: p.id as string,
-      title: p.title as string,
-      slug: p.slug as string,
-      category: p.category as ProjectCategory,
-      year: p.year as number,
-      description: p.description as string | null,
-      video_url: p.video_url as string,
-      owner_name: owner?.full_name ?? "",
-      owner_slug: owner?.slug ?? "",
-      team_size: credits?.length ?? 0,
-      poster_url: (p.poster_url as string | null) ?? null,
-      preview_url: (p.preview_url as string | null) ?? null,
-    };
-  });
+  const [recentResult, ...categoryResults] = await Promise.all([
+    supabase
+      .from("projects")
+      .select(PROJECT_SELECT)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(12),
+    ...categoriesToShow.map((cat) =>
+      supabase
+        .from("projects")
+        .select(PROJECT_SELECT)
+        .eq("category", cat)
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(10)
+    ),
+  ]);
+
+  const recentRaw = ((recentResult.data ?? []) as unknown as RawProject[]).filter(notSuspended);
+  const categoryRaw = categoryResults.map((r) => ((r.data ?? []) as unknown as RawProject[]).filter(notSuspended));
+
+  const teamOf = await loadFilmTeams(supabase, !user, [...recentRaw, ...categoryRaw.flat()]);
+
+  const recentAll: ProjectCard[] = recentRaw.map((p) => toCard(p, teamOf(p.id)));
 
   // Projects with poster images first (for the carousel)
   const recent = [
@@ -86,50 +116,13 @@ async function getHomeData() {
     ...recentAll.filter((p) => !p.poster_url),
   ];
 
-  // Category rows — single query per category with joins
+  // Category rows
   const categoryRows: ContentRow[] = [];
-  const categoriesToShow: ProjectCategory[] = ["court-metrage", "publicite", "clip", "documentaire"];
-
-  const categoryResults = await Promise.all(
-    categoriesToShow.map((cat) =>
-      supabase
-        .from("projects")
-        .select(`
-          id, title, slug, category, year, description, video_url, poster_url, preview_url,
-          profiles!projects_profile_id_fkey ( full_name, slug, is_suspended ),
-          project_credits ( id )
-        `)
-        .eq("category", cat)
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(10)
-    )
-  );
-
   for (let i = 0; i < categoriesToShow.length; i++) {
     const cat = categoriesToShow[i];
-    const catRaw = categoryResults[i].data;
-    if (catRaw && catRaw.length > 0) {
-      const items: ProjectCard[] = catRaw
-        .filter((p: Record<string, unknown>) => !((p.profiles as { is_suspended?: boolean } | null)?.is_suspended))
-        .map((p: Record<string, unknown>) => {
-        const owner = p.profiles as { full_name: string; slug: string } | null;
-        const credits = p.project_credits as { id: string }[] | null;
-        return {
-          id: p.id as string,
-          title: p.title as string,
-          slug: p.slug as string,
-          category: p.category as ProjectCategory,
-          year: p.year as number,
-          description: p.description as string | null,
-          video_url: p.video_url as string,
-          owner_name: owner?.full_name ?? "",
-          owner_slug: owner?.slug ?? "",
-          team_size: credits?.length ?? 0,
-          poster_url: (p.poster_url as string | null) ?? null,
-          preview_url: (p.preview_url as string | null) ?? null,
-        };
-      });
+    // Meme condition qu'avant : la ligne existe des que la categorie a un film lisible.
+    if ((categoryResults[i].data ?? []).length > 0) {
+      const items = categoryRaw[i].map((p) => toCard(p, teamOf(p.id)));
       categoryRows.push({ title: CATEGORY_LABELS[cat], href: `/recherche?category=${cat}`, items });
     }
   }
@@ -140,7 +133,7 @@ async function getHomeData() {
     .select(`
       id, full_name, slug, avatar_url, location, is_available,
       profile_roles ( role_name ),
-      projects ( id )
+      projects!projects_profile_id_fkey ( id )
     `)
     .eq("status", "approved")
     .not("is_suspended", "is", true) // chantier 3 : suspendus hors vue publique
@@ -311,7 +304,9 @@ function ProjectRow({ title, href, items }: ContentRow) {
                     {project.title}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[11px] text-text-tertiary truncate">{project.owner_name}</span>
+                    {project.director_name && (
+                      <span className="text-[11px] text-text-tertiary truncate">{project.director_name}</span>
+                    )}
                     <span className="text-[11px] text-text-tertiary/50 font-mono">{project.year}</span>
                     {project.team_size > 0 && (
                       <span className="flex items-center gap-0.5 text-[11px] text-text-tertiary/50">

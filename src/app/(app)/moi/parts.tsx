@@ -9,6 +9,32 @@ export function SectionLabel({ children, className = "" }: { children: ReactNode
   );
 }
 
+/* ---------- case a cocher (ligne entiere cliquable) ---------- */
+
+export function CheckRow({ checked, onChange, children }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode }) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-card border border-white/10 bg-white/5 p-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 size-5 shrink-0 accent-lime"
+      />
+      <span className="text-[13px] leading-relaxed text-text-primary">{children}</span>
+    </label>
+  );
+}
+
+/* ---------- message d'erreur ou de confirmation sous un formulaire ---------- */
+
+export function Note({ tone = "error", children }: { tone?: "error" | "ok"; children: ReactNode }) {
+  return (
+    <p role={tone === "error" ? "alert" : "status"} className={`text-xs leading-relaxed ${tone === "error" ? "text-red-400" : "text-lime"}`}>
+      {children}
+    </p>
+  );
+}
+
 /* ---------- vignette de film ---------- */
 
 export function FilmThumb({ url }: { url: string | null | undefined }) {

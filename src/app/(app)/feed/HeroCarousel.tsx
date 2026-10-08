@@ -16,8 +16,8 @@ interface CarouselProject {
   year: number;
   description: string | null;
   video_url: string;
-  owner_name: string;
-  owner_slug: string;
+  director_name: string;
+  director_slug: string | null;
   team_size: number;
   poster_url?: string | null;
   preview_url?: string | null;
@@ -229,9 +229,12 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
               Voir le film
             </Button>
-            <Button variant="glass" href={`/profil/${active.owner_slug}`} className="max-w-[160px]">
-              <span className="truncate">{active.owner_name}</span>
-            </Button>
+            {/* Réalisateur (crédits de réalisation). Plusieurs noms ou pas de profil : le lien mène au film. */}
+            {active.director_name && (
+              <Button variant="glass" href={active.director_slug ? `/profil/${active.director_slug}` : `/projet/${active.slug}`} className="max-w-[160px]">
+                <span className="truncate">{active.director_name}</span>
+              </Button>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>
@@ -303,9 +306,11 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 Voir le film
               </Button>
-              <Button variant="glass" href={`/profil/${active.owner_slug}`} className="max-w-[220px]">
-                <span className="truncate">{active.owner_name}</span>
-              </Button>
+              {active.director_name && (
+                <Button variant="glass" href={active.director_slug ? `/profil/${active.director_slug}` : `/projet/${active.slug}`} className="max-w-[220px]">
+                  <span className="truncate">{active.director_name}</span>
+                </Button>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

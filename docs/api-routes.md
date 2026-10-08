@@ -29,7 +29,11 @@
 |---|---|---|---|
 | `/api/me` | GET | `profiles` (service role) | — |
 | `/api/dashboard/profile` | GET, PATCH | `profiles`, `profile_roles` | `profiles`, `profile_roles` |
-| `/api/dashboard/projects` | GET, POST, DELETE | `projects`, `project_credits` | `projects`, `project_credits` |
+| `/api/dashboard/projects` | GET, POST, PATCH, DELETE | `projects`, `project_credits`, `project_managers`, `project_rights_declarations`, `project_manager_requests` | `projects` (RPC `publish_project`), `project_rights_declarations` |
+| `/api/projects/[id]/managers` | GET, POST, PATCH, DELETE | `projects`, `project_managers`, `project_manager_requests`, `project_credits`, `profiles` | `project_managers`, `project_manager_requests` (RPC) |
+| `/api/projects/[id]/transfer` | POST | `projects`, `project_managers` | `projects`, `project_managers` (RPC `transfer_project`) |
+| `/api/projects/[id]/claims` | POST | `projects`, `project_claims` | `project_claims`, Storage `claims` |
+| `/api/dashboard/career` | GET, POST, PATCH, DELETE | `career_entries` | `career_entries`, `reports` (signalement automatique) |
 | `/api/dashboard/credits` | GET | `projects`, `credit_requests`, `project_credits`, `profiles` | — |
 | `/api/avatar` | POST, DELETE | `profiles` | `profiles`, Storage `avatars` |
 | `/api/logout` | POST | — | — |
@@ -147,6 +151,46 @@ Deux passes indépendantes, **jamais** de balayage global sur `profiles` (chaque
 1. **Grants `'launch'` échus** (`pro_grant_expires_at < now()`) → `recompute_plan()` (RPC) par profil concerné. Les colonnes du grant ne sont **pas** nettoyées (témoin conservé en base) ; seul `plan` est réévalué.
 2. **Rappel J-7** : grants à échéance (`launch` ou `vip` daté) expirant sous 7 jours, pas encore expirés, jamais relancés (`pro_grant_reminder_sent_at IS NULL`) → email via `sendProExpiryReminderEmail` (`lib/email.ts`). `pro_grant_reminder_sent_at` n'est posée **que** si l'envoi renvoie `{sent: true}` — tant que `RESEND_API_KEY` n'est pas branchée, chaque échec est loggé explicitement (`console.error`) et compté dans la réponse, sans jamais marquer un rappel comme envoyé à tort.
 Réponse JSON : `{ expired_launch: { matched, recomputed, errors }, reminders: { candidates, sent, failed } }` — aucun décompte silencieux.
+
+### Gestion des films *(lots 2 et 3, 08/10/2026 ; dépend de la migration `20261008`, ⚠️ pas encore en production)*
+
+Modèle : [database.md](database.md#gestion-des-films-migration-20261008_film_managementsql--à-exécuter),
+[ADR 0014](adr/0014-responsable-et-co-gestionnaires.md). « Gestionnaire » = Responsable ou co-gestionnaire.
+
+| Route | Méthodes | Qui | Notes |
+|---|---|---|---|
+| `/api/dashboard/projects` | GET | connecté | films dont on est Responsable ou co-gestionnaire (`my_role`, `needs_rights_declaration`, crédits), `owned_count`, `limit`, `manager_invites` (invitations à co-gérer reçues) |
+| | POST | connecté, tout type de compte | publication via `publish_project`. Corps : champs du film + `declared_role`, `rights_accepted`, `client_authorized`. oEmbed avant l'appel (`lib/oembed.ts`). Codes : `rights_declaration_required`, `client_authorization_required`, `contact_refused`, `limit_reached`, `video_private`, 409 `duplicate` avec `project: {id, slug, title, is_visible}` (titre et slug nuls si le film n'est pas visible) |
+| | PATCH | gestionnaire | `{id, title?, description?, category?, year?, visibility?, declaration?}`. 409 `rights_declaration_required` ou `client_authorization_required`, 403 `owner_only` (visibilité), 400 `contact_refused` |
+| | DELETE | Responsable | 404 si rien n'est supprimé |
+| `/api/projects/[id]/managers` | GET | gestionnaire | Responsable, co-gestionnaires, demandes en attente (`can_cancel`), personnes créditées invitables |
+| | POST | Responsable (`{profile_id}` : inviter) ou personne créditée (sans corps : demander) | `request_project_manager` |
+| | PATCH | destinataire de la demande | `{request_id, accept}`, `decide_project_manager` |
+| | DELETE | `?profile_id=` : Responsable ou soi-même ; `?request_id=` : auteur d'une demande en attente | |
+| `/api/projects/[id]/transfer` | POST | Responsable | `{profile_id}` d'un co-gestionnaire ; refusé si le destinataire est au plafond |
+| `/api/projects/[id]/claims` | POST | connecté | multipart `kind` (`report`/`claim`), `message`, `file` (obligatoire pour `claim`, 4 Mo max, limite Vercel de 4,5 Mo) ; bucket privé `claims` |
+| `/api/dashboard/career` | GET, POST, PATCH, DELETE | propriétaire | Parcours. Codes : `contact_refused` (détecteur), `link_refused` (CHECK de la base), `career_limit_reached` |
+
+Routes existantes modifiées : `/api/signup` (film via `publish_project`, réponse `video_skipped_reason`),
+`/api/credits/*` et `/api/invitations/*` (ouvertes aux gestionnaires, plus de contrôle « créateur »),
+`/api/credits/status` (`isManager`, `managerRequest`, `claimPending`), `/api/reports` (cible `career_entry`),
+`/api/dashboard/profile` (bio passée au détecteur seulement quand elle change),
+`/api/messages` (détecteur sur les 3 premiers messages), `/api/admin` (voir plus bas).
+
+**Détecteur de coordonnées** (`lib/contact-detector.ts`, fonction pure) : `obvious` = refus avec
+`CONTACT_REFUSED_MESSAGE`, `doubtful` = texte enregistré puis signalé à l'admin par
+`lib/contact-flag.ts` (motif `contact_info`, sans auteur, un seul signalement en attente par cible).
+Branché sur la bio, le Parcours, le titre et la description des films, les 3 premiers messages d'une
+conversation. Les liens Instagram et site web du profil ne sont pas contrôlés. Rien n'est repassé
+sur l'existant.
+
+**Admin** (`/api/admin`) : `tab=films` renvoie `source_title`, `source_author`, `declared_role`, les
+films `edited` (modifiés récemment) et `orphans` (sans Responsable) ; `tab=claims` renvoie les
+signalements et revendications avec une URL signée du justificatif ; `tab=reports` renvoie les
+signalements automatiques, le contenu d'une entrée de Parcours signalée, l'expéditeur et le
+destinataire d'un message signalé. Actions : `mark_film_edit_seen`, `accept_claim`, `reject_claim`,
+`assign_project_owner`, `delete_career_entry`. Accepter une revendication ne transfère pas le film :
+l'admin l'attribue ensuite avec `assign_project_owner` (deux gestes, voulu).
 
 ### POST /api/signup
 Inscription complete : cree l'utilisateur Auth, insere le profil (`status='pending'`), les roles, et optionnellement un premier projet + credits + **`credit_requests`**. Rate-limit `signup:<ip>` (5/h). Slugs via `slugify()` partage (`lib/utils.ts`).

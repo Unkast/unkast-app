@@ -8,6 +8,7 @@ import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
+import { TEAM_SELECT, loadFilmTeams } from "@/lib/film-team";
 
 export const revalidate = 300; // Cache 5 minutes (était absent → aucun cache)
 
@@ -38,29 +39,34 @@ export default async function CategoryPage({ params }: Props) {
   const catColor = CATEGORY_COLORS[category];
 
   const supabase = await createClient();
+  // Visiteur non connecté : son équipe passe par public_project_credits.
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // Une seule requête avec join sur le propriétaire (au lieu d'un N+1 :
-  // 1 requête profiles par projet) + limite (la liste n'était pas bornée).
-  const { data: projects } = await supabase
+  // Une seule requête, bornée. Client utilisateur : la visibilité (public /
+  // membres seulement / dépublié) est appliquée par la RLS. Le réalisateur vient
+  // des crédits de réalisation, plus du Responsable (profile_id, qui peut être null).
+  const { data } = await supabase
     .from("projects")
     .select(`
       id, title, slug, category, year, description, video_url, profile_id, poster_url, preview_url,
-      profiles!projects_profile_id_fkey ( full_name, slug )
+      ${TEAM_SELECT}
     `)
     .eq("status", "approved")
     .eq("category", category)
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
 
-  const enrichedProjects = (projects ?? []).map((p) => {
-    const owner = p.profiles as unknown as { full_name: string; slug: string } | null;
-    return {
-      ...p,
-      profiles: undefined,
-      owner_name: owner?.full_name ?? "",
-      owner_slug: owner?.slug ?? "",
-    };
-  });
+  const projects = (data ?? []) as unknown as {
+    id: string; title: string; slug: string; year: number;
+    poster_url: string | null; preview_url: string | null; project_credits?: unknown;
+  }[];
+  const teamOf = await loadFilmTeams(supabase, !user, projects);
+
+  const enrichedProjects = projects.map((p) => ({
+    ...p,
+    project_credits: undefined,
+    director_name: teamOf(p.id).director_name,
+  }));
 
   const featured = enrichedProjects[0] ?? null;
   const rest = enrichedProjects.slice(1);
@@ -121,7 +127,7 @@ export default async function CategoryPage({ params }: Props) {
                   <p className="truncate text-lg lg:text-2xl font-semibold text-white group-hover:text-lime transition-colors duration-base" style={{ letterSpacing: "-0.3px" }}>
                     {featured.title}
                   </p>
-                  <p className="truncate text-xs lg:text-sm text-white/70">{featured.owner_name} · {featured.year}</p>
+                  <p className="truncate text-xs lg:text-sm text-white/70">{featured.director_name && `${featured.director_name} · `}{featured.year}</p>
                 </div>
               </Link>
             </EnterItem>
@@ -156,7 +162,7 @@ export default async function CategoryPage({ params }: Props) {
                       <p className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate leading-tight">
                         {p.title}
                       </p>
-                      <p className="mt-1 text-[11px] text-text-secondary truncate">{p.owner_name} · {p.year}</p>
+                      <p className="mt-1 text-[11px] text-text-secondary truncate">{p.director_name && `${p.director_name} · `}{p.year}</p>
                     </div>
                   </GlassCard>
                 </Link>

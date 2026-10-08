@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface ReportModalProps {
   open: boolean;
   onClose: () => void;
-  targetType: "profile" | "project" | "message";
+  targetType: "profile" | "project" | "message" | "career_entry";
   targetId: string;
 }
 

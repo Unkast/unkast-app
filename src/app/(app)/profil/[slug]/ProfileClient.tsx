@@ -9,13 +9,15 @@ import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
-import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
+import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoFacade from "@/components/VideoFacade";
 import Avatar from "@/components/Avatar";
 import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { getDisplayName } from "@/lib/profile";
+import { directorNames } from "@/lib/credits";
+import { CAREER_KINDS } from "@/lib/constants";
 
 type CreditWithProfile = ProjectCredit & {
   profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
@@ -32,6 +34,7 @@ type ProfileData = Profile & {
   // regle : il affiche ce booleen tel quel.
   show_verified_badge: boolean;
   projects: ProjectWithCredits[];
+  career: CareerEntry[];
 };
 
 interface Props {
@@ -52,7 +55,8 @@ export default function ProfileClient({
   const [expandedCredits, setExpandedCredits] = useState<Set<string>>(new Set());
   const [contacting, setContacting] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
+  // Cible du signalement : le profil, ou une entrée de son Parcours.
+  const [reportTarget, setReportTarget] = useState<{ type: "profile" | "career_entry"; id: string } | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteProjects, setInviteProjects] = useState<any[]>([]);
@@ -427,7 +431,7 @@ export default function ProfileClient({
           <section>
             <EnterItem>
             <h2 className="text-xl font-bold text-text-primary mb-4">
-              Projets
+              Films
               <span className="text-text-tertiary font-normal ml-2 text-base">
                 ({profile.projects.length})
               </span>
@@ -451,7 +455,7 @@ export default function ProfileClient({
             {/* Project cards */}
             {filteredProjects.length === 0 ? (
               <div className="border border-dashed border-white/[0.08] rounded-card h-[120px] flex items-center justify-center">
-                <p className="text-[13px] text-[#444]">Aucun projet pour le moment</p>
+                <p className="text-[13px] text-[#444]">Aucun film pour le moment</p>
               </div>
             ) : (
               <EnterList className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
@@ -460,6 +464,10 @@ export default function ProfileClient({
                     (c) => c.profile_id === profile.id
                   );
                   const isExpanded = expandedCredits.has(project.id);
+                  // Réalisateur : crédits de réalisation du film, pas son Responsable.
+                  const directors = directorNames(
+                    project.credits.map((c) => ({ role_on_project: c.role_on_project, name: c.profile?.full_name ?? c.ghost_name }))
+                  );
 
                   return (
                     <motion.article
@@ -499,6 +507,13 @@ export default function ProfileClient({
                             {project.year}
                           </span>
                         </div>
+
+                        {directors && (
+                          <p className="text-sm text-text-secondary mb-2">
+                            <span className="text-text-tertiary">Réalisation :</span>{" "}
+                            {directors}
+                          </p>
+                        )}
 
                         {/* Role on project */}
                         {ownerCredit && (
@@ -586,23 +601,65 @@ export default function ProfileClient({
               </EnterList>
             )}
           </section>
+
+          {/* Parcours : entrées déclaratives, texte uniquement. Section masquée si vide. */}
+          {profile.career.length > 0 && (
+            <EnterItem>
+              <section className="mt-10">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
+                  Parcours
+                  <span className="text-text-tertiary font-normal ml-2 text-base">({profile.career.length})</span>
+                </h2>
+                <ul className="glass rounded-panel divide-y divide-white/[0.06]">
+                  {profile.career.map((entry) => (
+                    <li key={entry.id} className="flex items-start gap-3 px-4 py-3.5 sm:px-5">
+                      <span className="w-10 flex-shrink-0 pt-0.5 font-mono text-xs text-text-tertiary">{entry.year}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-text-primary break-words">{entry.title}</p>
+                        <p className="mt-0.5 text-[13px] text-text-secondary break-words">
+                          {entry.role} · {CAREER_KINDS.find((k) => k.value === entry.kind)?.label ?? entry.kind}
+                        </p>
+                        {entry.production && (
+                          <p className="mt-0.5 text-xs text-text-tertiary break-words">{entry.production}</p>
+                        )}
+                      </div>
+                      {userStatus && userStatus !== "anonymous" && !isOwnProfile && (
+                        <button
+                          type="button"
+                          aria-label={`Signaler l'entrée ${entry.title}`}
+                          title="Signaler"
+                          onClick={() => setReportTarget({ type: "career_entry", id: entry.id })}
+                          className="-mr-2 -mt-1.5 flex size-9 flex-shrink-0 items-center justify-center rounded-pill text-text-tertiary transition-colors hover:text-text-secondary"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                            <line x1="4" y1="22" x2="4" y2="15" />
+                          </svg>
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </EnterItem>
+          )}
         </div>
         </EnterList>
 
         {/* Report button */}
         {userStatus && userStatus !== "anonymous" && (
           <div className="mt-8 flex justify-center">
-            <ReportButton onClick={() => setReportOpen(true)} />
+            <ReportButton onClick={() => setReportTarget({ type: "profile", id: profile.id })} />
           </div>
         )}
       </main>
 
       {/* Report Modal */}
       <ReportModal
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        targetType="profile"
-        targetId={profile.id}
+        open={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        targetType={reportTarget?.type ?? "profile"}
+        targetId={reportTarget?.id ?? profile.id}
       />
 
       {/* Invitation Modal */}

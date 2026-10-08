@@ -270,6 +270,32 @@ FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) d
   Stripe/offert/recruteur), approbation films. Voir docs/database.md "Modele Pro".
 ```
 
+### Gestion des films *(lots 2 et 3, 08/10/2026 ; dépend de la migration `20261008`, pas encore en production)*
+
+Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable-et-co-gestionnaires.md). Routes : [api-routes.md](api-routes.md).
+
+| Fichier | Type | Rôle |
+|---|---|---|
+| `src/app/(app)/moi/FilmsSection.tsx` | FEATURE | onglet « Mes films », ouvert à tous les types de compte : jauge (films dont on est Responsable), invitations à co-gérer reçues, liste, ajout |
+| `src/app/(app)/moi/FilmCard.tsx` | SUB | un film : modifier (titre, description, catégorie, année), visibilité, créditer, gestion, supprimer |
+| `src/app/(app)/moi/FilmManagers.tsx` | SUB | Responsable, co-gestionnaires, demandes, invitations, transfert |
+| `src/app/(app)/moi/PublishForm.tsx` | SUB | publication avec rôle déclaré et déclaration de droits |
+| `src/app/(app)/moi/DuplicateFilm.tsx` | SUB | vidéo déjà sur Unkast : être crédité, co-gérer, revendiquer |
+| `src/app/(app)/moi/RightsDeclaration.tsx` | SUB | bloc rôle + cases, partagé entre publication et modification |
+| `src/app/(app)/moi/CareerSection.tsx` | FEATURE | Parcours du profil (onglet Profil) |
+| `src/app/(app)/moi/api.ts` | UTILITY | `callApi` et types des réponses de /moi |
+| `src/app/(app)/projet/[slug]/ClaimModal.tsx` | SUB | « Signaler ou revendiquer ce film » (circuit `project_claims`, distinct de `ReportModal`) |
+| `src/lib/film-team.ts` | UTILITY | réalisateur et équipe d'un film pour les pages de lecture ; visiteur via `public_project_credits`, un appel par page |
+| `src/lib/credits.ts` | UTILITY | `isDirectorRole`, `directorNames` |
+| `src/lib/contact-detector.ts`, `src/lib/contact-flag.ts` | UTILITY | détecteur de coordonnées et signalement automatique |
+| `src/lib/oembed.ts` | UTILITY | titre et chaîne d'une vidéo, refus d'une vidéo privée |
+
+Points de vigilance :
+- Le nom affiché sur un film est celui du **crédit de réalisation**, jamais du Responsable. `/api/search` renvoie `director_name` (plus `owner_name`).
+- Un visiteur ne lit plus `project_credits` : passer par `src/lib/film-team.ts`.
+- Les embeds PostgREST entre `profiles` et `projects` doivent être **qualifiés** (`projects!projects_profile_id_fkey`, `profiles!projects_profile_id_fkey`) : `project_managers` crée une seconde relation entre les deux tables. À confirmer une fois la base migrée.
+- Toute lecture de films avec le service role doit filtrer elle-même statut et visibilité.
+
 ## Composants transverses (UTILITY / partages)
 
 ```
@@ -331,7 +357,7 @@ UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — H
 3. **`slugify()` est factorisee** dans `src/lib/utils.ts`, importee par 3 routes. *(ancienne note « dupliquee » : fausse)*
 4. **Resend non connecte** — dependance installee, aucun email envoye. *(confirme)*
 5. **L'admin API existe** — `/api/admin` (GET/PATCH) + back-office `/admin`, autorisation `profiles.is_admin`. *(ancienne note « pas d'admin API » : fausse)*
-6. **Pas d'edit projet** — un projet se cree (POST) et se supprime (DELETE), pas d'UPDATE expose. *(confirme)*
+6. **Edition d'un film** — depuis le 08/10/2026 (branche `main`, migration `20261008` requise), un film se modifie par PATCH `/api/dashboard/projects` (titre, description, categorie, annee, visibilite) ; video et images ne se modifient pas.
 7. **`Navbar.tsx` n'existe plus** — le fichier a ete supprime (remplace par AppShell). *(ancienne entree ORPHELIN : obsolete)*
 8. **`database.ts` est desormais la source de verite** (15 tables, profiles 35 col., projects 12 col., introspecte). En revanche **`supabase/schema.sql` reste en retard** (5 tables seulement) et doit etre regenere — voir docs/database.md.
 9. **`account_type` (ROLE) et `plan` contraints par CHECK** — `account_type` ∈ {talent, creator, recruiter} (defaut talent, `member` supprime), `plan` ∈ {free, pro}. **Role et plan totalement independants depuis le 10/08/2026** : la regle `recruiter ⇒ pro` n'existe plus (`approve_recruiter` ne donne plus le Pro). Restent NON contraints : `projects.status`, `recruiter_status`, `display_name_preference`, `show_*_to`, statuts invitations/credits/reports/waitlist (dette technique).

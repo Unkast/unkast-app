@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { CATEGORY_LABELS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { PHONE_CODES } from "@/lib/phone-codes";
-import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory, CreditRequest } from "@/types/database";
+import type { Profile, ProfileRole, ProjectCredit, CreditRequest } from "@/types/database";
 import AvatarUpload from "@/components/AvatarUpload";
 import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram } from "@/lib/profile";
@@ -21,13 +21,12 @@ import GlassCard from "@/components/ui/GlassCard";
 import Select from "@/components/ui/Select";
 import Toast from "@/components/ui/Toast";
 import Toggle from "@/components/ui/Toggle";
-import { SectionLabel, FilmThumb, MoiSkeleton } from "./parts";
+import { SectionLabel, FilmThumb, MoiSkeleton, Note } from "./parts";
+import type { FilmsData } from "./api";
+import FilmsSection from "./FilmsSection";
+import CareerSection from "./CareerSection";
 
 /* ---------- types ---------- */
-
-interface ProjectWithCredits extends Project {
-  credits: ProjectCredit[];
-}
 
 interface CreditRequestWithProject extends CreditRequest {
   project_title?: string;
@@ -64,6 +63,7 @@ export default function MoiClient() {
   const [editStageName, setEditStageName] = useState("");
   const [editDisplayPref, setEditDisplayPref] = useState<"real_name" | "stage_name">("real_name");
   const [editBio, setEditBio] = useState("");
+  const [bioError, setBioError] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editAvailable, setEditAvailable] = useState(false);
   const [editRoles, setEditRoles] = useState<string[]>([]);
@@ -78,22 +78,8 @@ export default function MoiClient() {
   const [editIsRecruiting, setEditIsRecruiting] = useState(false);
   const [editRecruitingRoles, setEditRecruitingRoles] = useState<string[]>([]);
 
-  /* --- projects --- */
-  const [projects, setProjects] = useState<ProjectWithCredits[]>([]);
-  const [addingProject, setAddingProject] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newCategory, setNewCategory] = useState<ProjectCategory>("court-metrage");
-  const [newYear, setNewYear] = useState(new Date().getFullYear());
-  const [newVideoUrl, setNewVideoUrl] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newOwnerRole, setNewOwnerRole] = useState("");
-
-  /* --- invitation email d'un collaborateur absent (chantier 10) --- */
-  const [inviteForProject, setInviteForProject] = useState<string | null>(null);
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("");
-  const [inviteSending, setInviteSending] = useState(false);
+  /* --- films (GET /api/dashboard/projects) --- */
+  const [films, setFilms] = useState<FilmsData>({ projects: [], owned_count: 0, limit: MAX_PROJECTS_FREE, manager_invites: [] });
 
   /* --- credits --- */
   const [creditRequests, setCreditRequests] = useState<CreditRequestWithProject[]>([]);
@@ -123,7 +109,6 @@ export default function MoiClient() {
   const isCreator = profile?.account_type === "creator";
   const isRecruiter = profile?.account_type === "recruiter";
   const plan = (profile as any)?.plan || "free";
-  const projectLimit = plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
   const isCreatorOrRecruiter = profile?.account_type === "creator" || profile?.account_type === "recruiter";
   const canRecruit = plan === "pro" && isCreatorOrRecruiter;
 
@@ -188,7 +173,12 @@ export default function MoiClient() {
     const res = await fetch("/api/dashboard/projects");
     if (res.ok) {
       const data = await res.json();
-      setProjects(data.projects);
+      setFilms({
+        projects: data.projects ?? [],
+        owned_count: data.owned_count ?? 0,
+        limit: data.limit ?? MAX_PROJECTS_FREE,
+        manager_invites: data.manager_invites ?? [],
+      });
     }
   }, []);
 
@@ -226,6 +216,7 @@ export default function MoiClient() {
     setEditStageName((profile as any).stage_name || "");
     setEditDisplayPref((profile as any).display_name_preference || "real_name");
     setEditBio(profile.bio ?? "");
+    setBioError("");
     setEditLocation(profile.location ?? "");
     setEditAvailable(profile.is_available ?? false);
     setEditRoles(roles.map((r) => r.role_name));
@@ -275,6 +266,12 @@ export default function MoiClient() {
       }),
     });
     const data = await res.json().catch(() => ({}));
+    // Coordonnees dans la bio : rien n'est enregistre, on reste sur le formulaire.
+    if (res.status === 400 && data?.code === "contact_refused") {
+      setBioError(data.error || "");
+      setSaving(false);
+      return;
+    }
     await fetchProfile();
     setIsEditing(false);
     setSaving(false);
@@ -296,65 +293,6 @@ export default function MoiClient() {
     }
     await fetchProfile();
     showToast(next === "creator" ? "Tu es maintenant créateur" : "Tu es maintenant talent");
-  }
-
-  /* ---------- project actions ---------- */
-
-  async function addProject() {
-    if (!newTitle || !newVideoUrl) return;
-    setSaving(true);
-    const res = await fetch("/api/dashboard/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: newTitle,
-        category: newCategory,
-        year: newYear,
-        video_url: newVideoUrl,
-        description: newDescription || null,
-        owner_role: newOwnerRole || null,
-      }),
-    });
-    if (!res.ok) {
-      // Doublon vidéo (409) ou autre erreur : on garde le formulaire et les champs
-      // pour permettre la correction (ex. coller une autre vidéo).
-      const data = await res.json().catch(() => ({}));
-      showToast(data.error || "Erreur lors de l'ajout du film");
-      setSaving(false);
-      return;
-    }
-    await fetchProjects();
-    setAddingProject(false);
-    setNewTitle("");
-    setNewVideoUrl("");
-    setNewDescription("");
-    setNewOwnerRole("");
-    setSaving(false);
-  }
-
-  async function deleteProject(id: string) {
-    if (!confirm("Supprimer ce projet ?")) return;
-    await fetch(`/api/dashboard/projects?id=${id}`, { method: "DELETE" });
-    await fetchProjects();
-  }
-
-  async function sendEmailInvitation(projectId: string) {
-    if (!inviteEmail || !inviteRole) return;
-    setInviteSending(true);
-    const res = await fetch("/api/invitations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, email: inviteEmail, role: inviteRole, name: inviteName || null }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setInviteSending(false);
-    if (res.ok) {
-      showToast(data.email_sent ? "Invitation envoyée par email" : "Invitation enregistrée (email non envoyé en dev)");
-      setInviteName(""); setInviteEmail(""); setInviteRole(""); setInviteForProject(null);
-      await fetchProjects();
-    } else {
-      showToast(data.error || "Erreur");
-    }
   }
 
   /* ---------- credit actions ---------- */
@@ -495,9 +433,10 @@ export default function MoiClient() {
                     </>
                   }
                   value={editBio}
-                  onChange={(e) => { if (e.target.value.length <= 280) setEditBio(e.target.value); }}
+                  onChange={(e) => { if (e.target.value.length <= 280) { setEditBio(e.target.value); setBioError(""); } }}
                   placeholder={isRecruiter ? "Ton parcours, les films faits, les postes occupés..." : "Décris ton parcours, tes spécialités..."}
                 />
+                {bioError && <div className="mt-2"><Note>{bioError}</Note></div>}
                 {isRecruiter && (
                   <p className="mt-2 text-xs leading-relaxed text-lime/80">
                     Toute modification de ta description est vérifiée par l&apos;équipe avant publication. Le public continue de voir ta version actuelle en attendant.
@@ -603,8 +542,43 @@ export default function MoiClient() {
   const showVerifiedBadge = profile.recruiter_verified === true && plan === "pro";
   const recruitingRoles = profile.is_recruiting ? profile.recruiting_roles ?? [] : [];
   const instagram = formatInstagram(profile.instagram_url);
-  const limitReached = projects.length >= projectLimit;
   const pendingSentRequests = myCreditRequests.filter((r) => r.status === "pending");
+
+  // Demandes de credit recues sur les films geres (tous types de compte).
+  const receivedCredits = (headCls: string) => (
+    <>
+      <EnterItem className={headCls}>
+        <h2 className={titleCls}>Demandes de participation</h2>
+        <p className={subCls}>Des membres veulent apparaître dans l&apos;équipe de tes films.</p>
+      </EnterItem>
+      {pendingReceivedCredits.length === 0 ? (
+        <EnterItem className="px-1">
+          <p className={emptyCls}>Aucune demande en attente.</p>
+        </EnterItem>
+      ) : (
+        pendingReceivedCredits.map((cr) => (
+          <EnterItem key={cr.id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card border-yellow-500/25 p-3 pl-4">
+            <div className="min-w-40 flex-1">
+              <p className={rowTitleCls}>{cr.requester_name || "Membre"}</p>
+              <p className={rowMetaCls}>
+                {cr.project_title && <span>{cr.project_title} &middot; </span>}
+                {cr.role}
+              </p>
+              {cr.message && <p className="mt-1 text-xs italic text-text-secondary">&quot;{cr.message}&quot;</p>}
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" onClick={() => handleCreditAction(cr.id, "accepted")}>
+                Accepter
+              </Button>
+              <Button variant="glass" size="sm" onClick={() => handleCreditAction(cr.id, "refused")}>
+                Refuser
+              </Button>
+            </div>
+          </EnterItem>
+        ))
+      )}
+    </>
+  );
 
   return (
     <>
@@ -640,7 +614,7 @@ export default function MoiClient() {
           <EnterItem className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1">
             {(([
               { key: "profil", label: "Profil" },
-              { key: "content", label: isCreator ? "Mes films" : "Mes participations" },
+              { key: "content", label: "Mes films" },
               { key: "activity", label: "Activité" },
               // Espace pré-casting : visible des qu'on est Pro createur/recruteur
               // (independamment du badge "Je recrute", qui ne gere que la visibilite
@@ -752,145 +726,31 @@ export default function MoiClient() {
                 </div>
               )}
             </EnterItem>
+
+            {/* Parcours : experiences declarees, texte uniquement */}
+            <EnterItem className="glass flex flex-col items-start gap-3 rounded-panel p-5 sm:p-6">
+              <CareerSection showToast={showToast} />
+            </EnterItem>
           </EnterList>
         )}
 
-        {/* TAB: Content (films or credits) */}
+        {/* TAB: Content (films, puis participations) */}
         {activeTab === "content" && (
           <EnterList className="flex flex-col gap-3">
-            {/* ============ SECTION 2 — My content ============ */}
-            {isCreator ? (
-              /* ----- Creator: Mes films ----- */
+            {/* Films geres : ouvert a tous les types de compte */}
+            <FilmsSection
+              films={films}
+              userId={profile.id}
+              plan={plan}
+              reload={fetchProjects}
+              showToast={showToast}
+              onUpsell={() => setShowProModal(true)}
+            />
+
+            {/* ----- Talent et recruteur : Mes participations ----- */}
+            {!isCreator && (
               <>
-                {/* Jauge : X sur la limite */}
-                <EnterItem className="glass rounded-panel p-5">
-                  <div className="flex items-end justify-between gap-3">
-                    <h2 className={titleCls}>Mes films</h2>
-                    <p className="text-sm text-text-secondary">
-                      <span className="text-xl font-semibold text-text-primary">{projects.length}</span> sur {projectLimit}
-                    </p>
-                  </div>
-                  <div
-                    role="progressbar"
-                    aria-label="Films ajoutés sur la limite du forfait"
-                    aria-valuemin={0}
-                    aria-valuemax={projectLimit}
-                    aria-valuenow={projects.length}
-                    className="mt-3 h-2 overflow-hidden rounded-pill bg-white/10"
-                  >
-                    <div
-                      className={`h-full rounded-pill transition-[width] duration-slow ease-glass ${limitReached ? "bg-orange-400" : "bg-lime shadow-[0_0_12px_rgba(200,255,0,0.5)]"}`}
-                      style={{ width: `${Math.min(100, (projects.length / projectLimit) * 100)}%` }}
-                    />
-                  </div>
-                </EnterItem>
-
-                {/* Project list */}
-                {projects.map((project) => {
-                  const statusTone = project.status === "approved" ? "published" : project.status === "pending" ? "pending" : "rejected";
-                  const statusLabel = project.status === "approved" ? "Publié" : project.status === "pending" ? "En attente" : "Refusé";
-
-                  const inviteOpen = inviteForProject === project.id;
-                  return (
-                    <EnterItem key={project.id} className="glass rounded-card p-3">
-                      <div className="flex items-center gap-3">
-                        <FilmThumb url={project.poster_url} />
-                        {/* Info */}
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-semibold leading-snug text-text-primary">{project.title}</p>
-                          <div className="mt-1.5">
-                            <Badge variant={statusTone}>{statusLabel}</Badge>
-                          </div>
-                        </div>
-                        {/* Inviter */}
-                        <Button
-                          variant="glass"
-                          size="sm"
-                          aria-expanded={inviteOpen}
-                          onClick={() => { setInviteForProject(inviteOpen ? null : project.id); setInviteName(""); setInviteEmail(""); setInviteRole(""); }}
-                          className={`shrink-0 px-3! ${inviteOpen ? "border-lime/40! text-lime!" : ""}`}
-                        >
-                          Créditer
-                        </Button>
-                        {/* Delete */}
-                        <Button variant="icon" size="sm" aria-label="Supprimer le film" onClick={() => deleteProject(project.id)} className="shrink-0 text-text-secondary!">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                          </svg>
-                        </Button>
-                      </div>
-                      {inviteOpen && (
-                        <div className="mt-3 border-t border-white/10 pt-3">
-                          <p className="mb-3 text-xs leading-relaxed text-text-secondary">
-                            Crédite un collaborateur absent d&apos;Unkast : il reçoit un email pour rejoindre et revendiquer son crédit. Pour un membre déjà inscrit, passe par son profil.
-                          </p>
-                          <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
-                            <Field aria-label="Nom" type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom" />
-                            <Field aria-label="Email" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" />
-                            <Field aria-label="Rôle" type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Rôle" />
-                          </div>
-                          <Button onClick={() => sendEmailInvitation(project.id)} disabled={!inviteEmail || !inviteRole || inviteSending} className="mt-3 w-full sm:w-auto">
-                            Inviter
-                          </Button>
-                        </div>
-                      )}
-                    </EnterItem>
-                  );
-                })}
-
-                {/* Add button */}
-                {!addingProject && projects.length < projectLimit && (
-                  <EnterItem>
-                    <Button size="lg" onClick={() => setAddingProject(true)} fullWidth>
-                      + Ajouter un film
-                    </Button>
-                  </EnterItem>
-                )}
-
-                {!addingProject && plan !== "pro" && projects.length >= projectLimit && (
-                  <EnterItem>
-                    <Button variant="dashed" onClick={() => setShowProModal(true)} fullWidth>
-                      Passer a Unkast Pro pour publier plus &rarr;
-                    </Button>
-                  </EnterItem>
-                )}
-
-                {/* Add project form */}
-                {addingProject && (
-                  <EnterItem className="glass flex flex-col gap-3 rounded-panel border-lime/25 p-5">
-                    <h3 className="text-[15px] font-semibold text-text-primary">Nouveau projet</h3>
-                    <Field aria-label="Titre du projet" type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Titre du projet" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Select aria-label="Catégorie" value={newCategory} onChange={(e) => setNewCategory(e.target.value as ProjectCategory)}>
-                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
-                      </Select>
-                      <Field aria-label="Année" type="number" value={newYear} onChange={(e) => setNewYear(parseInt(e.target.value) || new Date().getFullYear())} min={1990} max={2030} />
-                    </div>
-                    <Field aria-label="URL video (Vimeo ou YouTube)" type="url" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)} placeholder="URL video (Vimeo ou YouTube)" />
-                    <Field aria-label="Ton role sur ce projet" type="text" value={newOwnerRole} onChange={(e) => setNewOwnerRole(e.target.value)} placeholder="Ton role sur ce projet" />
-                    <Field multiline rows={3} aria-label="Description" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
-                    <div className="flex items-start gap-2.5 rounded-card border border-white/10 bg-white/5 p-3">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="mt-0.5 shrink-0 text-text-secondary" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M12 11v5M12 7.5v.5" />
-                      </svg>
-                      <p className="text-xs leading-relaxed text-text-secondary">Chaque film est examiné par l&apos;équipe Unkast avant d&apos;être publié. Délai habituel : 24-48h.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button onClick={addProject} disabled={!newTitle || !newVideoUrl || saving} className="flex-1">
-                        {saving ? "Ajout..." : "Ajouter"}
-                      </Button>
-                      <Button variant="glass" onClick={() => setAddingProject(false)} className="flex-1">
-                        Annuler
-                      </Button>
-                    </div>
-                  </EnterItem>
-                )}
-              </>
-            ) : (
-              /* ----- Talent: Mes credits ----- */
-              <>
-                <EnterItem className="px-1">
+                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">
                   <h2 className={titleCls}>Mes participations</h2>
                   <p className={subCls}>Les films dans lesquels tu apparais.</p>
                 </EnterItem>
@@ -1045,41 +905,14 @@ export default function MoiClient() {
                     </EnterItem>
                   ))
                 )}
+
+                {/* Demandes recues sur les films geres (un talent peut gerer un film) */}
+                {pendingReceivedCredits.length > 0 && receivedCredits("mt-4 border-t border-white/10 px-1 pt-6")}
               </>
             ) : (
               /* ----- Creator activity ----- */
               <>
-                {/* Demandes de participation */}
-                <EnterItem className="px-1">
-                  <h2 className={titleCls}>Demandes de participation</h2>
-                  <p className={subCls}>Des membres veulent apparaître dans l&apos;équipe de tes films.</p>
-                </EnterItem>
-                {pendingReceivedCredits.length === 0 ? (
-                  <EnterItem className="px-1">
-                    <p className={emptyCls}>Aucune demande en attente.</p>
-                  </EnterItem>
-                ) : (
-                  pendingReceivedCredits.map((cr) => (
-                    <EnterItem key={cr.id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card border-yellow-500/25 p-3 pl-4">
-                      <div className="min-w-40 flex-1">
-                        <p className={rowTitleCls}>{cr.requester_name || "Membre"}</p>
-                        <p className={rowMetaCls}>
-                          {cr.project_title && <span>{cr.project_title} &middot; </span>}
-                          {cr.role}
-                        </p>
-                        {cr.message && <p className="mt-1 text-xs italic text-text-secondary">&quot;{cr.message}&quot;</p>}
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        <Button size="sm" onClick={() => handleCreditAction(cr.id, "accepted")}>
-                          Accepter
-                        </Button>
-                        <Button variant="glass" size="sm" onClick={() => handleCreditAction(cr.id, "refused")}>
-                          Refuser
-                        </Button>
-                      </div>
-                    </EnterItem>
-                  ))
-                )}
+                {receivedCredits("px-1")}
 
                 {/* Invitations envoyées */}
                 <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">

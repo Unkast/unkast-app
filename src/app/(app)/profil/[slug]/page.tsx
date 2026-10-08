@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
-import type { Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
+import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
+import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import ProfileClient from "./ProfileClient";
 
 export const revalidate = 60; // Cache 1 minute
@@ -19,6 +20,8 @@ type ProfileWithRelations = Profile & {
       profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
     })[];
   })[];
+  // Parcours : entrées déclaratives, texte uniquement, année décroissante.
+  career: CareerEntry[];
 };
 
 async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
@@ -39,7 +42,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
       first_name, last_name, stage_name, display_name_preference,
       is_recruiting, recruiting_roles, recruiter_verified, plan, status, created_at, updated_at,
       profile_roles ( * ),
-      projects (
+      projects!projects_profile_id_fkey (
         id, profile_id, title, slug, description, category, year,
         video_url, poster_url, preview_url, status, created_at,
         project_credits (
@@ -65,6 +68,27 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
 
   // Sort projects by year descending
   rawProjects.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+
+  // Parcours (lecture publique pour un profil approuvé) et, pour un visiteur non
+  // connecté, équipe des films : il ne lit aucune ligne de project_credits (RLS),
+  // elle passe par public_project_credits en un seul appel.
+  const { data: { user } } = await supabase.auth.getUser();
+  const [{ data: career }, visitorCredits] = await Promise.all([
+    supabase
+      .from("career_entries")
+      .select("id, profile_id, title, role, year, kind, production, created_at")
+      .eq("profile_id", profile.id)
+      .order("year", { ascending: false })
+      .order("created_at", { ascending: false }),
+    user ? null : fetchVisitorCredits(supabase, rawProjects.map((p) => p.id)),
+  ]);
+  if (visitorCredits) {
+    for (const project of rawProjects) {
+      project.project_credits = visitorCredits
+        .filter((c) => c.project_id === project.id)
+        .map(visitorCreditAsMemberCredit);
+    }
+  }
 
   const projectsWithCredits = rawProjects.map((project) => {
     const credits = (project.project_credits ?? []).map((credit) => ({
@@ -92,6 +116,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     roles,
     show_verified_badge: profile.recruiter_verified === true && plan === "pro",
     projects: projectsWithCredits,
+    career: (career ?? []) as CareerEntry[],
   } as unknown as ProfileWithRelations;
 }
 

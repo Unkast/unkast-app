@@ -126,7 +126,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | Colonne | Type | Nullable | Note |
 |---|---|---|---|
 | `id` | UUID | non | PK |
-| `profile_id` | UUID | non | FK → profiles |
+| `profile_id` | UUID | non | FK → profiles. **Responsable** du film ; devient nullable avec la migration `20261008` (voir « Gestion des films ») |
 | `title` | TEXT | non | |
 | `slug` | TEXT | non | UNIQUE |
 | `description` | TEXT | oui | |
@@ -135,7 +135,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `video_url` | TEXT | non | URL brute saisie (rendue par react-player) |
 | `video_key` | TEXT | oui | Identifiant **canonique** `youtube:<id>`/`vimeo:<id>` extrait de `video_url` (`extractVideoKey`, `lib/utils.ts`). `NULL` si plateforme non reconnue. Anti-vol d'œuvre (chantier 9). |
 | `created_at` | TIMESTAMPTZ | oui | |
-| `status` | TEXT libre | oui | ⚠️ non contraint ; moderation des films (`pending`/`approved`/`refused`) |
+| `status` | TEXT | oui | CHECK en prod (`pending`/`approved`/`refused`, relevé du 08/10/2026) ; modération des films |
 | `poster_url` | TEXT | oui | |
 | `preview_url` | TEXT | oui | |
 
@@ -205,6 +205,91 @@ Ecartement **silencieux** d'un candidat, **par poste**. `id`, `recruiter_id` (�
 
 ### 20. stripe_events *(fiabilité — 2026-07-02)* — ⚠️ **migration à exécuter**
 Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (TEXT), `received_at` (TIMESTAMPTZ, défaut `now()`). Le webhook (`api/billing/webhook`) **revendique** `event.id` par INSERT **avant** toute écriture sur `profiles` : doublon (23505) → 200 sans traitement ; échec de traitement → la ligne est supprimée (le retry Stripe rejouera). RLS activée **sans policy** (service role uniquement, même posture que `rate_limits`). Migration manuelle : `supabase/migrations/20260702_stripe_events.sql` — **pas encore exécutée en prod** ; tant qu'elle ne l'est pas, le webhook traite sans dédup (42P01 toléré, loggé).
+
+## Gestion des films *(migration `20261008_film_management.sql`, ⚠️ à exécuter)*
+
+> **État au 08/10/2026** : la migration n'est **pas** en production. Le code de `main` l'attend
+> (publication, co-gestion, Parcours, signalements automatiques) ; la bêta tourne sur la branche
+> `release/beta` (commit `67ce9b8`), qui fonctionne avec la base d'avant. Ordre de mise en ligne :
+> [mise-en-ligne-gestion-films.md](mise-en-ligne-gestion-films.md). Décision : [ADR 0014](adr/0014-responsable-et-co-gestionnaires.md).
+
+### Modèle
+
+- **Responsable** : `projects.profile_id`, un seul par film, **nullable** (FK `ON DELETE SET NULL`).
+  Lui seul retire le film, change sa visibilité et le transfère.
+- **Co-gestionnaires** : table `project_managers`. Ils modifient les infos, l'équipe et les
+  crédits, sans retirer ni dépublier.
+- **Gestionnaire** = Responsable ou co-gestionnaire (`is_project_manager`).
+- Le **nom du réalisateur** affiché vient des crédits de réalisation (`is_director_role` en base,
+  `isDirectorRole` dans `src/lib/credits.ts`), plus du Responsable. Aucun crédit de réalisation =
+  aucun nom.
+- Le **plafond de films** compte les films dont on est Responsable.
+
+### Colonnes ajoutées à `projects`
+
+| Colonne | Type | Note |
+|---|---|---|
+| `profile_id` | UUID, **nullable** | NULL = film sans Responsable (compte supprimé sans co-gestionnaire), listé dans l'admin |
+| `visibility` | TEXT, CHECK | `public` (défaut), `members` (membres connectés, `noindex`), `unpublished` (gestionnaires seuls) |
+
+Index unique `projects_video_key_unique` : exclut désormais les films `refused` (un film refusé
+libère sa vidéo). Backfill de `video_key` sur les films approuvés qui n'en avaient pas, sans rien
+écraser en cas de collision.
+
+### Nouvelles tables
+
+| Table | Rôle | Accès client |
+|---|---|---|
+| `project_managers` | co-gestionnaires (`project_id`, `profile_id`, `added_by`) | SELECT par les gestionnaires ; DELETE par le Responsable ou par soi-même |
+| `project_rights_declarations` | déclaration de droits, ajout seul (`declared_role`, `text_version`, `client_authorized`, `declared_at`) | SELECT de ses déclarations ; INSERT par le Responsable (accord client exigé pour pub et clip) |
+| `project_manager_requests` | invitation (`invite`, par le Responsable) ou demande (`request`, par une personne créditée) | SELECT par la personne concernée et le Responsable ; DELETE par son auteur tant qu'elle est en attente |
+| `project_claims` | signalement ou revendication, avec justificatif (bucket privé `claims`) | SELECT de ses propres demandes |
+| `project_moderation` | titre et chaîne oEmbed (`source_title`, `source_author`), dernière modification d'un film approuvé | aucun (service role) |
+| `career_entries` | Parcours du profil : `title`, `role`, `year`, `kind` (11 types), `production` | lecture publique d'un profil approuvé ; écriture par le propriétaire |
+
+`reports` : `reporter_id` devient nullable (NULL = signalement automatique), motif `contact_info`,
+cible `career_entry`.
+
+### Fonctions
+
+| Fonction | Appelant | Rôle |
+|---|---|---|
+| `is_project_owner`, `is_project_manager`, `is_member`, `is_project_public`, `can_view_project` | policies | `is_member` = connecté + profil approuvé + non suspendu |
+| `extract_video_key(text)` | migration, RPC | même logique que `extractVideoKey` (`src/lib/utils.ts`) |
+| `is_director_role(text)` | `public_project_credits` | rôle découpé sur `&`, `,`, `/`, normalisé (casse, accents, espaces, tirets) |
+| `public_project_credits(uuid[])` | anon, authenticated | équipe des films publics pour un visiteur : initiales, nom complet et lien pour les seuls crédits de réalisation |
+| `career_text_ok(text)` | CHECK de `career_entries` | refuse `http`, `www`, `@`, « arobase », suffixes de domaine. Pas de règle sur les chiffres : les numéros relèvent du détecteur serveur |
+| `publish_project(...)` | **service role** | seule voie de création d'un film : plafond, doublon, déclaration de droits, crédits, données oEmbed, dans une transaction. Renvoie `{ok, code, ...}` |
+| `request_project_manager`, `decide_project_manager`, `transfer_project` | **service role** | co-gestion et transfert, avec l'identité de l'utilisateur en paramètre |
+
+### Triggers
+
+| Trigger | Table | Effet |
+|---|---|---|
+| `zz_guard_projects_columns` | `projects` BEFORE UPDATE | même modèle que `guard_profiles_system_columns` (SECURITY INVOKER, laisse passer `rolbypassrls`). Restaure les colonnes système. Lève `owner_only` (42501) si un co-gestionnaire change la visibilité, `rights_declaration_required` (P0001) si le Responsable modifie le contenu sans déclaration, `client_authorization_required` (P0001) si le film passe en publicité ou en clip sans accord client déclaré par le Responsable |
+| `track_project_edit`, `track_project_credit_edit` | `projects`, `project_credits` | note la dernière modification d'un film approuvé (`project_moderation`), pour la liste « modifiés récemment » de l'admin |
+| `transfer_projects_on_profile_delete` | `profiles` BEFORE DELETE | le film passe au co-gestionnaire le plus ancien ; sinon il reste, sans Responsable, dépublié |
+| `limit_career_entries` | `career_entries` BEFORE INSERT | 30 entrées par profil (`career_limit_reached`) |
+
+### Privilèges et policies modifiés
+
+- `projects` : plus d'INSERT client (tout passe par `publish_project`) ; UPDATE limité par GRANT
+  aux colonnes `title`, `description`, `category`, `year`, `visibility`, policy « gestionnaires ».
+  Lecture : approuvé + `public` pour tous, + `members` pour un membre, tout pour ses gestionnaires.
+- `project_credits` : un visiteur non connecté ne lit plus aucune ligne (liste vide, pas d'erreur) ;
+  écriture par les gestionnaires.
+- `credit_requests` : UPDATE limité à `status` ; DELETE par le demandeur tant que la demande est
+  en attente (`requester_can_cancel_pending`).
+- `project_invitations`, `invitations` : création réservée aux gestionnaires du film ;
+  `project_id` ne se modifie plus.
+- `anon` perd INSERT, UPDATE, DELETE, TRUNCATE sur les tables concernées ; `authenticated` perd TRUNCATE.
+- `profiles` : `recruiter` retiré des CHECK `pro_grant_*`.
+
+### Failles fermées (relevé prod du 08/10/2026)
+
+Invitation sur le film d'un autre, déplacement d'une invitation vers un autre film, UPDATE complet
+de `credit_requests`, annulation d'une demande de crédit sans effet, équipe d'un film non public
+lisible par tous, INSERT direct dans `projects` contournant plafond et anti-doublon.
 
 ## Index
 
