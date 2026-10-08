@@ -207,6 +207,8 @@ drop table if exists public.project_rights_declarations;
 drop table if exists public.project_managers;
 
 -- ---- Fonctions d'appui (plus aucune policy ne les utilise) --------------------
+drop function if exists public.public_profile_film_roles(uuid);
+drop function if exists public.related_public_projects(uuid, integer);
 drop function if exists public.public_project_credits(uuid[]);
 drop function if exists public.is_director_role(text);
 drop function if exists public.can_view_project(uuid);

@@ -83,10 +83,20 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     user ? null : fetchVisitorCredits(supabase, rawProjects.map((p) => p.id)),
   ]);
   if (visitorCredits) {
+    // Rôle du titulaire sur ses propres films : son nom est déjà public sur cette
+    // page, ses crédits y sont donc rendus en clair (les autres restent en initiales).
+    const { data: ownRoles } = await supabase.rpc("public_profile_film_roles", { p_profile_id: profile.id });
+    const ownCreditIds = new Set(((ownRoles ?? []) as { credit_id: string }[]).map((r) => r.credit_id));
+    const self = { full_name: profile.full_name, slug: profile.slug, avatar_url: profile.avatar_url };
     for (const project of rawProjects) {
       project.project_credits = visitorCredits
         .filter((c) => c.project_id === project.id)
-        .map(visitorCreditAsMemberCredit);
+        .map((c) => {
+          const credit = visitorCreditAsMemberCredit(c);
+          return ownCreditIds.has(c.id)
+            ? { ...credit, profile_id: profile.id, ghost_name: null, profiles: self }
+            : credit;
+        }) as typeof project.project_credits;
     }
   }
 

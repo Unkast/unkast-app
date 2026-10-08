@@ -87,6 +87,13 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
   // Co-gestion et signalement de droits / revendication
   const [managerBusy, setManagerBusy] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
+  // Bouton « Signaler » unique : un membre qui peut revendiquer choisit entre un
+  // problème (ReportModal) et ses droits (ClaimModal). Les autres (visiteur,
+  // gestionnaire, revendication déjà en cours) vont droit au signalement.
+  const openSignal = () => {
+    if (!isVisitor && creditStatusLoaded && !creditStatus.isManager && !creditStatus.claimPending) setClaimOpen(true);
+    else setReportOpen(true);
+  };
 
   // Video modal touch swipe
   const videoTouchY = useRef<number | null>(null);
@@ -216,8 +223,8 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
       {creditStatus.claimPending ? (
         <p className="text-center text-xs text-text-tertiary">Ta demande est en cours de traitement par l&apos;équipe.</p>
       ) : (
-        <button type="button" onClick={() => setClaimOpen(true)} className="block w-full py-1 text-center font-mono text-xs text-text-tertiary hover:text-text-secondary">
-          Signaler / revendiquer ce film
+        <button type="button" onClick={openSignal} className="block w-full py-1 text-center font-mono text-xs text-text-tertiary hover:text-text-secondary">
+          Signaler ce film
         </button>
       )}
     </div>
@@ -270,11 +277,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             {showOptions && (
               <GlassCard strong className="absolute top-12 right-0 z-20 w-[180px] bg-black/50 p-1">
                 <button onClick={() => { navigator.clipboard.writeText(window.location.href); setShowOptions(false); toast("Lien copié !"); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-primary hover:bg-white/[0.06]">Partager ce film</button>
-                <button onClick={() => { setShowOptions(false); setReportOpen(true); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler un problème</button>
-                {/* Droits et revendication : circuit séparé (ClaimModal), membres connectés non gestionnaires. */}
-                {!isVisitor && creditStatusLoaded && !creditStatus.isManager && !creditStatus.claimPending && (
-                  <button onClick={() => { setShowOptions(false); setClaimOpen(true); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler / revendiquer</button>
-                )}
+                <button onClick={() => { setShowOptions(false); openSignal(); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler</button>
               </GlassCard>
             )}
           </div>
@@ -601,6 +604,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             onClose={() => setClaimOpen(false)}
             projectId={project.id}
             projectTitle={project.title}
+            onReport={() => { setClaimOpen(false); setReportOpen(true); }}
             onSent={() => {
               setClaimOpen(false);
               setCreditStatus((s) => ({ ...s, claimPending: true }));

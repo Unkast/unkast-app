@@ -70,8 +70,14 @@ Avec deux comptes de test (A et B), plus le compte admin.
       Un lien, un email ou un numero de telephone est refuse avec un message clair. La 31e
       entree est refusee. Un autre membre peut la signaler.
 - [ ] **Transferer** (A) : transferer le film a B. B devient Responsable, A co-gestionnaire.
-- [ ] **Signaler / revendiquer** (un troisieme compte non credite) : la demande arrive dans
-      l'admin avec son justificatif.
+- [ ] **Signaler** (un troisieme compte non credite) : un seul bouton sur la page du film, deux
+      choix. « Un probleme avec ce film » arrive dans l'onglet Signalements de l'admin ;
+      « Je detiens les droits de ce film » arrive dans l'onglet Revendications avec son
+      justificatif.
+- [ ] **Films lies** (navigation privee) : sur la page d'un film public qui partage une personne
+      creditee avec un autre film public, la section des films lies n'est pas vide.
+- [ ] **Role du titulaire** (navigation privee) : sur un profil, le role de la personne sur ses
+      propres films apparait en clair ; le reste de l'equipe reste en initiales.
 - [ ] **Plafond** : la jauge de /moi ne compte que les films dont on est Responsable.
 - [ ] **Nom du realisateur** : sur le feed et la page projet, il vient du credit de
       realisation, pas du Responsable.

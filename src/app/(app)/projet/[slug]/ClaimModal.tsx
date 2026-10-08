@@ -11,25 +11,27 @@ const FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 4 * 1024 * 1024;
 const MAX_MESSAGE = 2000;
 
-const CHOICES: { kind: ProjectClaimKind; title: string; text: string }[] = [
-  { kind: "report", title: "Signaler un problème de droits", text: "Ce film est en ligne sans l'accord de ses ayants droit." },
-  { kind: "claim", title: "Revendiquer ce film", text: "Tu en détiens les droits. L'équipe Unkast étudie ta demande." },
-];
-
-// Signalement de droits ou revendication d'un film, traité par l'équipe Unkast.
-// Distinct de ReportModal (contenu : spam, faux profil, contenu inapproprié...).
+// Bouton « Signaler » de la page film : un seul point d'entrée, deux circuits.
+//   « Un problème avec ce film »         -> onReport : ReportModal (table reports)
+//   « Je détiens les droits de ce film » -> revendication avec justificatif
+//                                           (table project_claims, kind 'claim')
+// Le kind 'report' de project_claims reste accepté par la route mais n'est plus
+// proposé ici.
 export default function ClaimModal({
   open,
   onClose,
   projectId,
   projectTitle,
   onSent,
+  onReport,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: string;
   projectTitle: string;
   onSent: () => void;
+  /** Choix « Un problème avec ce film » : l'appelant ouvre ReportModal. */
+  onReport: () => void;
 }) {
   const [kind, setKind] = useState<ProjectClaimKind | null>(null);
   const [message, setMessage] = useState("");
@@ -85,26 +87,27 @@ export default function ClaimModal({
   return (
     <ModalBackdrop open={open} onClose={onClose}>
       <div className="p-5 sm:p-6">
-        <h3 className="mb-1 text-lg font-bold text-text-primary">Signaler ou revendiquer ce film</h3>
+        <h3 className="mb-1 text-lg font-bold text-text-primary">Signaler</h3>
         <p className="mb-5 text-sm text-text-secondary break-words">{projectTitle}</p>
 
-        <div role="radiogroup" aria-label="Type de demande" className="mb-4 flex flex-col gap-2">
-          {CHOICES.map((c) => {
-            const selected = kind === c.kind;
-            return (
-              <button
-                key={c.kind}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => { setKind(c.kind); setError(""); }}
-                className={`rounded-card border px-4 py-3 text-left transition-colors duration-fast ${selected ? "border-lime/40 bg-lime/[0.06]" : "border-white/10 bg-white/5 hover:border-white/20"}`}
-              >
-                <span className="block text-sm font-semibold text-text-primary">{c.title}</span>
-                <span className="mt-0.5 block text-xs text-text-secondary">{c.text}</span>
-              </button>
-            );
-          })}
+        <div className="mb-4 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onReport}
+            className="rounded-card border border-white/10 bg-white/5 px-4 py-3 text-left transition-colors duration-fast hover:border-white/20"
+          >
+            <span className="block text-sm font-semibold text-text-primary">Un problème avec ce film</span>
+            <span className="mt-0.5 block text-xs text-text-secondary">Contenu inapproprié, fausses informations, autre.</span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={kind === "claim"}
+            onClick={() => { setKind("claim"); setError(""); }}
+            className={`rounded-card border px-4 py-3 text-left transition-colors duration-fast ${kind === "claim" ? "border-lime/40 bg-lime/[0.06]" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+          >
+            <span className="block text-sm font-semibold text-text-primary">Je détiens les droits de ce film</span>
+            <span className="mt-0.5 block text-xs text-text-secondary">Joins un justificatif. L&apos;équipe Unkast étudie ta demande.</span>
+          </button>
         </div>
 
         {kind && (

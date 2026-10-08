@@ -141,52 +141,60 @@ async function getProject(slug: string): Promise<{
 
   let relatedProjects: RelatedProject[] = [];
 
-  if (collaboratorIds.length > 0) {
+  // Nombre de collaborateurs communs par film lié.
+  const relatedCounts = new Map<string, number>();
+  if (isVisitor) {
+    // Un visiteur ne lit pas project_credits : la fonction fait le rapprochement
+    // et ne renvoie que des films publics, sans aucune identité.
+    const { data: related } = await supabase.rpc("related_public_projects", { p_project_id: project.id });
+    for (const r of (related ?? []) as { project_id: string; common_collaborators: number }[]) {
+      relatedCounts.set(r.project_id, r.common_collaborators);
+    }
+  } else if (collaboratorIds.length > 0) {
     const { data: otherCredits } = await supabase
       .from("project_credits")
       .select("project_id, profile_id")
       .in("profile_id", collaboratorIds)
       .neq("project_id", project.id);
 
-    if (otherCredits && otherCredits.length > 0) {
-      const projectCollabMap = new Map<string, Set<string>>();
-      for (const credit of otherCredits) {
-        if (!projectCollabMap.has(credit.project_id)) {
-          projectCollabMap.set(credit.project_id, new Set());
-        }
-        if (credit.profile_id) {
-          projectCollabMap.get(credit.project_id)!.add(credit.profile_id);
-        }
+    const projectCollabMap = new Map<string, Set<string>>();
+    for (const credit of otherCredits ?? []) {
+      if (!projectCollabMap.has(credit.project_id)) {
+        projectCollabMap.set(credit.project_id, new Set());
       }
-
-      const sortedProjectIds = [...projectCollabMap.entries()]
-        .sort((a, b) => b[1].size - a[1].size)
-        .slice(0, 6)
-        .map(([id]) => id);
-
-      if (sortedProjectIds.length > 0) {
-        // Films liés et leurs crédits (réalisateur). Client utilisateur : la RLS
-        // applique la visibilité.
-        const { data: relProjects } = await supabase
-          .from("projects")
-          .select(`*, ${TEAM_SELECT}`)
-          .in("id", sortedProjectIds)
-          .eq("status", "approved");
-
-        if (relProjects) {
-          const rows = relProjects as unknown as (Record<string, unknown> & { id: string })[];
-          const teamOf = await loadFilmTeams(supabase, isVisitor, rows);
-          relatedProjects = rows.map((rp) => {
-            return {
-              ...rp,
-              project_credits: undefined,
-              director_name: teamOf(rp.id).director_name,
-              common_collaborators: projectCollabMap.get(rp.id)?.size ?? 0,
-            } as unknown as RelatedProject;
-          });
-          relatedProjects.sort((a, b) => b.common_collaborators - a.common_collaborators);
-        }
+      if (credit.profile_id) {
+        projectCollabMap.get(credit.project_id)!.add(credit.profile_id);
       }
+    }
+    for (const [id, set] of projectCollabMap) relatedCounts.set(id, set.size);
+  }
+
+  const sortedProjectIds = [...relatedCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([id]) => id);
+
+  if (sortedProjectIds.length > 0) {
+    // Films liés et leurs crédits (réalisateur). Client utilisateur : la RLS
+    // applique la visibilité.
+    const { data: relProjects } = await supabase
+      .from("projects")
+      .select(`*, ${TEAM_SELECT}`)
+      .in("id", sortedProjectIds)
+      .eq("status", "approved");
+
+    if (relProjects) {
+      const rows = relProjects as unknown as (Record<string, unknown> & { id: string })[];
+      const teamOf = await loadFilmTeams(supabase, isVisitor, rows);
+      relatedProjects = rows.map((rp) => {
+        return {
+          ...rp,
+          project_credits: undefined,
+          director_name: teamOf(rp.id).director_name,
+          common_collaborators: relatedCounts.get(rp.id) ?? 0,
+        } as unknown as RelatedProject;
+      });
+      relatedProjects.sort((a, b) => b.common_collaborators - a.common_collaborators);
     }
   }
 

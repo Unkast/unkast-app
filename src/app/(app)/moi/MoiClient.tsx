@@ -798,16 +798,6 @@ export default function MoiClient() {
                     ))}
                   </>
                 )}
-
-                {/* Become Creator card */}
-                <EnterItem className="glass mt-3 flex flex-col items-center rounded-panel border-dashed border-lime/25 p-6 text-center">
-                  <svg className="mb-3 text-lime/60" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" /></svg>
-                  <p className="text-[15px] font-semibold text-text-primary">Tu réalises ou produis des films ?</p>
-                  <p className="mb-4 mt-1.5 text-[13px] leading-relaxed text-text-secondary">Passe en compte Créateur pour publier tes œuvres et construire ton équipe sur Unkast.</p>
-                  <Button variant="dashed" onClick={() => switchAccountType("creator")}>
-                    Devenir Créateur →
-                  </Button>
-                </EnterItem>
               </>
             )}
           </EnterList>
@@ -992,7 +982,7 @@ export default function MoiClient() {
 
               {plan === "free" && (
                 <p className="mt-3 text-xs leading-relaxed text-text-secondary">
-                  Version gratuite : {MAX_PROJECTS_FREE} publications de films maximum.
+                  Compte gratuit : {MAX_PROJECTS_FREE} films dont tu es Responsable.
                 </p>
               )}
             </EnterItem>

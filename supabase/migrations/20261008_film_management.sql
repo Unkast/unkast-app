@@ -41,6 +41,9 @@
 --      Il passe par public_project_credits(), qui renvoie le role et les
 --      initiales ; le nom complet et le lien vers le profil ne sont donnes que
 --      pour les credits de realisation (is_director_role).
+--      Deux lectures complementaires, sans aucun nom : related_public_projects()
+--      (films lies d'un film public) et public_profile_film_roles() (role du
+--      titulaire d'un profil sur les films dont il est Responsable).
 --   J. Parcours : table career_entries, ses policies, plafond de 30 entrees,
 --      et la cible 'career_entry' dans les signalements.
 --   K. Signalements automatiques : motif 'contact_info' (coordonnees detectees
@@ -633,10 +636,65 @@ as $$
     and public.is_project_public(c.project_id);
 $$;
 
+-- Films lies a un film PUBLIC : autres films publics qui partagent au moins une
+-- personne creditee, les plus proches d'abord. Ne renvoie que des identifiants
+-- de films publics et un nombre : aucune identite. Un visiteur ne peut plus
+-- faire ce rapprochement lui-meme, il ne lit plus project_credits.
+create or replace function public.related_public_projects(p_project_id uuid, p_limit integer default 6)
+returns table (
+  project_id           uuid,
+  common_collaborators integer
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select o.project_id, count(distinct o.profile_id)::integer as common_collaborators
+  from public.project_credits c
+  join public.project_credits o
+    on o.profile_id = c.profile_id
+   and o.project_id <> c.project_id
+  where c.project_id = p_project_id
+    and c.profile_id is not null
+    and public.is_project_public(p_project_id)
+    and public.is_project_public(o.project_id)
+  group by o.project_id
+  order by common_collaborators desc, o.project_id
+  limit least(greatest(coalesce(p_limit, 6), 1), 12);
+$$;
+
+-- Role du titulaire d'un profil sur SES films : uniquement les films publics
+-- dont il est le Responsable (ceux que sa page profil affiche). Son nom est
+-- deja public sur cette page ; ses credits sur les films des autres restent
+-- masques pour un visiteur.
+create or replace function public.public_profile_film_roles(p_profile_id uuid)
+returns table (
+  credit_id       uuid,
+  project_id      uuid,
+  role_on_project text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select c.id, c.project_id, c.role_on_project
+  from public.project_credits c
+  join public.projects p on p.id = c.project_id
+  where c.profile_id = p_profile_id
+    and p.profile_id = p_profile_id
+    and public.is_project_public(c.project_id);
+$$;
+
 revoke all on function public.is_director_role(text) from public;
 revoke all on function public.public_project_credits(uuid[]) from public;
+revoke all on function public.related_public_projects(uuid, integer) from public;
+revoke all on function public.public_profile_film_roles(uuid) from public;
 grant execute on function public.is_director_role(text) to anon, authenticated, service_role;
 grant execute on function public.public_project_credits(uuid[]) to anon, authenticated, service_role;
+grant execute on function public.related_public_projects(uuid, integer) to anon, authenticated, service_role;
+grant execute on function public.public_profile_film_roles(uuid) to anon, authenticated, service_role;
 
 -- =============================================================================
 -- G. Privileges

@@ -258,6 +258,8 @@ cible `career_entry`.
 | `extract_video_key(text)` | migration, RPC | même logique que `extractVideoKey` (`src/lib/utils.ts`) |
 | `is_director_role(text)` | `public_project_credits` | rôle découpé sur `&`, `,`, `/`, normalisé (casse, accents, espaces, tirets) |
 | `public_project_credits(uuid[])` | anon, authenticated | équipe des films publics pour un visiteur : initiales, nom complet et lien pour les seuls crédits de réalisation |
+| `related_public_projects(uuid, int)` | anon, authenticated | films liés d'un film public pour un visiteur : identifiants de films publics partageant une personne créditée et nombre de collaborateurs communs, aucune identité |
+| `public_profile_film_roles(uuid)` | anon, authenticated | rôle du titulaire d'un profil sur les films publics dont il est Responsable (affiché sur sa page profil pour un visiteur) |
 | `career_text_ok(text)` | CHECK de `career_entries` | refuse `http`, `www`, `@`, « arobase », suffixes de domaine. Pas de règle sur les chiffres : les numéros relèvent du détecteur serveur |
 | `publish_project(...)` | **service role** | seule voie de création d'un film : plafond, doublon, déclaration de droits, crédits, données oEmbed, dans une transaction. Renvoie `{ok, code, ...}` |
 | `request_project_manager`, `decide_project_manager`, `transfer_project` | **service role** | co-gestion et transfert, avec l'identité de l'utilisateur en paramètre |
