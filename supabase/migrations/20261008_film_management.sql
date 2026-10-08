@@ -43,6 +43,8 @@
 --      pour les credits de realisation (is_director_role).
 --   J. Parcours : table career_entries, ses policies, plafond de 30 entrees,
 --      et la cible 'career_entry' dans les signalements.
+--   K. Signalements automatiques : motif 'contact_info' (coordonnees detectees
+--      dans un texte, cas douteux) et reporter_id facultatif (NULL = systeme).
 --
 -- CE QU'IL NE FAIT PAS
 --   - Aucun backfill de credit « Realisation » (decision : les films sans credit
@@ -1242,6 +1244,19 @@ alter table public.reports drop constraint if exists reports_target_type_check;
 alter table public.reports
   add constraint reports_target_type_check
   check (target_type in ('profile', 'project', 'message', 'career_entry'));
+-- =============================================================================
+-- K. Signalements automatiques (detecteur de coordonnees)
+-- =============================================================================
+-- Un cas douteux est enregistre puis signale a l'admin dans l'onglet
+-- Signalements : motif 'contact_info', sans auteur (reporter_id NULL = systeme).
+-- Ecrit par le service role uniquement ; la policy INSERT des membres exige
+-- toujours auth.uid() = reporter_id.
+alter table public.reports alter column reporter_id drop not null;
+
+alter table public.reports drop constraint if exists reports_reason_check;
+alter table public.reports
+  add constraint reports_reason_check
+  check (reason in ('spam', 'inappropriate', 'fake', 'harassment', 'copyright', 'other', 'contact_info'));
 
 commit;
 

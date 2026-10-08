@@ -25,6 +25,10 @@
 --   - Un signalement visant une entree de Parcours empeche de remettre l'ancien
 --     CHECK de reports : les traiter ou les supprimer avant.
 --       select id, status from public.reports where target_type = 'career_entry';
+--   - Meme chose pour les signalements automatiques (motif 'contact_info' ou
+--     sans auteur) : ils empechent de remettre le CHECK des motifs et NOT NULL.
+--       select id, status from public.reports
+--       where reason = 'contact_info' or reporter_id is null;
 --
 -- A lancer APRES avoir remis en ligne le code d'avant les lots 2 et 3.
 -- =============================================================================
@@ -189,6 +193,12 @@ alter table public.reports drop constraint if exists reports_target_type_check;
 alter table public.reports
   add constraint reports_target_type_check
   check (target_type in ('profile', 'project', 'message'));
+
+alter table public.reports drop constraint if exists reports_reason_check;
+alter table public.reports
+  add constraint reports_reason_check
+  check (reason in ('spam', 'inappropriate', 'fake', 'harassment', 'copyright', 'other'));
+alter table public.reports alter column reporter_id set not null;
 
 drop table if exists public.project_moderation;
 drop table if exists public.project_claims;
