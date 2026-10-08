@@ -280,7 +280,7 @@ export default async function ProjetPage({ params }: Props) {
     if (!locked) notFound();
     return (
       <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
-        <LockedFilmCard film={locked} />
+        <LockedFilmCard film={locked} loginHref={`/connexion?next=${encodeURIComponent(`/projet/${locked.slug}`)}`} />
       </main>
     );
   }

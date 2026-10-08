@@ -24,6 +24,8 @@ interface Props {
   /** Adresse de la page du film : le titre devient un lien (liste d'une fiche).
    *  Absente, le titre est le titre de la page (h1). */
   href?: string;
+  /** Adresse de connexion avec retour sur le film : affiche « Déjà membre ? ». */
+  loginHref?: string;
   className?: string;
 }
 
@@ -31,7 +33,7 @@ interface Props {
 // connecté. Sans état : utilisable côté serveur comme dans un composant client.
 // overflow-clip (et non hidden) : la carte garde son 16:9 mais grandit si le
 // texte ne tient pas (titre long, police agrandie).
-export default function LockedFilmCard({ film, href, className = "" }: Props) {
+export default function LockedFilmCard({ film, href, loginHref, className = "" }: Props) {
   const titleClass = "line-clamp-2 max-w-full break-words text-base font-semibold text-text-primary sm:text-lg";
 
   return (
@@ -79,6 +81,15 @@ export default function LockedFilmCard({ film, href, className = "" }: Props) {
       <Button href="/rejoindre" size="sm" className="mt-2.5 sm:mt-4">
         S&apos;inscrire
       </Button>
+
+      {loginHref && (
+        <p className="mt-2 text-xs text-text-secondary">
+          Déjà membre ?{" "}
+          <Link href={loginHref} className="text-text-primary underline underline-offset-2 hover:text-lime">
+            Connecte-toi
+          </Link>
+        </p>
+      )}
     </article>
   );
 }

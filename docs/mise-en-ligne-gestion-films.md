@@ -147,6 +147,8 @@ deployer, puis ses trois verifications.
       cadenas, titre, « Reserve aux membres. Inscris-toi pour voir ce film. », bouton vers
       l'inscription). Dans le code source de la page : ni lien YouTube / Vimeo, ni description,
       ni nom de l'equipe. La page porte `noindex`.
+- [ ] **Deja membre** : sur la page verrouillee, « Deja membre ? Connecte-toi » mene a la
+      connexion, puis ramene sur le film (par mot de passe et par Google).
 - [ ] **Film membres, navigation privee, fiche du Responsable** : la meme carte dans sa liste de
       films. Connecte, le film s'affiche normalement, sans carte verrouillee.
 - [ ] **Film depublie** : toujours introuvable pour un visiteur, aucune carte.

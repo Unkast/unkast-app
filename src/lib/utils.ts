@@ -63,3 +63,11 @@ export function extractVideoKey(rawUrl: string): string | null {
 
   return null;
 }
+
+// Adresse de retour apres connexion (parametre ?next=) : uniquement un chemin
+// interne. Tout le reste (URL absolue, « //hote », antislash, « @hote » colle a
+// l'origine) retombe sur la valeur par defaut : pas de redirection ouverte.
+export function safeNextPath(value: string | null | undefined, fallback: string): string {
+  if (!value || !/^\/(?![/\\])[^\\\s]*$/.test(value)) return fallback;
+  return value;
+}

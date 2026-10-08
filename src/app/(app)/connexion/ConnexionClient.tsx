@@ -8,7 +8,7 @@ import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 
-export default function ConnexionClient() {
+export default function ConnexionClient({ next }: { next?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,7 +66,7 @@ export default function ConnexionClient() {
         return;
       }
 
-      router.replace("/feed");
+      router.replace(next ?? "/feed");
       router.refresh();
     } catch {
       setError("Erreur de connexion.");
@@ -82,7 +82,7 @@ export default function ConnexionClient() {
     const { error: authError } = await getSupabase().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/dashboard")}`,
       },
     });
 
