@@ -54,8 +54,15 @@ Avec deux comptes de test (A et B), plus le compte admin.
       modifier les infos et l'equipe, mais ne voit ni « Depublier » ni « Supprimer ».
 - [ ] **Demande de co-gestion** (B) : sur un autre film ou B est credite, demander a co-gerer ;
       A accepte ou refuse.
-- [ ] **Depublier** (A) : le film disparait du feed, de la recherche et de sa page pour un
-      visiteur ; A et B le voient toujours dans /moi. Republier le fait revenir.
+- [ ] **Visibilite** (A) : trois choix, avec l'avertissement sur les festivals a cote.
+      « Membres seulement » : en navigation privee, le film est absent du feed et de la
+      recherche et sa page renvoie une 404 ; connecte avec un profil approuve, il est visible ;
+      le code source de la page porte `noindex`. « Depublie » : seuls A et B le voient, dans
+      /moi. Repasser en public le fait revenir partout.
+- [ ] **Parcours** (A) : ajouter une entree (titre, role, annee, type, production). Elle
+      apparait sur le profil public, dans une section separee de « Films », sans lien ni image.
+      Un lien, un email ou un numero de telephone est refuse avec un message clair. La 31e
+      entree est refusee. Un autre membre peut la signaler.
 - [ ] **Transferer** (A) : transferer le film a B. B devient Responsable, A co-gestionnaire.
 - [ ] **Signaler / revendiquer** (un troisieme compte non credite) : la demande arrive dans
       l'admin avec son justificatif.

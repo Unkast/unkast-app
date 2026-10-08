@@ -8,7 +8,8 @@
 -- ATTENTION, CE QUI EST PERDU
 --   - Toutes les donnees des nouvelles tables : co-gestionnaires, declarations
 --     de droits, demandes de co-gestion, revendications, donnees de moderation.
---   - L'etat publie / depublie des films (colonne is_published).
+--   - La visibilite des films (colonne visibility) : tout film approuve redevient public.
+--   - Toutes les entrees de Parcours (table career_entries).
 -- CE QUI N'EST PAS DEFAIT
 --   - Le backfill de video_key (les cles ecrites sont justes, on les garde).
 --   - Le bucket Storage `claims` et ses fichiers (a supprimer a la main depuis
@@ -21,6 +22,9 @@
 --     de recreer l'ancien index unique (qui ne distinguait pas les refuses) :
 --       select video_key, count(*) from public.projects
 --       where video_key is not null group by 1 having count(*) > 1;
+--   - Un signalement visant une entree de Parcours empeche de remettre l'ancien
+--     CHECK de reports : les traiter ou les supprimer avant.
+--       select id, status from public.reports where target_type = 'career_entry';
 --
 -- A lancer APRES avoir remis en ligne le code d'avant les lots 2 et 3.
 -- =============================================================================
@@ -177,6 +181,15 @@ create policy owner_can_delete_invitation
   );
 
 -- ---- Nouvelles tables (leurs policies partent avec elles) ---------------------
+drop table if exists public.career_entries;
+drop function if exists public.limit_career_entries();
+drop function if exists public.career_text_ok(text);
+
+alter table public.reports drop constraint if exists reports_target_type_check;
+alter table public.reports
+  add constraint reports_target_type_check
+  check (target_type in ('profile', 'project', 'message'));
+
 drop table if exists public.project_moderation;
 drop table if exists public.project_claims;
 drop table if exists public.project_manager_requests;
@@ -186,13 +199,15 @@ drop table if exists public.project_managers;
 -- ---- Fonctions d'appui (plus aucune policy ne les utilise) --------------------
 drop function if exists public.public_project_credits(uuid[]);
 drop function if exists public.is_director_role(text);
+drop function if exists public.can_view_project(uuid);
 drop function if exists public.is_project_public(uuid);
+drop function if exists public.is_member();
 drop function if exists public.is_project_manager(uuid);
 drop function if exists public.is_project_owner(uuid);
 drop function if exists public.extract_video_key(text);
 
 -- ---- Privileges : retour a l'etat du 08/10/2026 --------------------------------
-revoke update (title, description, category, year, is_published) on public.projects from authenticated;
+revoke update (title, description, category, year, visibility) on public.projects from authenticated;
 grant insert on public.projects to authenticated;
 grant insert, delete on public.projects to anon;
 
@@ -208,7 +223,7 @@ grant truncate
   to authenticated;
 
 -- ---- projects : colonnes, FK, index -------------------------------------------
-alter table public.projects drop column if exists is_published;
+alter table public.projects drop column if exists visibility;
 
 alter table public.projects drop constraint projects_profile_id_fkey;
 alter table public.projects

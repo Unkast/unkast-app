@@ -9,7 +9,7 @@
 --
 -- CE QU'IL FAIT
 --   A. projects : profile_id nullable (film sans Responsable), FK en SET NULL,
---      colonne is_published, index unique video_key qui exclut les films refuses,
+--      colonne visibility (public / membres seulement / depublie), index unique video_key qui exclut les films refuses,
 --      backfill de video_key sur les films approuves qui n'en ont pas.
 --   B. Nouvelles tables : project_managers (co-gestionnaires),
 --      project_rights_declarations (declaration de droits, ajout seul),
@@ -17,8 +17,10 @@
 --      project_claims (signalement / revendication, traite par l'admin),
 --      project_moderation (titre et chaine oEmbed, suivi des modifications ;
 --      service role uniquement). Bucket Storage prive `claims`.
+--      career_entries (Parcours du profil, texte uniquement, partie J).
 --   C. Fonctions d'appui pour les policies : is_project_owner,
---      is_project_manager, is_project_public, extract_video_key.
+--      is_project_manager, is_member, is_project_public, can_view_project,
+--      extract_video_key.
 --   D. Policies : projects (lecture gestionnaires, UPDATE par colonne, plus
 --      d'INSERT client), project_credits, credit_requests, project_invitations,
 --      invitations. Failles fermees : invitation sur le film d'un autre,
@@ -39,6 +41,8 @@
 --      Il passe par public_project_credits(), qui renvoie le role et les
 --      initiales ; le nom complet et le lien vers le profil ne sont donnes que
 --      pour les credits de realisation (is_director_role).
+--   J. Parcours : table career_entries, ses policies, plafond de 30 entrees,
+--      et la cible 'career_entry' dans les signalements.
 --
 -- CE QU'IL NE FAIT PAS
 --   - Aucun backfill de credit « Realisation » (decision : les films sans credit
@@ -178,13 +182,19 @@ alter table public.projects
   add constraint projects_profile_id_fkey
   foreign key (profile_id) references public.profiles(id) on delete set null;
 
--- Un seul interrupteur : publie / depublie (reserve au Responsable).
-alter table public.projects add column if not exists is_published boolean not null default true;
+-- Visibilite choisie par le Responsable :
+--   public      : tout le monde
+--   members     : membres connectes seulement (profil approuve, non suspendu) ;
+--                 le film n'existe pas pour un visiteur ni pour un moteur de recherche
+--   unpublished : gestionnaires du film seulement
+alter table public.projects
+  add column if not exists visibility text not null default 'public'
+  constraint projects_visibility_check check (visibility in ('public', 'members', 'unpublished'));
 
 comment on column public.projects.profile_id is
   'Responsable du film (un seul). NULL = film sans Responsable (compte supprime sans co-gestionnaire) : depublie, a traiter par l''admin.';
-comment on column public.projects.is_published is
-  'Interrupteur du Responsable. Public = status approved ET is_published ET Responsable au profil approuve.';
+comment on column public.projects.visibility is
+  'Choix du Responsable : public, members (membres connectes), unpublished. Un film n''est visible que si status = approved ET Responsable au profil approuve.';
 
 -- Backfill de video_key sur les films approuves qui n'en ont pas. Rien n'est
 -- ecrase : une cle deja prise par un autre film, ou partagee par deux candidats,
@@ -332,7 +342,23 @@ as $$
   );
 $$;
 
--- Meme regle que la policy de lecture publique de projects.
+-- Membre = connecte, profil approuve, non suspendu.
+create or replace function public.is_member()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid()
+      and p.status = 'approved'
+      and p.is_suspended is not true
+  );
+$$;
+
+-- Visible par un visiteur non connecte.
 create or replace function public.is_project_public(p_project_id uuid)
 returns boolean
 language sql
@@ -346,17 +372,40 @@ as $$
     join public.profiles pr on pr.id = p.profile_id
     where p.id = p_project_id
       and p.status = 'approved'
-      and p.is_published
+      and p.visibility = 'public'
       and pr.status = 'approved'
+  );
+$$;
+
+-- Visible par l'appelant : meme regle que la policy de lecture de projects.
+create or replace function public.can_view_project(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.projects p
+    join public.profiles pr on pr.id = p.profile_id
+    where p.id = p_project_id
+      and p.status = 'approved'
+      and pr.status = 'approved'
+      and (p.visibility = 'public' or (p.visibility = 'members' and public.is_member()))
   );
 $$;
 
 revoke all on function public.is_project_owner(uuid)   from public;
 revoke all on function public.is_project_manager(uuid) from public;
 revoke all on function public.is_project_public(uuid)  from public;
+revoke all on function public.is_member()              from public;
+revoke all on function public.can_view_project(uuid)   from public;
 grant execute on function public.is_project_owner(uuid)   to anon, authenticated, service_role;
 grant execute on function public.is_project_manager(uuid) to anon, authenticated, service_role;
 grant execute on function public.is_project_public(uuid)  to anon, authenticated, service_role;
+grant execute on function public.is_member()              to anon, authenticated, service_role;
+grant execute on function public.can_view_project(uuid)   to anon, authenticated, service_role;
 
 -- =============================================================================
 -- D. Policies
@@ -368,7 +417,7 @@ create policy "Public approved projects"
   on public.projects for select
   using (
     status = 'approved'
-    and is_published
+    and (visibility = 'public' or (visibility = 'members' and public.is_member()))
     and exists (
       select 1 from public.profiles
       where profiles.id = projects.profile_id
@@ -444,7 +493,7 @@ drop policy if exists "Public project credits" on public.project_credits;
 create policy "Credits of public or managed projects"
   on public.project_credits for select
   using (
-    (auth.uid() is not null and public.is_project_public(project_id))
+    (auth.uid() is not null and public.can_view_project(project_id))
     or public.is_project_manager(project_id)
     or profile_id = auth.uid()
   );
@@ -597,7 +646,7 @@ revoke truncate
 
 -- projects : plus d'INSERT client ; UPDATE sur les seules colonnes modifiables.
 revoke insert on public.projects from authenticated;
-grant update (title, description, category, year, is_published)
+grant update (title, description, category, year, visibility)
   on public.projects to authenticated;
 
 -- credit_requests : seul le statut se modifie.
@@ -651,8 +700,8 @@ begin
   new.preview_url := old.preview_url;
   new.created_at  := old.created_at;
 
-  -- Depublier / republier : Responsable seul.
-  if new.is_published is distinct from old.is_published
+  -- Visibilite (public / membres / depublie) : Responsable seul.
+  if new.visibility is distinct from old.visibility
      and old.profile_id is distinct from auth.uid() then
     raise exception 'owner_only' using errcode = '42501';
   end if;
@@ -765,7 +814,7 @@ begin
       delete from public.project_managers
       where project_id = r.id and profile_id = v_next;
     else
-      update public.projects set is_published = false where id = r.id;
+      update public.projects set visibility = 'unpublished' where id = r.id;
     end if;
   end loop;
   return old;
@@ -839,19 +888,20 @@ begin
   v_key := public.extract_video_key(p_video_url);
   if v_key is not null then
     select p.id, p.slug, p.title,
-           (p.status = 'approved' and p.is_published) as is_public
+           (p.status = 'approved' and p.visibility in ('public', 'members')) as is_visible
     into v_dup
     from public.projects p
     where p.video_key = v_key and p.status is distinct from 'refused'
     limit 1;
     if found then
-      -- Titre et slug seulement si le film existant est public.
+      -- Titre et slug seulement si le film existant est visible par un membre
+      -- (public ou membres seulement) : celui qui publie est connecte.
       return jsonb_build_object(
         'ok', false, 'code', 'duplicate',
         'project_id', v_dup.id,
-        'is_public', v_dup.is_public,
-        'slug',  case when v_dup.is_public then v_dup.slug end,
-        'title', case when v_dup.is_public then v_dup.title end
+        'is_visible', v_dup.is_visible,
+        'slug',  case when v_dup.is_visible then v_dup.slug end,
+        'title', case when v_dup.is_visible then v_dup.title end
       );
     end if;
   end if;
@@ -1072,6 +1122,127 @@ grant execute on function public.request_project_manager(uuid, uuid, uuid) to se
 grant execute on function public.decide_project_manager(uuid, uuid, boolean) to service_role;
 grant execute on function public.transfer_project(uuid, uuid, uuid, integer) to service_role;
 
+-- =============================================================================
+-- J. Parcours (entrees declaratives du profil, texte uniquement)
+-- =============================================================================
+-- Section « Parcours » du profil, separee de « Films ». Aucune colonne de lien,
+-- de video ou d'image : le Parcours ne doit pas permettre de contourner la
+-- limite de films. Pas de validation admin, signalement possible (reports).
+
+-- Texte seul : ni lien, ni email, ni telephone. Dernier rempart : le detecteur
+-- de coordonnees cote serveur (lib partagee) est plus fin et passe avant.
+--   - refuse http://, https://, www., le caractere @ et le mot « arobase »
+--   - refuse les suffixes de domaine colles a un mot (.com, .fr, .net, .org, .io,
+--     .eu, .be, .ch, .ca, .tv, .me, .co) et leur forme ecrite (« point com »,
+--     « point fr »...)
+--   - refuse toute suite de 8 chiffres ou plus, espaces, points et tirets ignores
+--   Consequences assumees : « 2019-2021 » ou un titre comme « Dot.com » sont refuses.
+create or replace function public.career_text_ok(p_text text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select p_text is null
+      or (
+        p_text !~* '(https?://|www\.|arobase)'
+        and position('@' in p_text) = 0
+        and p_text !~* '\.(com|fr|net|org|io|eu|be|ch|ca|tv|me|co)\M'
+        and p_text !~* '\mpoint\s*(com|fr|net|org|io|eu|be|ch|ca|tv|me|co)\M'
+        and regexp_replace(p_text, '[ .-]', '', 'g') !~ '[0-9]{8,}'
+      );
+$$;
+
+create table public.career_entries (
+  id         uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  title      text not null,
+  role       text not null,
+  year       integer not null,
+  kind       text not null,
+  production text,          -- production ou diffuseur
+  created_at timestamptz not null default now(),
+  constraint career_entries_kind_check check (
+    kind in ('long-metrage', 'court-metrage', 'serie', 'web-serie', 'telefilm',
+             'documentaire', 'publicite', 'clip', 'emission', 'theatre', 'autre')
+  ),
+  constraint career_entries_year_check check (year between 1900 and 2100),
+  constraint career_entries_length_check check (
+    char_length(btrim(title)) between 1 and 120
+    and char_length(btrim(role)) between 1 and 80
+    and (production is null or char_length(production) <= 120)
+  ),
+  constraint career_entries_text_only_check check (
+    public.career_text_ok(title)
+    and public.career_text_ok(role)
+    and public.career_text_ok(production)
+  )
+);
+create index career_entries_profile_idx on public.career_entries (profile_id, year desc);
+
+-- 30 entrees au plus par profil.
+create or replace function public.limit_career_entries()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (select count(*) from public.career_entries where profile_id = new.profile_id) >= 30 then
+    raise exception 'career_limit_reached' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.limit_career_entries() from public, anon, authenticated;
+
+create trigger limit_career_entries
+  before insert on public.career_entries
+  for each row execute function public.limit_career_entries();
+
+alter table public.career_entries enable row level security;
+
+-- Lecture publique si le profil est approuve ; le proprietaire voit toujours le sien.
+create policy "Career entries of approved profiles are public"
+  on public.career_entries for select
+  using (
+    profile_id = auth.uid()
+    or exists (
+      select 1 from public.profiles
+      where profiles.id = career_entries.profile_id
+        and profiles.status = 'approved'::public.profile_status
+    )
+  );
+
+create policy "Users add own career entries"
+  on public.career_entries for insert
+  with check (profile_id = auth.uid());
+
+create policy "Users update own career entries"
+  on public.career_entries for update
+  using (profile_id = auth.uid())
+  with check (profile_id = auth.uid());
+
+create policy "Users delete own career entries"
+  on public.career_entries for delete
+  using (profile_id = auth.uid());
+
+revoke all on public.career_entries from anon, authenticated;
+grant select on public.career_entries to anon, authenticated;
+grant insert (profile_id, title, role, year, kind, production) on public.career_entries to authenticated;
+grant update (title, role, year, kind, production) on public.career_entries to authenticated;
+grant delete on public.career_entries to authenticated;
+
+revoke all on function public.career_text_ok(text) from public;
+grant execute on function public.career_text_ok(text) to anon, authenticated, service_role;
+
+-- Signalement d'une entree du Parcours.
+alter table public.reports drop constraint if exists reports_target_type_check;
+alter table public.reports
+  add constraint reports_target_type_check
+  check (target_type in ('profile', 'project', 'message', 'career_entry'));
+
 commit;
 
 -- =============================================================================
@@ -1097,7 +1268,8 @@ commit;
 --   where schemaname = 'public'
 --     and tablename in ('projects', 'project_credits', 'credit_requests', 'project_invitations',
 --                       'invitations', 'project_managers', 'project_rights_declarations',
---                       'project_manager_requests', 'project_claims', 'project_moderation')
+--                       'project_manager_requests', 'project_claims', 'project_moderation',
+--                       'career_entries')
 --   order by 1, 2, 3;
 --     projects                    : 2 SELECT, 1 UPDATE, 1 DELETE (plus d'INSERT)
 --     project_credits             : 1 SELECT, 1 INSERT, 1 UPDATE, 1 DELETE
@@ -1109,6 +1281,7 @@ commit;
 --     project_manager_requests    : 1 SELECT
 --     project_claims              : 1 SELECT
 --     project_moderation          : aucune
+--     career_entries              : 1 SELECT, 1 INSERT, 1 UPDATE, 1 DELETE
 --
 --   -- 3. Privileges : anon ne doit plus avoir que SELECT (+ REFERENCES, TRIGGER)
 --   select table_name, grantee, string_agg(privilege_type, ', ' order by privilege_type)
@@ -1117,7 +1290,7 @@ commit;
 --     and table_name in ('projects', 'project_credits', 'credit_requests', 'project_invitations',
 --                        'invitations', 'reports', 'admin_logs', 'project_managers',
 --                        'project_rights_declarations', 'project_manager_requests',
---                        'project_claims', 'project_moderation')
+--                        'project_claims', 'project_moderation', 'career_entries')
 --   group by 1, 2 order by 1, 2;
 --
 --   -- 4. TEST DU TRIGGER EN ROLE authenticated (rien n'est conserve : rollback)
@@ -1134,9 +1307,9 @@ commit;
 --     -- b. Contenu sans declaration de droits : doit lever rights_declaration_required
 --     --    update public.projects set title = title || ' (test)' where id = '<FILM>';
 --
---     -- c. Depublication par le Responsable : doit passer
---     update public.projects set is_published = false where id = '<FILM>';
---     select id, is_published, status from public.projects where id = '<FILM>';
+--     -- c. Changement de visibilite par le Responsable : doit passer
+--     update public.projects set visibility = 'members' where id = '<FILM>';
+--     select id, visibility, status from public.projects where id = '<FILM>';
 --   rollback;
 --   --    Lancer a, b et c un par un (une erreur interrompt la transaction).
 --   --    Refaire c avec l'id d'un autre membre dans 'sub' : 0 ligne modifiee
