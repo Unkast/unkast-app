@@ -68,7 +68,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   const [{ data: requestRows }, { data: creditRows }] = await Promise.all([
     supabase
       .from("project_manager_requests")
-      .select("id, kind, profile_id, created_at")
+      .select("id, kind, profile_id, created_by, created_at")
       .eq("project_id", id)
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
@@ -116,6 +116,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
         full_name: p?.full_name ?? null,
         slug: p?.slug ?? null,
         created_at: r.created_at,
+        // Annulable par son auteur (DELETE ?request_id=).
+        can_cancel: r.created_by === user.id,
       };
     }),
     // Profil non lisible (non approuve) : pas invitable.
@@ -237,9 +239,36 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
+
+  // ?request_id= : annuler une invitation ou une demande en attente. La policy
+  // n'autorise que son auteur, et seulement tant qu'elle est en attente.
+  const requestId = request.nextUrl.searchParams.get("request_id");
+  if (requestId) {
+    const { data: cancelled, error } = await supabase
+      .from("project_manager_requests")
+      .delete()
+      .eq("id", requestId)
+      .eq("project_id", id)
+      .select("id");
+    if (error) {
+      if (error.code === "22P02") {
+        return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
+      }
+      console.error("[projects/managers] annulation:", error);
+      return NextResponse.json({ error: "Erreur serveur." }, { status: 500 });
+    }
+    if (!cancelled || cancelled.length === 0) {
+      return NextResponse.json(
+        { error: "Demande introuvable, déjà traitée, ou que tu n'as pas envoyée." },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ success: true });
+  }
+
   const profileId = request.nextUrl.searchParams.get("profile_id");
   if (!profileId) {
-    return NextResponse.json({ error: "profile_id requis." }, { status: 400 });
+    return NextResponse.json({ error: "profile_id ou request_id requis." }, { status: 400 });
   }
 
   // Client utilisateur : la policy n'autorise que le Responsable ou soi-meme.

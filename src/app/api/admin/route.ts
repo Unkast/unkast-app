@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
       // Entree du Parcours : son contenu, et le profil concerne (target_name /
       // target_slug / target_owner_id portent le PROFIL, seule page ou l'ouvrir).
       let careerEntry: { title: string; role: string; year: number; production: string | null } | null = null;
+      let messageRecipient: string | null = null;
       if (r.target_type === "career_entry") {
         const { data: t } = await admin.from("career_entries").select("title, role, year, production, profile_id").eq("id", r.target_id).maybeSingle();
         if (t) {
@@ -82,12 +83,25 @@ export async function GET(request: NextRequest) {
       } else if (r.target_type === "project") {
         const { data: t } = await admin.from("projects").select("title, slug, profile_id").eq("id", r.target_id).single();
         targetName = t?.title || ""; targetSlug = t?.slug || ""; targetOwnerId = t?.profile_id || "";
+      } else if (r.target_type === "message") {
+        // Message signale (detecteur de coordonnees) : l'expediteur est le profil
+        // concerne ; le destinataire situe l'echange. Le contenu n'est pas relu
+        // ici, l'extrait du signalement suffit.
+        const { data: m } = await admin.from("messages").select("sender_id, conversation_id").eq("id", r.target_id).maybeSingle();
+        if (m) {
+          const { data: conv } = await admin.from("conversations").select("participant_1, participant_2").eq("id", m.conversation_id).maybeSingle();
+          const recipientId = conv ? (conv.participant_1 === m.sender_id ? conv.participant_2 : conv.participant_1) : null;
+          const { data: people } = await admin.from("profiles").select("id, full_name, slug").in("id", [m.sender_id, recipientId].filter(Boolean));
+          const sender = people?.find((x) => x.id === m.sender_id);
+          targetName = sender?.full_name || ""; targetSlug = sender?.slug || ""; targetOwnerId = m.sender_id;
+          messageRecipient = people?.find((x) => x.id === recipientId)?.full_name ?? null;
+        }
       }
       // Count total reports for this target
       const { count } = await admin.from("reports").select("id", { count: "exact", head: true })
         .eq("target_type", r.target_type).eq("target_id", r.target_id).eq("status", "pending");
       const total = count || 1;
-      return { ...r, reporter_name: reporter?.full_name || "", target_name: targetName, target_slug: targetSlug, target_owner_id: targetOwnerId, career_entry: careerEntry, total_reports: total, urgent: total >= 3 };
+      return { ...r, reporter_name: reporter?.full_name || "", target_name: targetName, target_slug: targetSlug, target_owner_id: targetOwnerId, career_entry: careerEntry, message_recipient: messageRecipient, total_reports: total, urgent: total >= 3 };
     }));
 
     // Alerte prioritaire : les cibles les plus signalees remontent en tete

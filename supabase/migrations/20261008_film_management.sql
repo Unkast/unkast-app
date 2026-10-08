@@ -480,6 +480,12 @@ create policy "Parties see manager requests"
   on public.project_manager_requests for select
   using (profile_id = auth.uid() or public.is_project_owner(project_id));
 
+-- Annulation par son auteur, tant qu'elle est en attente : le Responsable retire
+-- son invitation, la personne creditee retire sa demande.
+create policy "Author cancels pending manager request"
+  on public.project_manager_requests for delete
+  using (created_by = auth.uid() and status = 'pending');
+
 -- ---- project_claims ---------------------------------------------------------
 create policy "Claimants see own claims"
   on public.project_claims for select
@@ -662,7 +668,7 @@ revoke all
   from anon, authenticated;
 grant select, delete on public.project_managers            to authenticated;
 grant select, insert on public.project_rights_declarations to authenticated;
-grant select         on public.project_manager_requests    to authenticated;
+grant select, delete on public.project_manager_requests    to authenticated;
 grant select         on public.project_claims              to authenticated;
 
 -- =============================================================================
@@ -721,6 +727,21 @@ begin
        where d.project_id = old.id and d.profile_id = auth.uid()
      ) then
     raise exception 'rights_declaration_required' using errcode = 'P0001';
+  end if;
+
+  -- Passage en publicite ou en clip apres la publication : l'accord du client ou
+  -- du label doit avoir ete declare par le Responsable (case cochee dans une
+  -- declaration). Sans cela, il suffirait de publier dans une autre categorie
+  -- puis d'en changer. Un co-gestionnaire ne peut pas declarer a sa place.
+  if new.category in ('publicite', 'clip')
+     and old.category not in ('publicite', 'clip')
+     and not exists (
+       select 1 from public.project_rights_declarations d
+       where d.project_id = old.id
+         and d.profile_id = old.profile_id
+         and d.client_authorized
+     ) then
+    raise exception 'client_authorization_required' using errcode = 'P0001';
   end if;
 
   return new;
@@ -1295,7 +1316,7 @@ commit;
 --     invitations                 : 1 SELECT, 1 INSERT, 1 DELETE
 --     project_managers            : 1 SELECT, 1 DELETE
 --     project_rights_declarations : 1 SELECT, 1 INSERT
---     project_manager_requests    : 1 SELECT
+--     project_manager_requests    : 1 SELECT, 1 DELETE
 --     project_claims              : 1 SELECT
 --     project_moderation          : aucune
 --     career_entries              : 1 SELECT, 1 INSERT, 1 UPDATE, 1 DELETE

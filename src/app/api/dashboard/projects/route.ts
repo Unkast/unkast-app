@@ -64,9 +64,17 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const [{ data: planRow }, { data: managed }] = await Promise.all([
+  const [{ data: planRow }, { data: managed }, { data: inviteRows }] = await Promise.all([
     supabase.from("profiles").select("plan").eq("id", user.id).single(),
     supabase.from("project_managers").select("project_id").eq("profile_id", user.id),
+    // Invitations a co-gerer recues, en attente (policy : la personne concernee).
+    supabase
+      .from("project_manager_requests")
+      .select("id, project_id, created_by, created_at")
+      .eq("profile_id", user.id)
+      .eq("kind", "invite")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
   ]);
   const managedIds = (managed ?? []).map((m) => m.project_id);
 
@@ -95,6 +103,35 @@ export async function GET() {
   ]);
   const declared = new Set((declarations ?? []).map((d) => d.project_id));
 
+  // Titre du film et nom de l'inviteur : service role, le film peut ne pas etre
+  // lisible par l'invite (en attente, depublie). Lignes deja filtrees ci-dessus.
+  const invites = inviteRows ?? [];
+  let managerInvites: {
+    request_id: string; project_id: string; project_title: string | null;
+    project_slug: string | null; invited_by: string | null; created_at: string;
+  }[] = [];
+  if (invites.length) {
+    const admin = createAdminClient();
+    const inviterIds = invites.flatMap((i) => (i.created_by ? [i.created_by as string] : []));
+    const [{ data: invProjects }, { data: inviters }] = await Promise.all([
+      admin.from("projects").select("id, title, slug").in("id", invites.map((i) => i.project_id)),
+      inviterIds.length
+        ? admin.from("profiles").select("id, full_name").in("id", inviterIds)
+        : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+    ]);
+    managerInvites = invites.map((i) => {
+      const proj = (invProjects ?? []).find((p) => p.id === i.project_id);
+      return {
+        request_id: i.id,
+        project_id: i.project_id,
+        project_title: proj?.title ?? null,
+        project_slug: proj?.slug ?? null,
+        invited_by: (inviters ?? []).find((p) => p.id === i.created_by)?.full_name ?? null,
+        created_at: i.created_at,
+      };
+    });
+  }
+
   return NextResponse.json({
     projects: list.map((p) => {
       const isOwner = p.profile_id === user.id;
@@ -107,6 +144,7 @@ export async function GET() {
     }),
     owned_count: ownedIds.length,
     limit: planLimit(planRow?.plan),
+    manager_invites: managerInvites,
   });
 }
 
@@ -347,6 +385,16 @@ export async function PATCH(request: NextRequest) {
       if (error.message?.includes("rights_declaration_required")) {
         return NextResponse.json(
           { code: "rights_declaration_required", error: "Confirme tes droits de diffusion avant de modifier ce film." },
+          { status: 409 }
+        );
+      }
+      // Passage en publicite ou en clip sans accord du client declare par le Responsable.
+      if (error.message?.includes("client_authorization_required")) {
+        return NextResponse.json(
+          {
+            code: "client_authorization_required",
+            error: "Le passage en publicité ou en clip demande l'accord du client ou du label, confirmé par le Responsable du film.",
+          },
           { status: 409 }
         );
       }

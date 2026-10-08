@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 // GET /api/credits/status?project_id=...
 // Returns { isCredited, hasPendingRequest, isOwner, isManager, managerRequest, claimPending }
 // isOwner = Responsable ; isManager = Responsable ou co-gestionnaire ;
-// managerRequest = { status, kind } | null ; claimPending = signalement en attente.
+// managerRequest = { id, status, kind } | null ; claimPending = signalement en attente.
 // Auth optional — returns all false / null if not logged in
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
