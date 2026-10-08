@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
+import { getDisplayName } from "@/lib/profile";
 import ProfileClient from "./ProfileClient";
 
 export const revalidate = 60; // Cache 1 minute
@@ -87,7 +88,8 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     // page, ses crédits y sont donc rendus en clair (les autres restent en initiales).
     const { data: ownRoles } = await supabase.rpc("public_profile_film_roles", { p_profile_id: profile.id });
     const ownCreditIds = new Set(((ownRoles ?? []) as { credit_id: string }[]).map((r) => r.credit_id));
-    const self = { full_name: profile.full_name, slug: profile.slug, avatar_url: profile.avatar_url };
+    // Nom affiché (nom de scène si c'est son choix), jamais le nom réel à sa place.
+    const self = { full_name: getDisplayName(profile), slug: profile.slug, avatar_url: profile.avatar_url };
     for (const project of rawProjects) {
       project.project_credits = visitorCredits
         .filter((c) => c.project_id === project.id)

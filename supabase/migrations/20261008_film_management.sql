@@ -596,8 +596,18 @@ as $$
 $$;
 
 -- Equipe des films PUBLICS, pour tout le monde (visiteurs compris).
--- Credit de realisation : nom complet, et lien vers le profil s'il est approuve.
--- Autres credits : initiales seulement, aucun identifiant de profil.
+-- Credit de realisation : nom affiche, et lien vers le profil s'il est approuve.
+-- Autres credits : initiales du nom affiche, aucun identifiant de profil.
+--
+-- NOM AFFICHE : meme regle que getDisplayName (src/lib/profile.ts), a garder
+-- alignee avec lui :
+--   1. nom de scene, si display_name_preference = 'stage_name' et qu'il est rempli ;
+--   2. sinon prenom + nom ;
+--   3. sinon full_name ;
+--   4. sinon « Utilisateur ».
+-- Un profil qui affiche son nom de scene n'expose donc jamais son vrai nom ici,
+-- ni en clair ni en initiales. Credit sans compte : ghost_name, tel que saisi.
+-- (show_real_name_to n'entre pas en jeu : aucun affichage de l'app ne le lit.)
 create or replace function public.public_project_credits(p_project_ids uuid[])
 returns table (
   id              uuid,
@@ -631,7 +641,17 @@ as $$
   from public.project_credits c
   left join public.profiles pr on pr.id = c.profile_id
   cross join lateral (select public.is_director_role(c.role_on_project) as is_director) d
-  cross join lateral (select coalesce(pr.full_name, c.ghost_name, '') as full_name) n
+  cross join lateral (
+    select case
+      when pr.id is null then coalesce(c.ghost_name, '')
+      when pr.display_name_preference = 'stage_name' and pr.stage_name <> '' then pr.stage_name
+      else coalesce(
+        nullif(concat_ws(' ', nullif(pr.first_name, ''), nullif(pr.last_name, '')), ''),
+        nullif(pr.full_name, ''),
+        'Utilisateur'
+      )
+    end as full_name
+  ) n
   where c.project_id = any (p_project_ids)
     and public.is_project_public(c.project_id);
 $$;
@@ -1286,7 +1306,8 @@ create trigger limit_career_entries
 
 alter table public.career_entries enable row level security;
 
--- Lecture publique si le profil est approuve ; le proprietaire voit toujours le sien.
+-- Lecture publique si le profil est approuve et non suspendu (comme le reste du
+-- profil public) ; le proprietaire voit toujours le sien.
 create policy "Career entries of approved profiles are public"
   on public.career_entries for select
   using (
@@ -1295,6 +1316,7 @@ create policy "Career entries of approved profiles are public"
       select 1 from public.profiles
       where profiles.id = career_entries.profile_id
         and profiles.status = 'approved'::public.profile_status
+        and profiles.is_suspended is not true
     )
   );
 

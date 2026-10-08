@@ -245,7 +245,7 @@ libère sa vidéo). Backfill de `video_key` sur les films approuvés qui n'en av
 | `project_manager_requests` | invitation (`invite`, par le Responsable) ou demande (`request`, par une personne créditée) | SELECT par la personne concernée et le Responsable ; DELETE par son auteur tant qu'elle est en attente |
 | `project_claims` | signalement ou revendication, avec justificatif (bucket privé `claims`) | SELECT de ses propres demandes |
 | `project_moderation` | titre et chaîne oEmbed (`source_title`, `source_author`), dernière modification d'un film approuvé | aucun (service role) |
-| `career_entries` | Parcours du profil : `title`, `role`, `year`, `kind` (11 types), `production` | lecture publique d'un profil approuvé ; écriture par le propriétaire |
+| `career_entries` | Parcours du profil : `title`, `role`, `year`, `kind` (11 types), `production` | lecture publique d'un profil approuvé et non suspendu ; écriture par le propriétaire |
 
 `reports` : `reporter_id` devient nullable (NULL = signalement automatique), motif `contact_info`,
 cible `career_entry`.
@@ -257,7 +257,7 @@ cible `career_entry`.
 | `is_project_owner`, `is_project_manager`, `is_member`, `is_project_public`, `can_view_project` | policies | `is_member` = connecté + profil approuvé + non suspendu |
 | `extract_video_key(text)` | migration, RPC | même logique que `extractVideoKey` (`src/lib/utils.ts`) |
 | `is_director_role(text)` | `public_project_credits` | rôle découpé sur `&`, `,`, `/`, normalisé (casse, accents, espaces, tirets) |
-| `public_project_credits(uuid[])` | anon, authenticated | équipe des films publics pour un visiteur : initiales, nom complet et lien pour les seuls crédits de réalisation |
+| `public_project_credits(uuid[])` | anon, authenticated | équipe des films publics pour un visiteur : initiales, nom en clair et lien pour les seuls crédits de réalisation. Le nom est le **nom affiché** (même règle que `getDisplayName`, `src/lib/profile.ts` : nom de scène si choisi, sinon prénom + nom, sinon `full_name`), les initiales en découlent |
 | `related_public_projects(uuid, int)` | anon, authenticated | films liés d'un film public pour un visiteur : identifiants de films publics partageant une personne créditée et nombre de collaborateurs communs, aucune identité |
 | `public_profile_film_roles(uuid)` | anon, authenticated | rôle du titulaire d'un profil sur les films publics dont il est Responsable (affiché sur sa page profil pour un visiteur) |
 | `career_text_ok(text)` | CHECK de `career_entries` | refuse `http`, `www`, `@`, « arobase », suffixes de domaine. Pas de règle sur les chiffres : les numéros relèvent du détecteur serveur |
