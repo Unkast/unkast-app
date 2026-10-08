@@ -35,14 +35,16 @@
 --      perd TRUNCATE, sur les tables concernees.
 --   H. profiles : retrait de 'recruiter' des CHECK pro_grant_* (annule tout si
 --      une ligne le porte encore).
+--   I. Masquage visiteurs : un visiteur non connecte ne lit plus project_credits.
+--      Il passe par public_project_credits(), qui renvoie le role et les
+--      initiales ; le nom complet et le lien vers le profil ne sont donnes que
+--      pour les credits de realisation (is_director_role).
 --
 -- CE QU'IL NE FAIT PAS
 --   - Aucun backfill de credit « Realisation » (decision : les films sans credit
 --     de realisation n'affichent aucun nom de realisateur).
 --   - Aucune declaration de droits creee pour l'existant : elle est exigee du
 --     Responsable a sa prochaine modification du film (trigger, partie E).
---   - Masquage des noms d'equipe pour les visiteurs non connectes : propose a
---     part, pas applique ici.
 --   - Phase 2 (demande de transfert, historique, notifications) : rien.
 --
 -- ORDRE DE MISE EN SERVICE
@@ -436,10 +438,13 @@ create policy "Claimants see own claims"
 -- Avant : lisible des que le profil du proprietaire etait approuve, meme pour un
 -- film en attente ou refuse.
 drop policy if exists "Public project credits" on public.project_credits;
+-- Un visiteur non connecte ne lit aucune ligne (partie I) : le privilege SELECT
+-- est conserve pour que les requetes imbriquees renvoient une liste vide plutot
+-- qu'une erreur.
 create policy "Credits of public or managed projects"
   on public.project_credits for select
   using (
-    public.is_project_public(project_id)
+    (auth.uid() is not null and public.is_project_public(project_id))
     or public.is_project_manager(project_id)
     or profile_id = auth.uid()
   );
@@ -509,6 +514,72 @@ drop policy if exists owner_can_delete_invitation on public.invitations;
 create policy managers_can_delete_invitation
   on public.invitations for delete
   using (public.is_project_manager(project_id));
+
+-- =============================================================================
+-- I. Masquage visiteurs
+-- =============================================================================
+
+-- Credit de realisation : le role est decoupe sur & , / puis chaque partie est
+-- normalisee (casse, accents, espaces, tirets). Meme regle cote TypeScript.
+create or replace function public.is_director_role(p_role text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from regexp_split_to_table(coalesce(p_role, ''), '[&,/]') as part
+    where replace(replace(translate(lower(btrim(part)), 'éèêëàâäîïôöùûüç', 'eeeeaaaiioouuuc'), '-', ''), ' ', '')
+          in ('realisateur', 'realisatrice', 'realisation', 'corealisateur', 'corealisatrice')
+  );
+$$;
+
+-- Equipe des films PUBLICS, pour tout le monde (visiteurs compris).
+-- Credit de realisation : nom complet, et lien vers le profil s'il est approuve.
+-- Autres credits : initiales seulement, aucun identifiant de profil.
+create or replace function public.public_project_credits(p_project_ids uuid[])
+returns table (
+  id              uuid,
+  project_id      uuid,
+  role_on_project text,
+  display_name    text,
+  is_director     boolean,
+  profile_id      uuid,
+  profile_slug    text,
+  avatar_url      text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select c.id,
+         c.project_id,
+         c.role_on_project,
+         case when d.is_director then n.full_name
+              else (
+                select string_agg(upper(left(w.word, 1)) || '.', ' ' order by w.ord)
+                from regexp_split_to_table(btrim(n.full_name), '\s+') with ordinality as w(word, ord)
+                where w.word <> ''
+              )
+         end,
+         d.is_director,
+         case when d.is_director and pr.status = 'approved' then pr.id end,
+         case when d.is_director and pr.status = 'approved' then pr.slug end,
+         case when d.is_director and pr.status = 'approved' then pr.avatar_url end
+  from public.project_credits c
+  left join public.profiles pr on pr.id = c.profile_id
+  cross join lateral (select public.is_director_role(c.role_on_project) as is_director) d
+  cross join lateral (select coalesce(pr.full_name, c.ghost_name, '') as full_name) n
+  where c.project_id = any (p_project_ids)
+    and public.is_project_public(c.project_id);
+$$;
+
+revoke all on function public.is_director_role(text) from public;
+revoke all on function public.public_project_credits(uuid[]) from public;
+grant execute on function public.is_director_role(text) to anon, authenticated, service_role;
+grant execute on function public.public_project_credits(uuid[]) to anon, authenticated, service_role;
 
 -- =============================================================================
 -- G. Privileges

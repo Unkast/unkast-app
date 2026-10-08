@@ -184,6 +184,8 @@ drop table if exists public.project_rights_declarations;
 drop table if exists public.project_managers;
 
 -- ---- Fonctions d'appui (plus aucune policy ne les utilise) --------------------
+drop function if exists public.public_project_credits(uuid[]);
+drop function if exists public.is_director_role(text);
 drop function if exists public.is_project_public(uuid);
 drop function if exists public.is_project_manager(uuid);
 drop function if exists public.is_project_owner(uuid);

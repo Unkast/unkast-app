@@ -62,6 +62,9 @@ Avec deux comptes de test (A et B), plus le compte admin.
 - [ ] **Plafond** : la jauge de /moi ne compte que les films dont on est Responsable.
 - [ ] **Nom du realisateur** : sur le feed et la page projet, il vient du credit de
       realisation, pas du Responsable.
+- [ ] **Visiteur non connecte** (navigation privee) : sur une page projet, le realisateur
+      apparait en clair avec le lien vers son profil ; le reste de l'equipe en initiales,
+      sans lien. Connecte, les noms complets reviennent.
 - [ ] **Annuler une demande de credit** en attente : elle disparait vraiment.
 
 ## 5. En cas de probleme
