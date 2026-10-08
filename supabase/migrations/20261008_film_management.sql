@@ -23,6 +23,7 @@
 --      d'INSERT client), project_credits, credit_requests, project_invitations,
 --      invitations. Failles fermees : invitation sur le film d'un autre,
 --      deplacement d'une invitation, equipe d'un film non public lisible par tous.
+--      Bug corrige : annuler sa demande de credit en attente (policy DELETE).
 --   E. Triggers : garde des colonnes de projects (modele
 --      guard_profiles_system_columns : SECURITY INVOKER, test de rolbypassrls),
 --      suivi des modifications d'un film approuve, transfert a la suppression
@@ -42,8 +43,6 @@
 --     Responsable a sa prochaine modification du film (trigger, partie E).
 --   - Masquage des noms d'equipe pour les visiteurs non connectes : propose a
 --     part, pas applique ici.
---   - DELETE sur credit_requests (annuler sa demande) : aucune policy n'existe,
---     la route ne supprime donc rien aujourd'hui. Non corrige ici, a trancher.
 --   - Phase 2 (demande de transfert, historique, notifications) : rien.
 --
 -- ORDRE DE MISE EN SERVICE
@@ -474,6 +473,12 @@ create policy managers_can_decide
   on public.credit_requests for update
   using (public.is_project_manager(project_id))
   with check (public.is_project_manager(project_id));
+
+-- Avant : aucune policy DELETE, la route d'annulation repondait « succes » sans
+-- rien supprimer. Le demandeur annule sa propre demande tant qu'elle est en attente.
+create policy requester_can_cancel_pending
+  on public.credit_requests for delete
+  using (auth.uid() = requester_id and status = 'pending');
 
 -- ---- project_invitations ----------------------------------------------------
 -- Avant : n'importe qui pouvait inviter sur n'importe quel film, et l'invite
@@ -1025,7 +1030,7 @@ commit;
 --   order by 1, 2, 3;
 --     projects                    : 2 SELECT, 1 UPDATE, 1 DELETE (plus d'INSERT)
 --     project_credits             : 1 SELECT, 1 INSERT, 1 UPDATE, 1 DELETE
---     credit_requests             : 2 SELECT, 1 INSERT, 1 UPDATE
+--     credit_requests             : 2 SELECT, 1 INSERT, 1 UPDATE, 1 DELETE
 --     project_invitations         : 1 SELECT, 1 INSERT, 1 UPDATE, 1 DELETE
 --     invitations                 : 1 SELECT, 1 INSERT, 1 DELETE
 --     project_managers            : 1 SELECT, 1 DELETE

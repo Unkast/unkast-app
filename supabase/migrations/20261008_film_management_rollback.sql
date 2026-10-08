@@ -122,6 +122,8 @@ create policy owner_sees_requests
     )
   );
 
+drop policy if exists requester_can_cancel_pending on public.credit_requests;
+
 drop policy if exists managers_can_decide on public.credit_requests;
 create policy owner_can_update
   on public.credit_requests for update
