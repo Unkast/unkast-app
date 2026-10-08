@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 
 // Garde commun aux routes API sensibles (chantier 3 — moderation).
 // Authentifie l'utilisateur ET verifie qu'il n'est PAS suspendu.
@@ -19,6 +20,9 @@ export interface ActiveUserProfile {
   plan: string | null;
   account_type: string | null;
   full_name: string | null;
+  // Nom d'affichage (nom de scene si choisi) : a utiliser pour tout texte vu par
+  // quelqu'un d'autre (notification push, email). full_name reste le vrai nom.
+  display_name: string;
 }
 
 // `email` vient de l'utilisateur Auth (pas de `profiles.contact_email`, qui est un
@@ -39,7 +43,7 @@ export async function getActiveUser(
   const admin = createAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, is_suspended, plan, account_type, full_name")
+    .select(`id, is_suspended, plan, account_type, ${DISPLAY_NAME_COLUMNS}`)
     .eq("id", user.id)
     .single();
 
@@ -94,7 +98,14 @@ export async function getActiveUser(
   // aucun profil de secours n'est fabrique.
   return {
     user: { id: user.id, email: user.email ?? null },
-    profile: profile as ActiveUserProfile,
+    profile: {
+      id: profile.id,
+      is_suspended: profile.is_suspended,
+      plan: profile.plan,
+      account_type: profile.account_type,
+      full_name: profile.full_name,
+      display_name: displayNameOf(profile) as string,
+    },
     error: null,
     status: 200,
   };

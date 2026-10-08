@@ -25,6 +25,10 @@ les deux sans pause, a une heure creuse.
 
 ## 2. Migration (SQL Editor, a la main)
 
+> `20261008_film_management.sql` est deja executee en production. Pour le lot « corrections
+> beta », executer `20261009_film_limit_and_edit_watch.sql` juste avant de deployer son code
+> (rollback : `20261009_film_limit_and_edit_watch_rollback.sql`), puis ses deux verifications.
+
 - [ ] Executer `20261008_film_management.sql` en entier. Elle est dans une seule transaction :
       une erreur annule tout.
 - [ ] Verification 1 apres execution : films approuves restes sans `video_key`
@@ -106,6 +110,31 @@ Avec deux comptes de test (A et B), plus le compte admin.
 - [ ] **Inscription d'un createur avec un film** : role et declaration exiges ; si la video est
       deja sur Unkast, privee, ou la declaration manquante, le compte est cree et un message
       explique pourquoi le film ne l'est pas.
+
+## 4 bis. Lot « corrections beta »
+
+- [ ] **Jauge** (compte gratuit) : « n sur 3 ». Un film depublie ou refuse libere une place ;
+      un film en attente en prend une. Compte Pro : pas de jauge, « illimite ».
+- [ ] **Remise en ligne** : compte gratuit avec 3 films en ligne et 1 depublie, repasser le
+      depublie en public est refuse avec un message clair.
+- [ ] **Lien video** : aucun champ pour le modifier dans « Modifier » ; la phrase renvoie vers
+      la publication d'un nouveau film.
+- [ ] **Admin, « Modifies recemment »** : corriger une faute dans un titre ne fait rien
+      apparaitre ; remplacer le titre fait apparaitre le film avec le titre valide ; « Vu » le
+      retire.
+- [ ] **Admin mobile** : pastilles des onglets visibles des l'ouverture ; carte « Approuves » de
+      l'onglet Recruteurs lisible ; pas de barre de defilement sous les onglets.
+- [ ] **Noms** : un compte en nom de scene n'affiche son vrai nom nulle part pour un autre
+      membre (equipe d'un film, messagerie, recherche, invitations, notifications). Sur sa page
+      profil, le vrai nom n'est pas dans le code source de la page.
+
+## Avant le lancement public (lot separe, non fait)
+
+- [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
+      sont lisibles directement avec la cle publique pour tout profil approuve, meme quand la
+      personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
+      A traiter : droits par colonne et nom d'affichage calcule en base.
+- [ ] Refuser une demande de credit sur un film non visible.
 
 ## 5. En cas de probleme
 

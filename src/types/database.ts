@@ -273,6 +273,7 @@ export interface ProjectModeration {
   project_id: string
   source_title: string | null
   source_author: string | null
+  approved_title: string | null   // titre valide par l'admin (migration 20261009), reference des modifications a surveiller
   edited_at: string | null
   edited_by: string | null
 }

@@ -95,7 +95,7 @@ function EditPanel({ project, reload, showToast, close }: PanelProps) {
         <Field label="Année" type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || project.year)} min={1990} max={2030} />
       </div>
       <Field multiline rows={3} label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-      <p className={helpCls}>La vidéo et les images du film ne sont pas modifiables.</p>
+      <p className={helpCls}>Le lien vidéo et les images ne sont pas modifiables. Pour changer de vidéo, publie un nouveau film.</p>
 
       {showDeclaration && <RightsDeclaration value={declaration} onChange={setDeclaration} category={category} />}
       {!isOwner && becomesClientWork && (

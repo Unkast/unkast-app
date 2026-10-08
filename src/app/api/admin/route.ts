@@ -1,3 +1,4 @@
+import { titleChangedALot } from "@/lib/title-change";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminId } from "@/lib/adminGuard";
@@ -163,9 +164,12 @@ export async function GET(request: NextRequest) {
     }));
 
     // Films approuves modifies depuis leur validation (trigger track_project_edit),
-    // plus recents d'abord. mark_film_edit_seen les retire de la liste.
+    // plus recents d'abord. Seuls ceux A SURVEILLER sont listes : titre nettement
+    // different du titre valide (lib/title-change), ou film signale (signalement
+    // ou revendication en attente). Les petites modifications passent sans
+    // apparaitre. mark_film_edit_seen les retire de la liste.
     const { data: edits } = await admin.from("project_moderation")
-      .select("project_id, edited_at, edited_by")
+      .select("project_id, edited_at, edited_by, approved_title")
       .not("edited_at", "is", null)
       .order("edited_at", { ascending: false });
 
@@ -173,10 +177,27 @@ export async function GET(request: NextRequest) {
       const { data: film } = await admin.from("projects").select("id, title, slug")
         .eq("id", m.project_id).eq("status", "approved").maybeSingle();
       if (!film) return null;
+      const [{ count: reportCount }, { count: claimCount }] = await Promise.all([
+        admin.from("reports").select("id", { count: "exact", head: true })
+          .eq("target_type", "project").eq("target_id", film.id).eq("status", "pending"),
+        admin.from("project_claims").select("id", { count: "exact", head: true })
+          .eq("project_id", film.id).eq("status", "pending"),
+      ]);
+      const titleChanged = !!m.approved_title && titleChangedALot(m.approved_title, film.title);
+      const reported = (reportCount ?? 0) + (claimCount ?? 0) > 0;
+      if (!titleChanged && !reported) return null;
       const { data: editor } = m.edited_by
         ? await admin.from("profiles").select("full_name").eq("id", m.edited_by).single()
         : { data: null };
-      return { ...film, edited_at: m.edited_at as string, edited_by_name: editor?.full_name || "" };
+      return {
+        ...film,
+        edited_at: m.edited_at as string,
+        edited_by_name: editor?.full_name || "",
+        // Pourquoi le film est liste, et le titre valide a comparer.
+        title_changed: titleChanged,
+        reported,
+        approved_title: (m.approved_title as string | null) ?? null,
+      };
     }))).filter((f) => f !== null);
 
     // Films sans Responsable (compte supprime sans co-gestionnaire).
@@ -421,7 +442,13 @@ export async function PATCH(request: NextRequest) {
 
   // Approve film
   if (action === "approve_film") {
-    const { error } = await admin.from("projects").update({ status: "approved" }).eq("id", target_id);
+    const { data: approved, error } = await admin.from("projects")
+      .update({ status: "approved" }).eq("id", target_id).select("title").maybeSingle();
+    // Titre valide : reference de la liste « modifies recemment ».
+    if (!error && approved) {
+      await admin.from("project_moderation")
+        .upsert({ project_id: target_id, approved_title: approved.title }, { onConflict: "project_id" });
+    }
     // L'index unique sur video_key exclut les films refuses : reapprouver un film
     // refuse echoue si une autre fiche a pris sa video entre-temps.
     if (error?.code === "23505") {
@@ -441,10 +468,13 @@ export async function PATCH(request: NextRequest) {
 
   // --- Gestion des films (migration 20261008_film_management.sql) ---
 
-  // Modification d'un film approuve : vue par l'admin, elle quitte la liste.
+  // Modification d'un film approuve : vue par l'admin, elle quitte la liste, et
+  // le titre actuel devient le titre valide.
   if (action === "mark_film_edit_seen") {
+    const { data: film } = await admin.from("projects").select("title").eq("id", target_id).maybeSingle();
     const { error } = await admin.from("project_moderation")
-      .update({ edited_at: null, edited_by: null }).eq("project_id", target_id);
+      .update({ edited_at: null, edited_by: null, ...(film ? { approved_title: film.title } : {}) })
+      .eq("project_id", target_id);
     return finalize(error, "mark_film_edit_seen", "project");
   }
 

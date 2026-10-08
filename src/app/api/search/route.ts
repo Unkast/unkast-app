@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { TEAM_SELECT, loadFilmTeams } from "@/lib/film-team";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
 // Echappe les wildcards ILIKE (`%`, `_`, antislash) pour un matching
 // litteral : sans ca, un `%`/`_` saisi par l'utilisateur agit comme
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("profiles")
       .select(`
-        id, full_name, slug, avatar_url, location, is_available, bio, created_at, plan,
+        id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio, created_at, plan,
         profile_roles ( role_name ),
         projects!projects_profile_id_fkey ( id )
       `)
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
         const profileProjects = profile.projects as { id: string }[] | null;
         return {
           id: profile.id,
-          full_name: profile.full_name,
+          full_name: displayNameOf(profile as DisplayNameRow),
           slug: profile.slug,
           avatar_url: profile.avatar_url,
           location: profile.location,

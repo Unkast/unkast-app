@@ -9,6 +9,7 @@ import type {
   ProjectCredit,
 } from "@/types/database";
 import { TEAM_SELECT, fetchVisitorCredits, loadFilmTeams, visitorCreditAsMemberCredit } from "@/lib/film-team";
+import { DISPLAY_NAME_COLUMNS, withDisplayName, type DisplayNameRow } from "@/lib/profile";
 import ProjetClient from "./ProjetClient";
 
 export const revalidate = 120; // Cache 2 minutes
@@ -56,7 +57,7 @@ async function getProject(slug: string): Promise<{
         profiles!projects_profile_id_fkey ( is_suspended ),
         project_credits (
           *,
-          profiles ( id, full_name, slug, avatar_url, location )
+          profiles ( id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location )
         )
       `)
       .eq("slug", slug)
@@ -87,7 +88,10 @@ async function getProject(slug: string): Promise<{
   const isVisitor = !user;
   const rawCredits: RawCredit[] = isVisitor
     ? (await fetchVisitorCredits(supabase, [project.id])).map(visitorCreditAsMemberCredit)
-    : ((project.project_credits ?? []) as RawCredit[]);
+    : // Nom affiché de chaque personne créditée, colonnes de nom brutes retirées.
+      ((project.project_credits ?? []) as (ProjectCredit & { profiles: (DisplayNameRow & { id: string }) | null })[]).map(
+        (c) => ({ ...c, profiles: c.profiles ? withDisplayName(c.profiles) : null }) as RawCredit
+      );
 
   const profileIds = rawCredits
     .map((c) => c.profiles?.id)

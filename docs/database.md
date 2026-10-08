@@ -208,10 +208,10 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 
 ## Gestion des films *(migration `20261008_film_management.sql`, ⚠️ à exécuter)*
 
-> **État au 08/10/2026** : la migration n'est **pas** en production. Le code de `main` l'attend
-> (publication, co-gestion, Parcours, signalements automatiques) ; la bêta tourne sur la branche
-> `release/beta` (commit `67ce9b8`), qui fonctionne avec la base d'avant. Ordre de mise en ligne :
-> [mise-en-ligne-gestion-films.md](mise-en-ligne-gestion-films.md). Décision : [ADR 0014](adr/0014-responsable-et-co-gestionnaires.md).
+> **État au 08/10/2026** : la migration `20261008_film_management.sql` a été exécutée en
+> production (indiqué par Maxime). La migration `20261009_film_limit_and_edit_watch.sql`
+> (plafond, titre validé, voir plus bas) est **à exécuter** avant de déployer le code qui l'attend.
+> Ordre de mise en ligne : [mise-en-ligne-gestion-films.md](mise-en-ligne-gestion-films.md). Décision : [ADR 0014](adr/0014-responsable-et-co-gestionnaires.md).
 
 ### Modèle
 
@@ -223,7 +223,19 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 - Le **nom du réalisateur** affiché vient des crédits de réalisation (`is_director_role` en base,
   `isDirectorRole` dans `src/lib/credits.ts`), plus du Responsable. Aucun crédit de réalisation =
   aucun nom.
-- Le **plafond de films** compte les films dont on est Responsable.
+- Le **plafond de films** (compte gratuit : 3, Pro : illimité) compte les films dont on est
+  Responsable et qui sont **en ligne** (approuvés, publics ou membres seulement) ou **en attente
+  de validation**. Les films refusés et dépubliés ne comptent pas. Fonction `project_slots_used`
+  (migration `20261009`). Remettre en ligne un film dépublié est refusé si le compte gratuit est
+  au plafond (`limit_reached`, trigger `zz_guard_projects_columns`).
+- Le **lien vidéo** ne se modifie pas après la publication (colonne hors du GRANT UPDATE,
+  restaurée par le trigger) : pour changer de vidéo, on publie un nouveau film.
+- `project_moderation.approved_title` (migration `20261009`) : titre validé par l'admin, écrit à
+  l'approbation et quand l'admin clique « Vu ». La liste « modifiés récemment » ne garde que les
+  films dont le titre s'en écarte nettement (`src/lib/title-change.ts`) ou qui sont signalés.
+- **Noms réels** : `full_name`, `first_name`, `last_name` restent lisibles en base avec la clé
+  publique pour tout profil approuvé. L'app n'affiche que le nom d'affichage (`getDisplayName`),
+  mais la fermeture en base est un **lot séparé, à faire avant le lancement public**.
 
 ### Colonnes ajoutées à `projects`
 

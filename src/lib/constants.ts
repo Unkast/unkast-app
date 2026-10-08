@@ -26,7 +26,8 @@ export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
 // la limite l'interpolent depuis ces constantes : ne jamais reecrire le nombre
 // en dur, il a deja diverge une fois.
 export const MAX_PROJECTS_FREE = 3;
-export const MAX_PROJECTS_PRO = 30;
+// Pro : illimite (pas de constante). Le plafond gratuit compte les films dont on
+// est Responsable, en ligne ou en attente de validation (project_slots_used).
 
 export const ACCOUNT_TYPES = {
   talent: "J'ai participé à un projet",

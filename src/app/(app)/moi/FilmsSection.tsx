@@ -27,7 +27,8 @@ export default function FilmsSection({
   const [deciding, setDeciding] = useState(false);
 
   const { projects, owned_count: owned, limit, manager_invites: invites } = films;
-  const limitReached = owned >= limit;
+  // limit null = illimité (Pro) : pas de jauge.
+  const limitReached = limit !== null && owned >= limit;
 
   async function decideInvite(projectId: string, requestId: string, accept: boolean) {
     setDeciding(true);
@@ -44,9 +45,11 @@ export default function FilmsSection({
         <div className="flex items-end justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">Mes films</h2>
           <p className="text-sm text-text-secondary">
-            <span className="text-xl font-semibold text-text-primary">{owned}</span> sur {limit}
+            <span className="text-xl font-semibold text-text-primary">{owned}</span>{" "}
+            {limit === null ? "· illimité" : `sur ${limit}`}
           </p>
         </div>
+        {limit !== null && (
         <div
           role="progressbar"
           aria-label="Films dont tu es Responsable sur la limite du forfait"
@@ -60,8 +63,11 @@ export default function FilmsSection({
             style={{ width: `${Math.min(100, (owned / limit) * 100)}%` }}
           />
         </div>
+        )}
         <p className="mt-3 text-xs leading-relaxed text-text-secondary">
-          Seuls les films dont tu es Responsable comptent. Les films que tu co-gères ne comptent pas.
+          {limit === null
+            ? "Compte Pro : publie autant de films que tu veux."
+            : "Comptent les films dont tu es Responsable, en ligne ou en attente de validation. Les films dépubliés, refusés ou co-gérés ne comptent pas."}
         </p>
       </EnterItem>
 

@@ -57,7 +57,8 @@ export interface ManagerInvite {
 export interface FilmsData {
   projects: ManagedProject[];
   owned_count: number;
-  limit: number;
+  /** Plafond du plan ; null = illimité (Pro). */
+  limit: number | null;
   manager_invites: ManagerInvite[];
 }
 

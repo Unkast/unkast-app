@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 import { getProUser } from "../../guard";
 
 // GET : detail d'un dossier — ses candidats ranges, groupes par poste.
@@ -29,7 +30,7 @@ export async function GET(
 
   const { data: rows, error } = await supabase
     .from("folder_candidates")
-    .select("talent_id, role, added_at, talent:profiles!talent_id(full_name, slug, avatar_url, location)")
+    .select(`talent_id, role, added_at, talent:profiles!talent_id(${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location)`)
     .eq("folder_id", id);
 
   if (error) {
@@ -43,7 +44,7 @@ export async function GET(
       talent_id: r.talent_id,
       role: r.role,
       added_at: r.added_at,
-      full_name: (talent as Record<string, unknown>)?.full_name ?? "Talent",
+      full_name: displayNameOf(talent as DisplayNameRow | null) ?? "Talent",
       slug: (talent as Record<string, unknown>)?.slug ?? null,
       avatar_url: (talent as Record<string, unknown>)?.avatar_url ?? null,
       location: (talent as Record<string, unknown>)?.location ?? null,

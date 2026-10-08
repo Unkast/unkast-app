@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     for (const recipientId of recipients) {
       sendPushToUser(recipientId, {
         title: "Nouvelle demande de credit",
-        body: `${guard.profile.full_name || "Quelqu'un"} veut etre credite sur "${project.title}"`,
+        body: `${guard.profile.display_name || "Quelqu'un"} veut etre credite sur "${project.title}"`,
         url: "/dashboard/projets",
       }).catch(() => {});
     }

@@ -1,6 +1,7 @@
 import AppShell from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DISPLAY_NAME_COLUMNS, getDisplayName } from "@/lib/profile";
 
 // On résout l'utilisateur + son profil + le compteur de non-lus CÔTÉ SERVEUR,
 // puis on les passe à AppShell en props. Évite le waterfall client au montage
@@ -27,7 +28,7 @@ export default async function AppLayout({
     const [{ data: profile }, { data: roles }, { count }, { data: adminRow }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name, slug, account_type, avatar_url")
+        .select(`${DISPLAY_NAME_COLUMNS}, slug, account_type, avatar_url`)
         .eq("id", user.id)
         .single(),
       supabase.from("profile_roles").select("role_name").eq("profile_id", user.id),
@@ -41,7 +42,7 @@ export default async function AppLayout({
 
     if (profile) {
       initialUser = {
-        full_name: profile.full_name,
+        full_name: getDisplayName(profile),
         slug: profile.slug,
         account_type: profile.account_type || "talent",
         avatar_url: profile.avatar_url,

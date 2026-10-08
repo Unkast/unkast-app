@@ -7,7 +7,7 @@ import AvatarUpload from "@/components/AvatarUpload";
 import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram } from "@/lib/profile";
 import { motion, AnimatePresence } from "framer-motion";
-import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE } from "@/lib/constants";
 import { PHONE_CODES } from "@/lib/phone-codes";
 import type {
   Profile,
@@ -93,7 +93,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
 
   const isCreator = profile?.account_type === "creator";
   const plan = profile?.plan || "free";
-  const projectLimit = plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
+  const projectLimit = plan === "pro" ? Infinity : MAX_PROJECTS_FREE;
 
   const fetchProfile = useCallback(async () => {
     const res = await fetch("/api/dashboard/profile");

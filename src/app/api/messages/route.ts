@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
+import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { sendPushToUser } from "@/lib/push";
 import {
   countConversationsInitiatedToday,
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
 
   // Push notification
   sendPushToUser(recipientId, {
-    title: `Message de ${profile?.full_name || "Quelqu'un"}`,
+    title: `Message de ${profile?.display_name || "Quelqu'un"}`,
     body: content.length > 80 ? content.slice(0, 80) + "..." : content,
     url: `/messages/${convId}`,
   }).catch(() => {});
@@ -264,7 +265,7 @@ export async function GET() {
 
   const enriched = await Promise.all((conversations ?? []).map(async (c) => {
     const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
-    const { data: other } = await admin.from("profiles").select("full_name, slug, avatar_url").eq("id", otherId).single();
+    const { data: other } = await admin.from("profiles").select(`${DISPLAY_NAME_COLUMNS}, slug, avatar_url`).eq("id", otherId).single();
     const { data: lastMsg } = await admin.from("messages").select("content, created_at, sender_id, is_read")
       .eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(1).single();
     const { count: unread } = await admin.from("messages")
@@ -273,7 +274,7 @@ export async function GET() {
 
     return {
       id: c.id,
-      other_name: other?.full_name || "",
+      other_name: displayNameOf(other) || "",
       other_slug: other?.slug || "",
       other_avatar: other?.avatar_url || null,
       last_message: lastMsg?.content || "",

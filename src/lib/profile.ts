@@ -21,6 +21,37 @@ export function getDisplayName(profile: ProfileLike): string {
   return parts.join(" ") || profile.full_name || "Utilisateur";
 }
 
+// Nom d'affichage cote serveur. Toute lecture d'un nom montre a quelqu'un d'autre
+// selectionne DISPLAY_NAME_COLUMNS puis reduit la ligne a UN nom avant de
+// repondre : les colonnes brutes ne partent jamais au navigateur (le vrai nom
+// d'une personne qui affiche son nom de scene ne doit pas fuiter).
+export const DISPLAY_NAME_COLUMNS = "full_name, first_name, last_name, stage_name, display_name_preference";
+
+export type DisplayNameRow = {
+  full_name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  stage_name?: string | null;
+  display_name_preference?: string | null;
+};
+
+/** Nom d'affichage d'une ligne `profiles` ; null si la ligne est absente. */
+export function displayNameOf(row: DisplayNameRow | null | undefined): string | null {
+  return row ? getDisplayName({ ...row, full_name: row.full_name ?? "" }) : null;
+}
+
+/**
+ * Remplace les colonnes de nom d'une ligne par le seul nom d'affichage, range
+ * dans `full_name` (le champ que les clients lisent deja).
+ */
+export function withDisplayName<T extends DisplayNameRow>(
+  row: T
+): Omit<T, keyof DisplayNameRow> & { full_name: string } {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { full_name, first_name, last_name, stage_name, display_name_preference, ...rest } = row;
+  return { ...rest, full_name: displayNameOf(row) as string };
+}
+
 /**
  * Normalize a URL: ensure it starts with https://
  * Handles: "example.com", "www.example.com", "http://...", "https://..."

@@ -4,12 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
-import { getDisplayName } from "@/lib/profile";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, withDisplayName, type DisplayNameRow } from "@/lib/profile";
 import ProfileClient from "./ProfileClient";
 
 export const revalidate = 60; // Cache 1 minute
 
-type ProfileWithRelations = Profile & {
+// Identité : le client ne reçoit que `full_name`, qui contient le NOM AFFICHÉ
+// (nom de scène si c'est le choix de la personne). Prénom, nom, nom de scène et
+// préférence restent sur le serveur.
+type ProfileWithRelations = Omit<Profile, "first_name" | "last_name" | "stage_name" | "display_name_preference"> & {
   roles: ProfileRole[];
   // Badge « recruteur verifie » EFFECTIF, derive cote serveur : le toggle admin
   // `recruiter_verified` ET un plan Pro actif (modele eco du 10/08/2026 — un
@@ -39,8 +42,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   const { data: profile } = await supabase
     .from("profiles")
     .select(`
-      id, full_name, slug, avatar_url, location, is_available, bio,
-      first_name, last_name, stage_name, display_name_preference,
+      id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio,
       is_recruiting, recruiting_roles, recruiter_verified, plan, status, created_at, updated_at,
       profile_roles ( * ),
       projects!projects_profile_id_fkey (
@@ -48,7 +50,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
         video_url, poster_url, preview_url, status, created_at,
         project_credits (
           *,
-          profiles ( full_name, slug, avatar_url )
+          profiles ( ${DISPLAY_NAME_COLUMNS}, slug, avatar_url )
         )
       )
     `)
@@ -63,7 +65,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   const roles = (profile.profile_roles ?? []) as ProfileRole[];
   const rawProjects = (profile.projects ?? []) as (Project & {
     project_credits: (ProjectCredit & {
-      profiles: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
+      profiles: (DisplayNameRow & Pick<Profile, "slug" | "avatar_url">) | null;
     })[];
   })[];
 
@@ -89,7 +91,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     const { data: ownRoles } = await supabase.rpc("public_profile_film_roles", { p_profile_id: profile.id });
     const ownCreditIds = new Set(((ownRoles ?? []) as { credit_id: string }[]).map((r) => r.credit_id));
     // Nom affiché (nom de scène si c'est son choix), jamais le nom réel à sa place.
-    const self = { full_name: getDisplayName(profile), slug: profile.slug, avatar_url: profile.avatar_url };
+    const self = { full_name: displayNameOf(profile) as string, slug: profile.slug, avatar_url: profile.avatar_url };
     for (const project of rawProjects) {
       project.project_credits = visitorCredits
         .filter((c) => c.project_id === project.id)
@@ -106,7 +108,8 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     const credits = (project.project_credits ?? []).map((credit) => ({
       ...credit,
       project_credits: undefined,
-      profile: credit.profiles ?? null,
+      // Nom affiché de chaque personne créditée, colonnes de nom brutes retirées.
+      profile: credit.profiles ? withDisplayName(credit.profiles) : null,
       profiles: undefined,
     }));
     return {
@@ -119,8 +122,9 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   // Badge « recruteur vérifié » : double condition depuis le 10/08/2026 — le
   // toggle admin ET un plan Pro actif. `plan` est extrait de l'objet par cette
   // destructuration : ce qui part au client (`publicColumns`) ne le contient
-  // plus, seul le booléen dérivé le traverse.
-  const { plan, ...publicColumns } = profile as typeof profile & { plan: string | null };
+  // plus, seul le booléen dérivé le traverse. Même principe pour l'identité :
+  // withDisplayName réduit les colonnes de nom au seul nom affiché.
+  const { plan, ...publicColumns } = withDisplayName(profile as typeof profile & { plan: string | null });
 
   return {
     ...publicColumns,

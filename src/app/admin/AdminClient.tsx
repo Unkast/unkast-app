@@ -23,7 +23,7 @@ interface User { id: string; full_name: string; slug: string; email: string; acc
 interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; declared_role: string | null; }
 // Gestion des films (lot 2 de la route) : films approuves modifies, films sans
 // Responsable, signalements / revendications de films.
-interface EditedFilm { id: string; title: string; slug: string; edited_at: string; edited_by_name: string; }
+interface EditedFilm { id: string; title: string; slug: string; edited_at: string; edited_by_name: string; title_changed: boolean; reported: boolean; approved_title: string | null; }
 interface OrphanFilm { id: string; title: string; slug: string; status: string; visibility: string; }
 interface Claim { id: string; project_id: string; claimant_id: string; kind: "report" | "claim"; message: string; created_at: string; project_title: string; project_slug: string; claimant_name: string; claimant_slug: string; document_url: string | null; }
 // Attribution d'un Responsable : `preset` = demandeur d'une revendication acceptee.
@@ -144,21 +144,32 @@ export default function AdminClient() {
   // Les erreurs (messages serveur, parfois longs) restent affichees plus longtemps.
   function showToast(msg: string, ms = 3000) { setToast(msg); setTimeout(() => setToast(""), ms); }
 
+  // Charge un onglet et range sa reponse.
+  const loadTab = useCallback(async (key: Tab, q = "") => {
+    const res = await fetch(`/api/admin?tab=${key}&q=${q}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (key === "recruiters") { setPendingRecruiters(data.pending || []); setApprovedRecruiters(data.approved || []); setRecruiterEdits(data.edits || []); }
+    if (key === "reports") setReports(data.reports || []);
+    if (key === "users") setUsers(data.users || []);
+    if (key === "films") { setFilms(data.films || []); setEditedFilms(data.edited || []); setOrphanFilms(data.orphans || []); }
+    if (key === "claims") setClaims(data.claims || []);
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin?tab=${tab}&q=${userSearch}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (tab === "recruiters") { setPendingRecruiters(data.pending || []); setApprovedRecruiters(data.approved || []); setRecruiterEdits(data.edits || []); }
-      if (tab === "reports") setReports(data.reports || []);
-      if (tab === "users") setUsers(data.users || []);
-      if (tab === "films") { setFilms(data.films || []); setEditedFilms(data.edited || []); setOrphanFilms(data.orphans || []); }
-      if (tab === "claims") setClaims(data.claims || []);
-    }
+    await loadTab(tab, userSearch);
     setLoading(false);
-  }, [tab, userSearch]);
+  }, [tab, userSearch, loadTab]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Pastilles des onglets : visibles des l'ouverture de l'admin, sans attendre
+  // qu'un onglet soit ouvert. Une fois, au montage (l'onglet actif est charge
+  // par fetchData).
+  useEffect(() => {
+    (["reports", "films", "claims"] as Tab[]).forEach((key) => { loadTab(key); });
+  }, [loadTab]);
 
   // Renvoie true si l'action a porte. `extra` : champs propres a une action
   // (profile_id pour assign_project_owner). Le message d'erreur du serveur est
@@ -289,7 +300,7 @@ export default function AdminClient() {
       <p style={{ fontSize: 13, color: "#555", marginBottom: 24 }}>{date} · {totalPending} action{totalPending !== 1 ? "s" : ""} en attente</p>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto" }}>
+      <div className="no-scrollbar" style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto" }}>
         {([
           ["recruiters", "Recruteurs", pendingRecruiters.length + recruiterEdits.length],
           ["reports", "Signalements", reports.length],
@@ -384,15 +395,15 @@ export default function AdminClient() {
             <>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginTop: 32, marginBottom: 14 }}>Approuvés ({approvedRecruiters.length})</h2>
               {approvedRecruiters.map((r) => (
-                <div key={r.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.full_name}</p>
+                <div key={r.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ minWidth: 0, flex: "1 1 180px" }}>
+                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", overflowWrap: "anywhere", minWidth: 0 }}>{r.full_name}</p>
                       <VerifiedPill verified={r.recruiter_verified} plan={r.plan} />
                     </div>
-                    <p style={{ fontSize: 11, color: "#555" }}>{r.recruiter_company}</p>
+                    <p style={{ fontSize: 11, color: "#555", overflowWrap: "anywhere" }}>{r.recruiter_company}</p>
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {r.recruiter_verified
                       ? <button onClick={() => confirmAction("revoke_recruiter_verified", r.id, `Retirer la vérification de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Retirer vérif.</button>
                       : <button onClick={() => doAction("grant_recruiter_verified", r.id)} disabled={actionLoading === r.id} style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Vérifier</button>
@@ -553,11 +564,16 @@ export default function AdminClient() {
 
           {/* Films approuves modifies depuis leur validation */}
           <h2 style={{ ...sectionTitle, marginTop: 32 }}>Modifiés récemment ({editedFilms.length})</h2>
+          <p style={{ color: "#555", fontSize: 12, marginBottom: 10 }}>Seulement les films à surveiller : titre nettement changé depuis ta validation, ou film signalé.</p>
           {editedFilms.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucune modification à relire.</p>}
           {editedFilms.map((f) => (
             <div key={f.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div style={{ minWidth: 0, flex: "1 1 180px" }}>
                 <Link href={`/projet/${f.slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{f.title}</Link>
+                {f.title_changed && f.approved_title && (
+                  <p style={{ fontSize: 12, color: "#f59e0b", overflowWrap: "anywhere" }}>Titre validé : {f.approved_title}</p>
+                )}
+                {f.reported && <p style={{ fontSize: 12, color: "#ef4444" }}>Film signalé</p>}
                 <p style={{ fontSize: 11, color: "#555" }}>Modifié par {f.edited_by_name || "un compte supprimé"} · {new Date(f.edited_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>

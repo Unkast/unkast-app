@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 import RechercheClient from "./RechercheClient";
 
 export const revalidate = 3600; // Cache 1 hour (static counts)
@@ -30,7 +31,7 @@ async function getRecruitingProfiles() {
   const { data } = await supabase
     .from("profiles")
     .select(`
-      id, full_name, slug, avatar_url, location, is_recruiting, recruiting_roles, account_type,
+      id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_recruiting, recruiting_roles, account_type,
       profile_roles ( role_name )
     `)
     .eq("status", "approved")
@@ -45,7 +46,7 @@ async function getRecruitingProfiles() {
     const roles = p.profile_roles as { role_name: string }[] | null;
     return {
       id: p.id,
-      full_name: p.full_name,
+      full_name: displayNameOf(p as DisplayNameRow),
       slug: p.slug,
       avatar_url: p.avatar_url,
       location: p.location,

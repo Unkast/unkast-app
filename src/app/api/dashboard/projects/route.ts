@@ -7,7 +7,6 @@ import {
   CONTACT_REFUSED_MESSAGE,
   DECLARED_ROLES,
   MAX_PROJECTS_FREE,
-  MAX_PROJECTS_PRO,
   PROJECT_VISIBILITIES,
   RIGHTS_DECLARATION_VERSION,
 } from "@/lib/constants";
@@ -17,6 +16,7 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { detectContactIn } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
 import { fetchVideoMeta } from "@/lib/oembed";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
 const RIGHTS_REQUIRED = {
   code: "rights_declaration_required",
@@ -28,9 +28,14 @@ const CLIENT_AUTHORIZATION_REQUIRED = {
 };
 const CONTACT_REFUSED = { code: "contact_refused", error: CONTACT_REFUSED_MESSAGE };
 
-const planLimit = (plan: string | null | undefined) =>
-  plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE;
-const limitMessage = (limit: number) => `Maximum ${limit} films pour ton offre actuelle.`;
+// Plafond du plan : null = illimite (Pro).
+const planLimit = (plan: string | null | undefined) => (plan === "pro" ? null : MAX_PROJECTS_FREE);
+const limitMessage = (limit: number | null) =>
+  `Ton compte gratuit est limité à ${limit ?? MAX_PROJECTS_FREE} films en ligne ou en attente de validation. Dépublie un film ou passe en Pro.`;
+// Un film occupe une place s'il est en attente, ou approuve et en ligne (public
+// ou membres seulement). Meme regle que project_slots_used en base.
+const takesSlot = (p: { status: string | null; visibility: string | null }) =>
+  p.status === "pending" || (p.status === "approved" && p.visibility !== "unpublished");
 
 const isDeclaredRole = (v: unknown) => DECLARED_ROLES.some((r) => r.value === v);
 const isCategory = (v: unknown) => typeof v === "string" && Object.hasOwn(CATEGORY_LABELS, v);
@@ -116,8 +121,8 @@ export async function GET() {
     const [{ data: invProjects }, { data: inviters }] = await Promise.all([
       admin.from("projects").select("id, title, slug").in("id", invites.map((i) => i.project_id)),
       inviterIds.length
-        ? admin.from("profiles").select("id, full_name").in("id", inviterIds)
-        : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+        ? admin.from("profiles").select(`id, ${DISPLAY_NAME_COLUMNS}`).in("id", inviterIds)
+        : Promise.resolve({ data: [] as ({ id: string } & DisplayNameRow)[] }),
     ]);
     managerInvites = invites.map((i) => {
       const proj = (invProjects ?? []).find((p) => p.id === i.project_id);
@@ -126,7 +131,7 @@ export async function GET() {
         project_id: i.project_id,
         project_title: proj?.title ?? null,
         project_slug: proj?.slug ?? null,
-        invited_by: (inviters ?? []).find((p) => p.id === i.created_by)?.full_name ?? null,
+        invited_by: displayNameOf((inviters ?? []).find((p) => p.id === i.created_by)),
         created_at: i.created_at,
       };
     });
@@ -142,7 +147,8 @@ export async function GET() {
         needs_rights_declaration: isOwner && !declared.has(p.id),
       };
     }),
-    owned_count: ownedIds.length,
+    // Places occupees dans le plafond (les films refuses et depublies n'en prennent pas).
+    owned_count: list.filter((p) => p.profile_id === user.id && takesSlot(p)).length,
     limit: planLimit(planRow?.plan),
     manager_invites: managerInvites,
   });
@@ -184,19 +190,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(CONTACT_REFUSED, { status: 400 });
   }
 
-  // Plafond plan-aware, valeurs dans lib/constants. Plan lu cote serveur (garde).
-  // Verification rapide ici ; publish_project la refait de facon atomique.
+  // Plafond du plan, lu cote serveur (garde). publish_project le verifie de facon
+  // atomique : pas de pre-controle ici, la regle ne vit qu'a un endroit.
   const projectLimit = planLimit(guard.profile.plan);
-  const { count } = await supabase
-    .from("projects")
-    .select("*", { count: "exact", head: true })
-    .eq("profile_id", user.id);
-  if ((count ?? 0) >= projectLimit) {
-    return NextResponse.json(
-      { code: "limit_reached", error: limitMessage(projectLimit) },
-      { status: 400 }
-    );
-  }
 
   const meta = await fetchVideoMeta(video_url);
   if (!meta.ok) {
@@ -387,6 +383,10 @@ export async function PATCH(request: NextRequest) {
           { code: "rights_declaration_required", error: "Confirme tes droits de diffusion avant de modifier ce film." },
           { status: 409 }
         );
+      }
+      // Remise en ligne d'un film depublie alors que le compte gratuit est au plafond.
+      if (error.message?.includes("limit_reached")) {
+        return NextResponse.json({ code: "limit_reached", error: limitMessage(null) }, { status: 409 });
       }
       // Passage en publicite ou en clip sans accord du client declare par le Responsable.
       if (error.message?.includes("client_authorization_required")) {

@@ -9,6 +9,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import HeroCarousel from "./HeroCarousel";
 import ConversionBanner from "./ConversionBanner";
 import { TEAM_SELECT, loadFilmTeams, type FilmTeam } from "@/lib/film-team";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
 export const revalidate = 300; // Cache 5 minutes
 
@@ -131,7 +132,7 @@ async function getHomeData() {
   const { data: rawTalents } = await supabase
     .from("profiles")
     .select(`
-      id, full_name, slug, avatar_url, location, is_available,
+      id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available,
       profile_roles ( role_name ),
       projects!projects_profile_id_fkey ( id )
     `)
@@ -145,7 +146,7 @@ async function getHomeData() {
     const projects = t.projects as { id: string }[] | null;
     return {
       id: t.id as string,
-      full_name: t.full_name as string,
+      full_name: displayNameOf(t as DisplayNameRow) as string,
       slug: t.slug as string,
       avatar_url: t.avatar_url as string | null,
       location: t.location as string | null,

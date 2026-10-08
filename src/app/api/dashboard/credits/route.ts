@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 
 // GET: fetch credit data for dashboard
 // Returns:
@@ -28,12 +29,12 @@ export async function GET() {
     (reqs ?? []).map(async (req) => {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select(DISPLAY_NAME_COLUMNS)
         .eq("id", req.requester_id)
         .single();
       return {
         ...req,
-        requester_name: profile?.full_name || null,
+        requester_name: displayNameOf(profile),
       };
     })
   );

@@ -7,6 +7,7 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback, useSyncExter
 import { createBrowserClient } from "@supabase/ssr";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import Avatar from "@/components/Avatar";
+import { getDisplayName } from "@/lib/profile";
 import LiquidDock from "@/components/LiquidDock";
 import MobileTabBar from "@/components/MobileTabBar";
 
@@ -245,7 +246,7 @@ export default function AppShell({
           // hors perimetre de cette route). On la preserve depuis l'etat
           // precedent plutot que de la perdre a chaque re-sync post-connexion.
           setUser((prev) => ({
-            full_name: data.profile.full_name,
+            full_name: getDisplayName(data.profile),
             slug: data.profile.slug,
             account_type: data.profile.account_type || "talent",
             avatar_url: data.profile.avatar_url,

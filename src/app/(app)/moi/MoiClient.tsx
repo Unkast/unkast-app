@@ -7,7 +7,7 @@ import { PHONE_CODES } from "@/lib/phone-codes";
 import type { Profile, ProfileRole, ProjectCredit, CreditRequest } from "@/types/database";
 import AvatarUpload from "@/components/AvatarUpload";
 import Avatar from "@/components/Avatar";
-import { normalizeUrl, formatInstagram } from "@/lib/profile";
+import { normalizeUrl, formatInstagram, getDisplayName as profileDisplayName } from "@/lib/profile";
 import RoleSelector from "@/components/RoleSelector";
 import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
@@ -140,12 +140,7 @@ export default function MoiClient() {
   })();
 
   function getDisplayName(): string {
-    if (!profile) return "Utilisateur";
-    if ((profile as any).display_name_preference === "stage_name" && (profile as any).stage_name) {
-      return (profile as any).stage_name;
-    }
-    const parts = [(profile as any).first_name, (profile as any).last_name].filter(Boolean);
-    return parts.join(" ") || profile.full_name || "Utilisateur";
+    return profile ? profileDisplayName(profile) : "Utilisateur";
   }
 
   function getInitials(): string {
@@ -176,7 +171,7 @@ export default function MoiClient() {
       setFilms({
         projects: data.projects ?? [],
         owned_count: data.owned_count ?? 0,
-        limit: data.limit ?? MAX_PROJECTS_FREE,
+        limit: data.limit === undefined ? MAX_PROJECTS_FREE : data.limit,
         manager_invites: data.manager_invites ?? [],
       });
     }

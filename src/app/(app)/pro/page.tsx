@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { isGrantValid } from "@/lib/pro-plan";
-import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -12,9 +12,9 @@ import GlassCard from "@/components/ui/GlassCard";
 
 const FREE_FEATURES = [
   { label: "Profil public", included: true },
-  { label: `${MAX_PROJECTS_FREE} publications de films max`, included: true },
+  { label: `${MAX_PROJECTS_FREE} films en ligne max`, included: true },
   { label: "Apparaitre dans les credits", included: true },
-  { label: `Jusqu'a ${MAX_PROJECTS_PRO} films`, included: false },
+  { label: "Films illimités", included: false },
   { label: "Messagerie directe", included: false },
   { label: "Contact talents", included: false },
   { label: "Badge Pro verifie", included: false },
@@ -23,7 +23,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   { label: "Profil public", included: true },
-  { label: `Jusqu'a ${MAX_PROJECTS_PRO} films (au lieu de ${MAX_PROJECTS_FREE})`, included: true },
+  { label: `Films illimités (au lieu de ${MAX_PROJECTS_FREE})`, included: true },
   { label: "Apparaitre dans les credits", included: true },
   { label: "Messagerie directe", included: true },
   { label: "Contact talents", included: true },

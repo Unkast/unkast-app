@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
+import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 // POST: create a project invitation (gestionnaires du film)
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
   // Push notification
   sendPushToUser(invited_profile_id, {
     title: "Nouvelle invitation",
-    body: `${guard.profile.full_name} t'invite à rejoindre "${project.title}"`,
+    body: `${guard.profile.display_name} t'invite à rejoindre "${project.title}"`,
     url: "/moi",
   }).catch(() => {});
 
@@ -72,8 +73,8 @@ export async function GET() {
 
   const receivedEnriched = await Promise.all((received ?? []).map(async (inv) => {
     const { data: project } = await admin.from("projects").select("title, slug, poster_url").eq("id", inv.project_id).single();
-    const { data: inviter } = await admin.from("profiles").select("full_name, slug").eq("id", inv.inviter_id).single();
-    return { ...inv, project_title: project?.title, project_slug: project?.slug, project_poster: project?.poster_url, inviter_name: inviter?.full_name, inviter_slug: inviter?.slug };
+    const { data: inviter } = await admin.from("profiles").select(`${DISPLAY_NAME_COLUMNS}, slug`).eq("id", inv.inviter_id).single();
+    return { ...inv, project_title: project?.title, project_slug: project?.slug, project_poster: project?.poster_url, inviter_name: displayNameOf(inviter) ?? undefined, inviter_slug: inviter?.slug };
   }));
 
   // Invitations sent (as creator)
@@ -82,8 +83,8 @@ export async function GET() {
 
   const sentEnriched = await Promise.all((sent ?? []).map(async (inv) => {
     const { data: project } = await admin.from("projects").select("title, slug").eq("id", inv.project_id).single();
-    const { data: invited } = await admin.from("profiles").select("full_name, slug, avatar_url").eq("id", inv.invited_profile_id).single();
-    return { ...inv, project_title: project?.title, project_slug: project?.slug, invited_name: invited?.full_name, invited_slug: invited?.slug, invited_avatar: invited?.avatar_url };
+    const { data: invited } = await admin.from("profiles").select(`${DISPLAY_NAME_COLUMNS}, slug, avatar_url`).eq("id", inv.invited_profile_id).single();
+    return { ...inv, project_title: project?.title, project_slug: project?.slug, invited_name: displayNameOf(invited) ?? undefined, invited_slug: invited?.slug, invited_avatar: invited?.avatar_url };
   }));
 
   return NextResponse.json({ received: receivedEnriched, sent: sentEnriched });

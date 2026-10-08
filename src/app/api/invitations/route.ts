@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   // 5) Envoi via Resend (sauté proprement en dev sans clé).
   const result = await sendInvitationEmail({
     to: email,
-    inviterName: profile.full_name || "Un membre d'Unkast",
+    inviterName: profile.display_name || "Un membre d'Unkast",
     role,
     projectTitle: project.title,
     token: String(invitation.token),

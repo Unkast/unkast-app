@@ -46,19 +46,17 @@ export async function PATCH(
     });
 
     // Notify creator
-    const { data: talent } = await admin.from("profiles").select("full_name").eq("id", user.id).single();
     const { data: project } = await admin.from("projects").select("title").eq("id", inv.project_id).single();
     sendPushToUser(inv.inviter_id, {
       title: "Invitation acceptée !",
-      body: `${talent?.full_name} a rejoint l'équipe de "${project?.title}"`,
+      body: `${guard.profile.display_name} a rejoint l'équipe de "${project?.title}"`,
       url: "/moi",
     }).catch(() => {});
   } else {
     // Notify creator of refusal
-    const { data: talent } = await admin.from("profiles").select("full_name").eq("id", user.id).single();
     sendPushToUser(inv.inviter_id, {
       title: "Invitation déclinée",
-      body: `${talent?.full_name} a décliné ton invitation`,
+      body: `${guard.profile.display_name} a décliné ton invitation`,
       url: "/moi",
     }).catch(() => {});
   }

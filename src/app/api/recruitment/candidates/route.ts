@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 import { getProUser } from "../guard";
 
 // GET : candidatures recues par le recruteur, groupees par poste.
@@ -16,7 +17,7 @@ export async function GET() {
   // 1. Signaux actifs vers moi + profil talent (disambiguation FK par colonne).
   const { data: signals, error } = await supabase
     .from("availability_signals")
-    .select("talent_id, role, created_at, expires_at, talent:profiles!talent_id(full_name, slug, avatar_url, location)")
+    .select(`talent_id, role, created_at, expires_at, talent:profiles!talent_id(${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location)`)
     .eq("recruiter_id", me)
     .gt("expires_at", new Date().toISOString());
 
@@ -52,7 +53,7 @@ export async function GET() {
       role: s.role,
       expires_at: s.expires_at,
       created_at: s.created_at,
-      full_name: (talent as Record<string, unknown>)?.full_name ?? "Talent",
+      full_name: displayNameOf(talent as DisplayNameRow | null) ?? "Talent",
       slug: (talent as Record<string, unknown>)?.slug ?? null,
       avatar_url: (talent as Record<string, unknown>)?.avatar_url ?? null,
       location: (talent as Record<string, unknown>)?.location ?? null,

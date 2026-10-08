@@ -8,17 +8,18 @@
 //   les films de la page.
 import type { createClient } from "@/lib/supabase/server";
 import { directorNames, isDirectorRole } from "@/lib/credits";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 import type { PublicProjectCredit } from "@/types/database";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 /** Fragment de select a imbriquer sous `projects` (lu par les membres connectes). */
-export const TEAM_SELECT = "project_credits ( role_on_project, ghost_name, profiles ( full_name, slug ) )";
+export const TEAM_SELECT = `project_credits ( role_on_project, ghost_name, profiles ( ${DISPLAY_NAME_COLUMNS}, slug ) )`;
 
 type MemberCredit = {
   role_on_project: string;
   ghost_name: string | null;
-  profiles: { full_name: string; slug: string } | null;
+  profiles: (DisplayNameRow & { slug: string }) | null;
 };
 
 export type FilmTeam = {
@@ -78,7 +79,7 @@ export async function loadFilmTeams(
         summarize(
           credits.map((c) => ({
             role_on_project: c.role_on_project,
-            name: c.profiles?.full_name ?? c.ghost_name,
+            name: displayNameOf(c.profiles) ?? c.ghost_name,
             slug: c.profiles?.slug ?? null,
           }))
         )

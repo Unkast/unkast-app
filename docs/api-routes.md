@@ -167,7 +167,7 @@ Modèle : [database.md](database.md#gestion-des-films-migration-20261008_film_ma
 | | POST | Responsable (`{profile_id}` : inviter) ou personne créditée (sans corps : demander) | `request_project_manager` |
 | | PATCH | destinataire de la demande | `{request_id, accept}`, `decide_project_manager` |
 | | DELETE | `?profile_id=` : Responsable ou soi-même ; `?request_id=` : auteur d'une demande en attente | |
-| `/api/projects/[id]/transfer` | POST | Responsable | `{profile_id}` d'un co-gestionnaire ; refusé si le destinataire est au plafond |
+| `/api/projects/[id]/transfer` | POST | Responsable | `{profile_id}` d'un co-gestionnaire ; refusé si le destinataire gratuit est au plafond et que le film occupe une place (en ligne ou en attente) |
 | `/api/projects/[id]/claims` | POST | connecté | multipart `kind` (`report`/`claim`), `message`, `file` (obligatoire pour `claim`, 4 Mo max, limite Vercel de 4,5 Mo) ; bucket privé `claims` |
 | `/api/dashboard/career` | GET, POST, PATCH, DELETE | propriétaire | Parcours. Codes : `contact_refused` (détecteur), `link_refused` (CHECK de la base), `career_limit_reached` |
 
@@ -185,7 +185,7 @@ conversation. Les liens Instagram et site web du profil ne sont pas contrôlés.
 sur l'existant.
 
 **Admin** (`/api/admin`) : `tab=films` renvoie `source_title`, `source_author`, `declared_role`, les
-films `edited` (modifiés récemment) et `orphans` (sans Responsable) ; `tab=claims` renvoie les
+films `edited` (modifiés récemment, **seulement** ceux à surveiller : `title_changed` par rapport à `approved_title`, ou `reported`) et `orphans` (sans Responsable) ; `tab=claims` renvoie les
 signalements et revendications avec une URL signée du justificatif ; `tab=reports` renvoie les
 signalements automatiques, le contenu d'une entrée de Parcours signalée, l'expéditeur et le
 destinataire d'un message signalé. Actions : `mark_film_edit_seen`, `accept_claim`, `reject_claim`,

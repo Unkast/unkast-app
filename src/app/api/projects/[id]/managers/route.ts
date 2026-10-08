@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
+import { DISPLAY_NAME_COLUMNS, withDisplayName } from "@/lib/profile";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
 type Params = { params: Promise<{ id: string }> };
@@ -87,9 +88,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
     ]),
   ];
   const { data: profileRows } = profileIds.length
-    ? await supabase.from("profiles").select("id, full_name, slug, avatar_url").in("id", profileIds)
+    ? await supabase.from("profiles").select(`id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url`).in("id", profileIds)
     : { data: [] };
-  const profiles = new Map((profileRows ?? []).map((p) => [p.id as string, p as ProfileLite]));
+  // full_name = nom d'affichage : les colonnes de nom brutes ne sortent pas d'ici.
+  const profiles = new Map((profileRows ?? []).map((p) => [p.id as string, withDisplayName(p) as ProfileLite]));
   const owner = project.profile_id ? profiles.get(project.profile_id) : undefined;
 
   return NextResponse.json({
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const recipient: string | null = result.kind === "invite" ? target : result.owner_id;
   if (recipient) {
     const title = await projectTitle(admin, id);
-    const name = guard.profile.full_name ?? "Quelqu'un";
+    const name = guard.profile.display_name ?? "Quelqu'un";
     sendPushToUser(
       recipient,
       result.kind === "invite"
@@ -214,7 +216,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const recipient: string | null = result.kind === "invite" ? result.owner_id : result.profile_id;
   if (recipient) {
     const title = await projectTitle(admin, id);
-    const name = guard.profile.full_name ?? "Quelqu'un";
+    const name = guard.profile.display_name ?? "Quelqu'un";
     const payload =
       result.kind === "invite"
         ? accept

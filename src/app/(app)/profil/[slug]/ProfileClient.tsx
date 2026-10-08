@@ -15,7 +15,6 @@ import Avatar from "@/components/Avatar";
 import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
-import { getDisplayName } from "@/lib/profile";
 import { directorNames } from "@/lib/credits";
 import { CAREER_KINDS } from "@/lib/constants";
 
@@ -27,7 +26,9 @@ type ProjectWithCredits = Project & {
   credits: CreditWithProfile[];
 };
 
-type ProfileData = Profile & {
+// `full_name` contient le nom affiché, calculé par page.tsx : le client ne reçoit
+// ni prénom, ni nom, ni nom de scène bruts.
+type ProfileData = Omit<Profile, "first_name" | "last_name" | "stage_name" | "display_name_preference"> & {
   roles: ProfileRole[];
   // Badge « recruteur verifie » deja arbitre cote serveur (recruiter_verified ET
   // plan='pro') — voir page.tsx. Le client n'a pas le plan et ne rejoue pas la
@@ -176,8 +177,8 @@ export default function ProfileClient({
   }
 
   // --- Recrutement : disponibilité (côté talent) ---
-  const isRecruiting = Boolean((profile as Profile).is_recruiting);
-  const recruitingRoles = ((profile as Profile).recruiting_roles ?? []) as string[];
+  const isRecruiting = Boolean(profile.is_recruiting);
+  const recruitingRoles = (profile.recruiting_roles ?? []) as string[];
 
   // Hydrate l'état des signaux pour un visiteur connecté non-Pro (les Pro ne
   // voient pas le bloc : Pro ↔ Pro = contact direct).
@@ -266,7 +267,7 @@ export default function ProfileClient({
           <div>
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <h1 className="text-[28px] font-semibold text-sheen" style={{ letterSpacing: "-0.5px" }}>
-                {getDisplayName(profile as Parameters<typeof getDisplayName>[0])}
+                {profile.full_name}
               </h1>
               {profile.is_available && <Badge variant="available" />}
             </div>

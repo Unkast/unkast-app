@@ -288,6 +288,7 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/lib/film-team.ts` | UTILITY | réalisateur et équipe d'un film pour les pages de lecture ; visiteur via `public_project_credits`, un appel par page |
 | `src/lib/credits.ts` | UTILITY | `isDirectorRole`, `directorNames` |
 | `src/lib/contact-detector.ts`, `src/lib/contact-flag.ts` | UTILITY | détecteur de coordonnées et signalement automatique |
+| `src/lib/title-change.ts` | UTILITY | `titleChangedALot` : titre nettement différent du titre validé (liste « modifiés récemment » de l'admin) |
 | `src/lib/oembed.ts` | UTILITY | titre et chaîne d'une vidéo, refus d'une vidéo privée |
 
 Points de vigilance :
@@ -295,6 +296,7 @@ Points de vigilance :
 - Un visiteur ne lit plus `project_credits` : passer par `src/lib/film-team.ts`.
 - Les embeds PostgREST entre `profiles` et `projects` doivent être **qualifiés** (`projects!projects_profile_id_fkey`, `profiles!projects_profile_id_fkey`) : `project_managers` crée une seconde relation entre les deux tables. À confirmer une fois la base migrée.
 - Toute lecture de films avec le service role doit filtrer elle-même statut et visibilité.
+- **Nom d'une personne** : toujours le nom d'affichage, calculé côté serveur (`DISPLAY_NAME_COLUMNS`, `displayNameOf`, `withDisplayName` dans `src/lib/profile.ts`, `guard.profile.display_name` dans `src/lib/auth-guard.ts`). Les colonnes brutes `full_name`, `first_name`, `last_name`, `stage_name` ne partent pas au navigateur. Exceptions voulues : l'administration, le compte de la personne elle-même, la facturation. La recherche filtre et trie encore sur `full_name`.
 
 ## Composants transverses (UTILITY / partages)
 

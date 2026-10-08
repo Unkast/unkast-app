@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
@@ -47,7 +47,8 @@ export async function POST(
     p_actor: user.id,
     p_project: id,
     p_new_owner: profile_id,
-    p_limit: recipient?.plan === "pro" ? MAX_PROJECTS_PRO : MAX_PROJECTS_FREE,
+    // null = illimite (Pro). Un film depublie ou refuse ne prend pas de place.
+    p_limit: recipient?.plan === "pro" ? null : MAX_PROJECTS_FREE,
   });
 
   if (error || !result) {
@@ -67,7 +68,7 @@ export async function POST(
   const { data: project } = await admin.from("projects").select("title").eq("id", id).maybeSingle();
   sendPushToUser(profile_id, {
     title: "Tu es Responsable d'un film",
-    body: `${guard.profile.full_name ?? "Quelqu'un"} t'a transféré "${project?.title ?? "un film"}"`,
+    body: `${guard.profile.display_name ?? "Quelqu'un"} t'a transféré "${project?.title ?? "un film"}"`,
     url: "/moi",
   }).catch(() => {});
 
