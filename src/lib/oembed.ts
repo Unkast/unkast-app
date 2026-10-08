@@ -13,12 +13,12 @@ import { extractVideoKey } from "@/lib/utils";
 // transitoire). Plateforme non reconnue (video_key null) : aucun controle.
 
 export type VideoMeta =
-  | { ok: true; title: string | null; author: string | null; thumbnail: string | null }
+  | { ok: true; title: string | null; author: string | null; thumbnail: string | null; duration: number | null }
   | { ok: false; reason: "private" };
 
 export async function fetchVideoMeta(videoUrl: string): Promise<VideoMeta> {
   const key = extractVideoKey(videoUrl);
-  if (!key) return { ok: true, title: null, author: null, thumbnail: null };
+  if (!key) return { ok: true, title: null, author: null, thumbnail: null, duration: null };
 
   // Vimeo : width=1280 demande la vignette en grande taille.
   const endpoint = key.startsWith("youtube:")
@@ -30,8 +30,8 @@ export async function fetchVideoMeta(videoUrl: string): Promise<VideoMeta> {
     if (res.status === 401 || res.status === 403 || res.status === 404) {
       return { ok: false, reason: "private" };
     }
-    if (!res.ok) return { ok: true, title: null, author: null, thumbnail: null };
-    const data = (await res.json()) as { title?: unknown; author_name?: unknown; thumbnail_url?: unknown };
+    if (!res.ok) return { ok: true, title: null, author: null, thumbnail: null, duration: null };
+    const data = (await res.json()) as { title?: unknown; author_name?: unknown; thumbnail_url?: unknown; duration?: unknown };
     const fallback = typeof data.thumbnail_url === "string" && data.thumbnail_url.startsWith("https://")
       ? data.thumbnail_url
       : null;
@@ -40,9 +40,11 @@ export async function fetchVideoMeta(videoUrl: string): Promise<VideoMeta> {
       title: typeof data.title === "string" ? data.title.slice(0, 300) : null,
       author: typeof data.author_name === "string" ? data.author_name.slice(0, 200) : null,
       thumbnail: key.startsWith("youtube:") ? await bestYoutubeThumbnail(key.slice(8), fallback) : fallback,
+      // Duree en secondes : Vimeo la donne, YouTube non.
+      duration: typeof data.duration === "number" && data.duration > 0 ? Math.round(data.duration) : null,
     };
   } catch {
-    return { ok: true, title: null, author: null, thumbnail: null };
+    return { ok: true, title: null, author: null, thumbnail: null, duration: null };
   }
 }
 

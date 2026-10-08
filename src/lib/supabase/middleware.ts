@@ -43,8 +43,11 @@ export async function updateSession(request: NextRequest) {
   // Protect /admin — must be authenticated + is_admin
   if (pathname.startsWith("/admin")) {
     if (!user) {
+      // La destination est gardee dans ?next= : le lien de l'email d'alerte
+      // (/admin?tab=films) ramene sur l'onglet demande apres la connexion.
       const url = request.nextUrl.clone();
       url.pathname = "/connexion";
+      url.search = `?next=${encodeURIComponent(pathname + request.nextUrl.search)}`;
       return NextResponse.redirect(url);
     }
     // is_admin est revoque pour anon/authenticated : lecture via le client de

@@ -44,6 +44,8 @@ export interface ManagedProject extends Project {
   credits: ProjectCredit[];
   my_role: "owner" | "manager";
   needs_rights_declaration: boolean;
+  /** Film refusé : phrases à montrer (motifs, puis note de l'admin). */
+  refusal: string[] | null;
 }
 
 export interface ManagerInvite {

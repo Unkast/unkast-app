@@ -159,7 +159,7 @@ Modèle : [database.md](database.md#gestion-des-films-migration-20261008_film_ma
 
 | Route | Méthodes | Qui | Notes |
 |---|---|---|---|
-| `/api/dashboard/projects` | GET | connecté | films dont on est Responsable ou co-gestionnaire (`my_role`, `needs_rights_declaration`, crédits), `owned_count`, `limit`, `manager_invites` (invitations à co-gérer reçues) |
+| `/api/dashboard/projects` | GET | connecté | films dont on est Responsable ou co-gestionnaire (`my_role`, `needs_rights_declaration`, `refusal` : phrases du motif pour un film refusé, crédits), `owned_count`, `limit`, `manager_invites` (invitations à co-gérer reçues) |
 | | POST | connecté, tout type de compte | publication via `publish_project`. Corps : champs du film + `declared_role`, `rights_accepted`, `client_authorized`. oEmbed avant l'appel (`lib/oembed.ts`). Codes : `rights_declaration_required`, `client_authorization_required`, `contact_refused`, `limit_reached`, `video_private`, 409 `duplicate` avec `project: {id, slug, title, is_visible}` (titre et slug nuls si le film n'est pas visible) |
 | | PATCH | gestionnaire | `{id, title?, description?, category?, year?, visibility?, declaration?}`. 409 `rights_declaration_required` ou `client_authorization_required`, 403 `owner_only` (visibilité), 400 `contact_refused` |
 | | DELETE | Responsable | 404 si rien n'est supprimé |
@@ -179,6 +179,10 @@ Routes existantes modifiées : `/api/signup` (film via `publish_project`, répon
 `/api/dashboard/profile` (bio passée au détecteur seulement quand elle change),
 `/api/messages` (détecteur sur les 3 premiers messages), `/api/admin` (voir plus bas).
 
+**Alerte admin** : à chaque film publié (depuis « Mes films » ou l'inscription), `sendAdminNewFilmEmail`
+envoie un email à `ADMIN_ALERT_EMAIL` avec un lien vers `/admin?tab=films`. Variable absente :
+aucun email. L'envoi ne bloque jamais la publication.
+
 **Détecteur de coordonnées** (`lib/contact-detector.ts`, fonction pure) : `obvious` = refus avec
 `CONTACT_REFUSED_MESSAGE`, `doubtful` = texte enregistré puis signalé à l'admin par
 `lib/contact-flag.ts` (motif `contact_info`, sans auteur, un seul signalement en attente par cible).
@@ -190,7 +194,7 @@ sur l'existant.
 films `edited` (modifiés récemment, **seulement** ceux à surveiller : `title_changed` par rapport à `approved_title`, ou `reported`) et `orphans` (sans Responsable) ; `tab=claims` renvoie les
 signalements et revendications avec une URL signée du justificatif ; `tab=reports` renvoie les
 signalements automatiques, le contenu d'une entrée de Parcours signalée, l'expéditeur et le
-destinataire d'un message signalé. Actions : `backfill_posters` (vignette de la vidéo pour les films sans image, par lots de 20, `offset` / `next_offset`), `mark_film_edit_seen`, `accept_claim`, `reject_claim`,
+destinataire d'un message signalé. `refuse_film` attend `{ reasons: string[], note? }` (au moins un motif, `autre` exige une note) : il enregistre le motif, puis envoie au Responsable seul un email (`sendFilmRefusedEmail`) et une notification push. `tab=films` renvoie aussi `source_duration`. Actions : `backfill_posters` (vignette de la vidéo pour les films sans image, par lots de 20, `offset` / `next_offset`), `mark_film_edit_seen`, `accept_claim`, `reject_claim`,
 `assign_project_owner`, `delete_career_entry`. Accepter une revendication ne transfère pas le film :
 l'admin l'attribue ensuite avec `assign_project_owner` (deux gestes, voulu).
 

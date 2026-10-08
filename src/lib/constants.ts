@@ -202,3 +202,23 @@ export const CAREER_KINDS: { value: CareerKind; label: string }[] = [
 // Coordonnees refusees dans la bio, le Parcours et la description des films.
 export const CONTACT_REFUSED_MESSAGE =
   "Ajoute tes coordonnées dans la section Contact de ton profil. Elles ne sont pas affichées publiquement.";
+
+// -----------------------------------------------------------------------------
+// Refus d'un film par l'admin (migration 20261011_film_refusal_reasons.sql)
+// -----------------------------------------------------------------------------
+// `label` : pastille de l'admin. `message` : ce que lit le Responsable (email et
+// carte du film refuse). « autre » n'a pas de message : c'est la note libre de
+// l'admin qui est montree. Les valeurs sont aussi dans le CHECK de la base.
+export const REFUSAL_REASONS: { value: string; label: string; message: string | null }[] = [
+  { value: "son", label: "Son", message: "La qualité du son ne permet pas de bien apprécier le film." },
+  { value: "image", label: "Image", message: "La qualité de l'image ne permet pas de bien apprécier le film." },
+  { value: "amateur", label: "Trop amateur", message: "Le film n'est pas encore au niveau de finition que nous présentons sur Unkast." },
+  { value: "hors_sujet", label: "Hors sujet", message: "Le film ne correspond pas à ce que nous présentons sur Unkast." },
+  { value: "droits", label: "Droits douteux", message: "Nous n'avons pas pu vérifier que tu peux diffuser ce film. Écris-nous si tu as un justificatif." },
+  { value: "autre", label: "Autre", message: null },
+];
+
+/** Phrases a montrer au Responsable pour une liste de motifs (sans la note libre). */
+export function refusalMessages(reasons: string[] | null | undefined): string[] {
+  return REFUSAL_REASONS.filter((r) => r.message && (reasons ?? []).includes(r.value)).map((r) => r.message as string);
+}

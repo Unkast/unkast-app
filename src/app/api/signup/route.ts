@@ -11,7 +11,7 @@ import { fetchVideoMeta } from "@/lib/oembed";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
-import { sendConfirmationEmail } from "@/lib/email";
+import { sendConfirmationEmail, sendAdminNewFilmEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
@@ -222,9 +222,22 @@ export async function POST(request: NextRequest) {
         videoSkippedReason = "rights";
       } else if (!result?.ok) {
         videoFailed = true;
-      } else if (meta.thumbnail) {
+      } else {
         // Image du film par defaut : la vignette de la video.
-        await supabase.from("projects").update({ poster_url: meta.thumbnail }).eq("id", result.project_id);
+        if (meta.thumbnail) {
+          await supabase.from("projects").update({ poster_url: meta.thumbnail }).eq("id", result.project_id);
+        }
+        // Duree de la video (Vimeo seulement), montree a l'admin.
+        if (meta.duration) {
+          await supabase.from("project_moderation").update({ source_duration: meta.duration }).eq("project_id", result.project_id);
+        }
+        // Alerte admin : un film attend sa validation. Jamais bloquant.
+        await sendAdminNewFilmEmail({
+          projectTitle: project.title,
+          ownerName: full_name,
+          sourceTitle: meta.title,
+          sourceAuthor: meta.author,
+        });
       }
     }
   }

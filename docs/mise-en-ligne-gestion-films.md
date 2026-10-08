@@ -153,6 +153,29 @@ deployer, puis ses trois verifications.
       films. Connecte, le film s'affiche normalement, sans carte verrouillee.
 - [ ] **Film depublie** : toujours introuvable pour un visiteur, aucune carte.
 
+## 4 quater. Lot « admin rapide »
+
+Avant de deployer :
+- [ ] Executer `20261011_film_refusal_reasons.sql`, puis ses deux verifications.
+- [ ] Vercel, Settings, Environment Variables, Production : ajouter `ADMIN_ALERT_EMAIL` avec
+      l'adresse qui doit recevoir les alertes. Sans elle, aucune alerte ne part (et rien ne casse).
+      Redeployer apres l'ajout : une variable n'est lue qu'au deploiement suivant.
+
+A tester, sur telephone :
+- [ ] **Alerte** : publier un film avec un compte de test. Un email « Film a valider » arrive a
+      l'adresse d'alerte ; son bouton ouvre l'admin directement sur l'onglet Films.
+- [ ] **Carte de validation** : le lecteur se lance dans la carte ; titre et chaine d'origine,
+      role declare, categorie et duree (Vimeo seulement) sont lisibles sans faire defiler de
+      cote ; « Approuver » et « Refuser » se touchent au pouce.
+- [ ] **Refuser** : les motifs se deplient dans la carte, plusieurs se cochent ; « Autre » demande
+      un texte ; « Confirmer le refus » reste grise sans motif.
+- [ ] **Message recu** (compte de test) : l'email de refus arrive avec les motifs choisis ; la
+      notification arrive sur le telephone ; dans « Mes films », la carte du film refuse affiche
+      les motifs.
+- [ ] **Approuver apres un refus** : le motif disparait de « Mes films ».
+- [ ] **Chronometre** : un film valide en moins de 30 secondes, de l'email d'alerte au clic sur
+      « Approuver ».
+
 ## Avant le lancement public (lot separe, non fait)
 
 - [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
@@ -160,6 +183,9 @@ deployer, puis ses trois verifications.
       personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
       A traiter : droits par colonne et nom d'affichage calcule en base.
 - [ ] Refuser une demande de credit sur un film non visible.
+- [ ] **Centre de notifications dans l'app.** Aujourd'hui une personne est prevenue par email et
+      par notification du telephone, et retrouve l'information dans « Mes films ». Il n'existe pas
+      de liste de notifications dans l'app. A faire dans un lot separe si besoin.
 - [ ] **Films ou la personne est creditee** : sa fiche ne liste que les films dont elle est
       Responsable. Les afficher aussi (et leurs cartes verrouillees) fera l'objet d'un lot separe.
 - [ ] **Recherche sur le nom d'affichage.** `/api/search` filtre et trie encore sur `full_name` :

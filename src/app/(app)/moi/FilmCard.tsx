@@ -265,6 +265,18 @@ export default function FilmCard({
         )}
       </div>
 
+      {project.status === "refused" && project.refusal && project.refusal.length > 0 && (
+        <div className="mt-3 rounded-card border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-text-secondary">
+          <p className="text-text-primary">Ce film n&apos;a pas été retenu :</p>
+          <ul className="mt-1 list-disc pl-4">
+            {project.refusal.map((line, i) => (<li key={i} className="break-words">{line}</li>))}
+          </ul>
+          <p className="mt-2">
+            Tu peux proposer une nouvelle version ou un autre film quand tu veux, et ce refus ne compte pas dans ta limite de films.
+          </p>
+        </div>
+      )}
+
       {isOwner && project.needs_rights_declaration && panel !== "edit" && (
         <p className="mt-3 text-xs leading-relaxed text-yellow-400">
           Droits de diffusion à confirmer : ouvre « Modifier ».

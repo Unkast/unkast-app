@@ -8,6 +8,7 @@ import {
   DECLARED_ROLES,
   MAX_PROJECTS_FREE,
   PROJECT_VISIBILITIES,
+  refusalMessages,
   RIGHTS_DECLARATION_VERSION,
 } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
@@ -16,6 +17,7 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { detectContactIn } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
 import { fetchVideoMeta } from "@/lib/oembed";
+import { sendAdminNewFilmEmail } from "@/lib/email";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
 const RIGHTS_REQUIRED = {
@@ -58,6 +60,13 @@ function buildCredits(userId: string, declaredRole: unknown, ownerRole: unknown,
     }
   }
   return out;
+}
+
+// Ce qu'un gestionnaire lit d'un refus : les phrases des motifs, puis la note.
+function refusalOf(row: { refusal_reasons: string[] | null; refusal_note: string | null } | undefined) {
+  if (!row) return null;
+  const messages = [...refusalMessages(row.refusal_reasons), ...(row.refusal_note ? [row.refusal_note] : [])];
+  return messages.length ? messages : null;
 }
 
 // GET: films dont l'utilisateur est Responsable ou co-gestionnaire, avec credits
@@ -108,6 +117,15 @@ export async function GET() {
   ]);
   const declared = new Set((declarations ?? []).map((d) => d.project_id));
 
+  // Motif du refus, pour les gestionnaires d'un film refuse. project_moderation
+  // est fermee aux clients : lecture service role, sur les seuls films deja
+  // filtres ci-dessus (ceux que l'utilisateur gere).
+  const refusedIds = list.filter((p) => p.status === "refused").map((p) => p.id);
+  const { data: refusals } = refusedIds.length
+    ? await createAdminClient().from("project_moderation")
+        .select("project_id, refusal_reasons, refusal_note").in("project_id", refusedIds)
+    : { data: [] as { project_id: string; refusal_reasons: string[] | null; refusal_note: string | null }[] };
+
   // Titre du film et nom de l'inviteur : service role, le film peut ne pas etre
   // lisible par l'invite (en attente, depublie). Lignes deja filtrees ci-dessus.
   const invites = inviteRows ?? [];
@@ -144,6 +162,8 @@ export async function GET() {
         ...p,
         credits: (credits ?? []).filter((c) => c.project_id === p.id),
         my_role: isOwner ? "owner" : "manager",
+        // Film refuse : phrases a montrer (motifs + note de l'admin), sinon null.
+        refusal: p.status === "refused" ? refusalOf((refusals ?? []).find((r) => r.project_id === p.id)) : null,
         needs_rights_declaration: isOwner && !declared.has(p.id),
       };
     }),
@@ -238,6 +258,17 @@ export async function POST(request: NextRequest) {
       if (meta.thumbnail) {
         await admin.from("projects").update({ poster_url: meta.thumbnail }).eq("id", result.project_id);
       }
+      // Duree de la video (Vimeo seulement), montree a l'admin.
+      if (meta.duration) {
+        await admin.from("project_moderation").update({ source_duration: meta.duration }).eq("project_id", result.project_id);
+      }
+      // Alerte admin : un film attend sa validation. Jamais bloquant.
+      await sendAdminNewFilmEmail({
+        projectTitle: title,
+        ownerName: guard.profile.display_name,
+        sourceTitle: meta.title,
+        sourceAuthor: meta.author,
+      });
       return NextResponse.json({ success: true, id: result.project_id });
     case "duplicate":
       // project null : doublon tranche par l'index unique (course), film non identifie.

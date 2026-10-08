@@ -331,3 +331,136 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+// --- Gestion des films : refus d'un film, alerte admin ------------------------
+
+// Gabarit commun des deux emails ci-dessous (meme habillage que les autres).
+function plainHtml(title: string, bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="fr">
+  <body style="margin:0;padding:0;background:#0d0d0d;font-family:'DM Sans',Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d0d;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#141414;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="padding:32px 32px 8px 32px;">
+                <div style="font-weight:700;font-size:20px;letter-spacing:-0.5px;color:#C8FF00;">Unkast</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 32px 32px 32px;font-size:15px;line-height:1.6;color:#aaa;">
+                <h1 style="margin:0 0 16px 0;font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#f0f0f0;">${escapeHtml(title)}</h1>
+                ${bodyHtml}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+export interface SendFilmRefusedParams {
+  to: string;
+  name: string;         // nom d'affichage du Responsable
+  projectTitle: string;
+  reasons: string[];    // phrases deja redigees (refusalMessages)
+  note: string | null;  // texte libre de l'admin
+}
+
+// Refus d'un film : au Responsable seul. Texte valide par Maxime (08/10/2026).
+export async function sendFilmRefusedEmail(p: SendFilmRefusedParams): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) return { sent: false, reason: "no_api_key" };
+
+  const intro = `Merci d'avoir proposé « ${p.projectTitle} » sur Unkast. Nous l'avons regardé avec attention et nous ne pouvons pas le mettre en ligne pour le moment.`;
+  const outro = "Tu peux proposer une nouvelle version ou un autre film quand tu veux, et ce refus ne compte pas dans ta limite de films.";
+  const text = [
+    `Bonjour ${p.name},`,
+    "",
+    intro,
+    ...(p.reasons.length ? ["", "Ce qui nous a retenus :", ...p.reasons.map((r) => `- ${r}`)] : []),
+    ...(p.note ? ["", p.note] : []),
+    "",
+    outro,
+    "",
+    "À bientôt,",
+    "L'équipe Unkast",
+  ].join("\n");
+  const html = plainHtml(
+    "Ton film n'a pas été retenu pour l'instant",
+    [
+      `<p style="margin:0 0 16px 0;">Bonjour <strong style="color:#f0f0f0;">${escapeHtml(p.name)}</strong>,</p>`,
+      `<p style="margin:0 0 16px 0;">${escapeHtml(intro)}</p>`,
+      p.reasons.length
+        ? `<p style="margin:0 0 8px 0;color:#f0f0f0;">Ce qui nous a retenus :</p><ul style="margin:0 0 16px 0;padding-left:20px;">${p.reasons.map((r) => `<li style="margin:0 0 6px 0;">${escapeHtml(r)}</li>`).join("")}</ul>`
+        : "",
+      p.note ? `<p style="margin:0 0 16px 0;white-space:pre-wrap;">${escapeHtml(p.note)}</p>` : "",
+      `<p style="margin:0 0 16px 0;">${escapeHtml(outro)}</p>`,
+      `<p style="margin:0;">À bientôt,<br>L'équipe Unkast</p>`,
+    ].join("")
+  );
+
+  try {
+    await resend.emails.send({
+      from: fromAddress(),
+      to: p.to,
+      subject: `Ton film « ${p.projectTitle} » n'a pas été retenu pour l'instant`,
+      html,
+      text,
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}
+
+export interface SendAdminNewFilmParams {
+  projectTitle: string;
+  ownerName: string;
+  sourceTitle: string | null;
+  sourceAuthor: string | null;
+}
+
+// Alerte admin : un film vient d'etre publie et attend sa validation.
+// Destinataire : ADMIN_ALERT_EMAIL. Absente, aucun email ne part. Ne bloque
+// jamais la publication : l'appelant ignore le resultat.
+export async function sendAdminNewFilmEmail(p: SendAdminNewFilmParams): Promise<SendResult> {
+  const to = process.env.ADMIN_ALERT_EMAIL;
+  const resend = getResend();
+  if (!to || !resend) return { sent: false, reason: "no_api_key" };
+
+  const url = `${siteUrl()}/admin?tab=films`;
+  const origin = [p.sourceTitle, p.sourceAuthor].filter(Boolean).join(" · ");
+  const text = [
+    `Nouveau film en attente : « ${p.projectTitle} »`,
+    `Publié par ${p.ownerName}`,
+    ...(origin ? [`Vidéo d'origine : ${origin}`] : []),
+    "",
+    `Valider : ${url}`,
+  ].join("\n");
+  const html = plainHtml(
+    "Nouveau film en attente",
+    [
+      `<p style="margin:0 0 8px 0;color:#f0f0f0;font-size:17px;">« ${escapeHtml(p.projectTitle)} »</p>`,
+      `<p style="margin:0 0 8px 0;">Publié par ${escapeHtml(p.ownerName)}</p>`,
+      origin ? `<p style="margin:0 0 8px 0;">Vidéo d'origine : ${escapeHtml(origin)}</p>` : "",
+      `<p style="margin:24px 0 0 0;"><a href="${url}" style="display:inline-block;background:#C8FF00;color:#0d0d0d;font-weight:700;text-decoration:none;padding:12px 20px;border-radius:999px;">Ouvrir les films à valider</a></p>`,
+    ].join("")
+  );
+
+  try {
+    await resend.emails.send({
+      from: fromAddress(),
+      to,
+      subject: `Film à valider : « ${p.projectTitle} »`,
+      html,
+      text,
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}

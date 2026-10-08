@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-plan";
-import { DECLARED_ROLES } from "@/lib/constants";
+import { CATEGORY_LABELS, DECLARED_ROLES, REFUSAL_REASONS } from "@/lib/constants";
+import VideoFacade from "@/components/VideoFacade";
 
 type Tab = "recruiters" | "reports" | "users" | "films" | "claims";
+// Onglets ouvrables par lien direct (/admin?tab=films).
+const TABS: Tab[] = ["recruiters", "reports", "users", "films", "claims"];
 
 // `plan` (2026-08-10) : le badge « verifie » n'est affiche au public que si le
 // toggle est pose ET le compte Pro. L'admin doit voir les deux — voir VerifiedPill.
@@ -20,7 +23,7 @@ interface Report { id: string; reporter_id: string | null; reporter_name: string
 // recruteur), pas seulement le badge `plan` opaque. Voir GET tab=users
 // (src/app/api/admin/route.ts) qui les selectionne desormais.
 interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; pro_grant_type: string | null; pro_grant_expires_at: string | null; subscription_status: string | null; }
-interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; declared_role: string | null; }
+interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; source_duration: number | null; declared_role: string | null; }
 // Gestion des films (lot 2 de la route) : films approuves modifies, films sans
 // Responsable, signalements / revendications de films.
 interface EditedFilm { id: string; title: string; slug: string; edited_at: string; edited_by_name: string; title_changed: boolean; reported: boolean; approved_title: string | null; }
@@ -104,8 +107,131 @@ function VerifiedPill({ verified, plan }: { verified?: boolean; plan?: string | 
   );
 }
 
-export default function AdminClient() {
-  const [tab, setTab] = useState<Tab>("recruiters");
+// Duree en secondes -> m:ss, ou h:mm:ss au-dela d'une heure.
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const ss = String(Math.floor(seconds % 60)).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
+// Carte d'un film a valider, pensee pour le telephone : lecteur, informations a
+// comparer, puis deux gros boutons. « Refuser » deplie les motifs dans la carte.
+function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
+  film: Film;
+  busy: boolean;
+  onApprove: () => void;
+  onRefuse: (reasons: string[], note: string) => void;
+}) {
+  const [refusing, setRefusing] = useState(false);
+  const [reasons, setReasons] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const [noteOpen, setNoteOpen] = useState(false);
+
+  const other = reasons.includes("autre");
+  const canConfirm = reasons.length > 0 && (!other || note.trim() !== "") && !busy;
+  const declaredRole = DECLARED_ROLES.find((r) => r.value === f.declared_role)?.label ?? f.declared_role;
+  const category = (CATEGORY_LABELS as Record<string, string>)[f.category] ?? f.category;
+
+  function toggleReason(value: string) {
+    const checked = reasons.includes(value);
+    setReasons(checked ? reasons.filter((r) => r !== value) : [...reasons, value]);
+    if (value === "autre" && !checked) setNoteOpen(true);
+  }
+
+  const label = { color: "#555" } as const;
+  const missing = { color: "#444" } as const;
+  const bigBtn = { flex: 1, minHeight: 52, borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
+
+  return (
+    <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, marginBottom: 16, maxWidth: 560, overflow: "hidden" }}>
+      {/* Le lecteur ne se monte qu'au clic (VideoFacade). */}
+      <VideoFacade url={f.video_url} title={f.title} poster={f.poster_url || f.preview_url} />
+
+      <div style={{ padding: 16 }}>
+        <p style={{ fontSize: 17, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.3, overflowWrap: "anywhere" }}>{f.title}</p>
+
+        {/* Titre et chaine lus chez YouTube / Vimeo a la soumission : a
+            comparer au titre saisi et au deposant (vol d'oeuvre). */}
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 12, marginTop: 10, fontSize: 13, color: "#aaa", lineHeight: 1.7, overflowWrap: "anywhere" }}>
+          <p style={{ margin: 0 }}><span style={label}>Titre d&apos;origine :</span> {f.source_title || <span style={missing}>non relevé</span>}</p>
+          <p style={{ margin: 0 }}><span style={label}>Chaîne d&apos;origine :</span> {f.source_author || <span style={missing}>non relevée</span>}</p>
+          <p style={{ margin: 0 }}><span style={label}>Rôle déclaré :</span> {declaredRole || <span style={missing}>aucune déclaration</span>}</p>
+          <p style={{ margin: 0 }}><span style={label}>Catégorie :</span> {category}</p>
+          <p style={{ margin: 0 }}><span style={label}>Année :</span> {f.year}</p>
+          {f.source_duration != null && <p style={{ margin: 0 }}><span style={label}>Durée :</span> {formatDuration(f.source_duration)}</p>}
+          <p style={{ margin: 0 }}>
+            <span style={label}>Publié par :</span>{" "}
+            {f.owner_slug
+              ? <Link href={`/profil/${f.owner_slug}`} target="_blank" style={{ color: "#C8FF00", textDecoration: "none" }}>{f.owner_name || f.owner_slug}</Link>
+              : <span style={{ color: "#f97316" }}>sans Responsable</span>}
+          </p>
+        </div>
+
+        <p style={{ fontSize: 11, color: "#555", marginTop: 8 }}>
+          Proposé le {new Date(f.created_at).toLocaleDateString("fr-FR")} ·{" "}
+          <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#888" }}>Lien vidéo</a>
+        </p>
+
+        {!refusing ? (
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <button onClick={onApprove} disabled={busy} style={{ ...bigBtn, background: "#22c55e", border: "none", color: "#0d0d0d", opacity: busy ? 0.5 : 1 }}>Approuver</button>
+            <button onClick={() => setRefusing(true)} disabled={busy} style={{ ...bigBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.35)", color: "#ef4444", opacity: busy ? 0.5 : 1 }}>Refuser</button>
+          </div>
+        ) : (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Motif du refus (un ou plusieurs)</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {REFUSAL_REASONS.map((r) => {
+                const checked = reasons.includes(r.value);
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    aria-pressed={checked}
+                    onClick={() => toggleReason(r.value)}
+                    style={{
+                      minHeight: 46, padding: "0 16px", borderRadius: 23, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                      background: checked ? "#ef4444" : "rgba(255,255,255,0.05)",
+                      border: checked ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.14)",
+                      color: checked ? "#fff" : "#aaa",
+                    }}
+                  >
+                    {checked ? "✓ " : ""}{r.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {noteOpen ? (
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={1000}
+                aria-label="Précision"
+                placeholder={other ? "Précise le motif (obligatoire)" : "Précision (facultative)"}
+                style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 12, padding: 12, background: "#1a1a1a", border: `1px solid ${other && !note.trim() ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, fontSize: 16, color: "#f0f0f0", resize: "vertical", minHeight: 80, outline: "none" }}
+              />
+            ) : (
+              <button type="button" onClick={() => setNoteOpen(true)} style={{ display: "block", marginTop: 4, padding: "12px 0", background: "none", border: "none", color: "#888", fontSize: 13, textDecoration: "underline", cursor: "pointer" }}>
+                Ajouter une précision
+              </button>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button onClick={() => onRefuse(reasons, note.trim())} disabled={!canConfirm} style={{ ...bigBtn, flex: 2, background: "#ef4444", border: "none", color: "#fff", opacity: canConfirm ? 1 : 0.4, cursor: canConfirm ? "pointer" : "default" }}>Confirmer le refus</button>
+              <button onClick={() => setRefusing(false)} disabled={busy} style={{ ...bigBtn, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function AdminClient({ initialTab }: { initialTab?: string }) {
+  // Lien direct /admin?tab=films ; valeur inconnue ou absente : recruteurs.
+  const [tab, setTab] = useState<Tab>(TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "recruiters");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [modalAction, setModalAction] = useState<{ action: string; targetId: string; label: string } | null>(null);
@@ -175,7 +301,7 @@ export default function AdminClient() {
   // Renvoie true si l'action a porte. `extra` : champs propres a une action
   // (profile_id pour assign_project_owner). Le message d'erreur du serveur est
   // affiche tel quel (dont le 409 de approve_film : video deja prise).
-  async function doAction(action: string, targetId: string, reason?: string, extra?: Record<string, unknown>): Promise<boolean> {
+  async function doAction(action: string, targetId: string, reason?: string, extra?: Record<string, unknown>, done = "Action effectuee"): Promise<boolean> {
     setActionLoading(targetId);
     const res = await fetch("/api/admin", {
       method: "PATCH",
@@ -188,7 +314,7 @@ export default function AdminClient() {
       showToast(data?.error || "Erreur inconnue", 7000);
       return false;
     }
-    showToast("Action effectuee");
+    showToast(done);
     fetchData();
     return true;
   }
@@ -550,44 +676,15 @@ export default function AdminClient() {
         <div>
           <h2 style={sectionTitle}>À valider ({films.length})</h2>
           {films.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun film en attente.</p>}
-          {films.map((f) => {
-            const declaredRole = DECLARED_ROLES.find((r) => r.value === f.declared_role)?.label ?? f.declared_role;
-            return (
-            <div key={f.id} style={{ ...card, display: "flex", gap: 14, alignItems: "flex-start" }}>
-              <div style={{ width: 80, height: 60, borderRadius: 8, background: "#1a1a1a", flexShrink: 0, overflow: "hidden", position: "relative" }}>
-                {(f.preview_url || f.poster_url) ? (
-                  <img src={(f.preview_url || f.poster_url) as string} alt={f.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.2 }}><path d="M8 5v14l11-7z" /></svg>
-                  </div>
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", marginBottom: 2, overflowWrap: "anywhere" }}>{f.title}</p>
-                <p style={{ fontSize: 11, color: "#555" }}>
-                  {f.owner_slug
-                    ? <>par <Link href={`/profil/${f.owner_slug}`} style={{ color: "#888", textDecoration: "none" }}>{f.owner_name}</Link></>
-                    : <span style={{ color: "#f97316" }}>sans Responsable</span>}
-                  {" "}· {f.year} · {f.category}
-                </p>
-                <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace", marginTop: 2 }}>{new Date(f.created_at).toLocaleDateString("fr-FR")}</p>
-                {/* Titre et chaine lus chez YouTube / Vimeo a la soumission : a
-                    comparer au titre saisi et au deposant (vol d'oeuvre). */}
-                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 10, marginTop: 8, fontSize: 12, color: "#888", lineHeight: 1.6, overflowWrap: "anywhere" }}>
-                  <p style={{ margin: 0 }}><span style={{ color: "#555" }}>Titre d&apos;origine :</span> {f.source_title || <span style={{ color: "#444" }}>non relevé</span>}</p>
-                  <p style={{ margin: 0 }}><span style={{ color: "#555" }}>Chaîne d&apos;origine :</span> {f.source_author || <span style={{ color: "#444" }}>non relevée</span>}</p>
-                  <p style={{ margin: 0 }}><span style={{ color: "#555" }}>Rôle déclaré :</span> {declaredRole || <span style={{ color: "#444" }}>aucune déclaration</span>}</p>
-                </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  <button onClick={() => doAction("approve_film", f.id)} disabled={actionLoading === f.id} style={btnApprove}>Approuver</button>
-                  <button onClick={() => confirmAction("refuse_film", f.id, `Refuser "${f.title}"`)} style={btnDanger}>Refuser</button>
-                  <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ ...btnApprove, textDecoration: "none", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Lien video</a>
-                </div>
-              </div>
-            </div>
-            );
-          })}
+          {films.map((f) => (
+            <PendingFilmCard
+              key={f.id}
+              film={f}
+              busy={actionLoading === f.id}
+              onApprove={() => doAction("approve_film", f.id, undefined, undefined, "Film approuvé")}
+              onRefuse={(reasons, note) => doAction("refuse_film", f.id, undefined, { reasons, note: note || undefined }, "Film refusé")}
+            />
+          ))}
 
           {/* Films approuves modifies depuis leur validation */}
           <h2 style={{ ...sectionTitle, marginTop: 32 }}>Modifiés récemment ({editedFilms.length})</h2>

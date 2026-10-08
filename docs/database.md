@@ -211,8 +211,8 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 > **État au 08/10/2026** : la migration `20261008_film_management.sql` a été exécutée en
 > production (indiqué par Maxime). La migration `20261009_film_limit_and_edit_watch.sql`
 > (plafond, titre validé, voir plus bas) puis `20261010_film_poster_and_member_teasers.sql`
-> (image du film, cartes verrouillées) sont **à exécuter**, dans cet ordre, avant de déployer le
-> code qui les attend.
+> (image du film, cartes verrouillées) et `20261011_film_refusal_reasons.sql` (motifs de refus,
+> durée) sont **à exécuter**, dans cet ordre, avant de déployer le code qui les attend.
 > Ordre de mise en ligne : [mise-en-ligne-gestion-films.md](mise-en-ligne-gestion-films.md). Décision : [ADR 0014](adr/0014-responsable-et-co-gestionnaires.md).
 
 ### Modèle
@@ -245,6 +245,13 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
   `member_only_film_teasers(p_slug, p_profile_id)` renvoie uniquement `id`, `slug`, `title`,
   `poster_url`, `year` (un filtre obligatoire). Le lien vidéo, la description et l'équipe ne
   sortent pas de la base. Sert à la carte verrouillée (`src/components/LockedFilmCard.tsx`).
+- **Refus d'un film** (migration `20261011`) : `project_moderation.refusal_reasons` (motifs cochés
+  par l'admin, parmi `son`, `image`, `amateur`, `hors_sujet`, `droits`, `autre`, contraints par
+  CHECK et alignés sur `REFUSAL_REASONS` de `src/lib/constants.ts`) et `refusal_note` (texte
+  libre). Montrés au Responsable dans « Mes films » et dans l'email de refus, effacés si le film
+  est approuvé ensuite. `source_duration` : durée de la vidéo en secondes (Vimeo seulement).
+  La table reste fermée aux clients : la route `/api/dashboard/projects` lit le motif avec le
+  service role, pour les seuls films que l'utilisateur gère.
 - **Noms réels** : `full_name`, `first_name`, `last_name` restent lisibles en base avec la clé
   publique pour tout profil approuvé. L'app n'affiche que le nom d'affichage (`getDisplayName`),
   mais la fermeture en base est un **lot séparé, à faire avant le lancement public**.

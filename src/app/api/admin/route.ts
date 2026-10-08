@@ -1,3 +1,7 @@
+import { REFUSAL_REASONS, refusalMessages } from "@/lib/constants";
+import { sendFilmRefusedEmail } from "@/lib/email";
+import { sendPushToUser } from "@/lib/push";
+import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { fetchVideoThumbnail } from "@/lib/oembed";
 import { titleChangedALot } from "@/lib/title-change";
 import { NextRequest, NextResponse } from "next/server";
@@ -149,7 +153,7 @@ export async function GET(request: NextRequest) {
         : { data: null };
       // Titre et chaine renvoyes par oEmbed a la soumission (a comparer au film).
       const { data: moderation } = await admin.from("project_moderation")
-        .select("source_title, source_author").eq("project_id", p.id).maybeSingle();
+        .select("source_title, source_author, source_duration").eq("project_id", p.id).maybeSingle();
       // Derniere declaration de droits.
       const { data: declaration } = await admin.from("project_rights_declarations")
         .select("declared_role").eq("project_id", p.id)
@@ -160,6 +164,8 @@ export async function GET(request: NextRequest) {
         owner_slug: owner?.slug || "",
         source_title: moderation?.source_title ?? null,
         source_author: moderation?.source_author ?? null,
+        // Duree en secondes (Vimeo seulement), null sinon.
+        source_duration: moderation?.source_duration ?? null,
         declared_role: declaration?.declared_role ?? null,
       };
     }));
@@ -480,7 +486,11 @@ export async function PATCH(request: NextRequest) {
     // Titre valide : reference de la liste « modifies recemment ».
     if (!error && approved) {
       await admin.from("project_moderation")
-        .upsert({ project_id: target_id, approved_title: approved.title }, { onConflict: "project_id" });
+        .upsert(
+          // Un film reapprouve apres un refus perd son motif.
+          { project_id: target_id, approved_title: approved.title, refusal_reasons: null, refusal_note: null },
+          { onConflict: "project_id" }
+        );
     }
     // L'index unique sur video_key exclut les films refuses : reapprouver un film
     // refuse echoue si une autre fiche a pris sa video entre-temps.
@@ -494,9 +504,58 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Refuse film
+  // Corps : { reasons: string[] (REFUSAL_REASONS), note?: string }. Au moins un
+  // motif ; « autre » exige une note. Le motif est garde (carte du film refuse
+  // dans « Mes films »), puis envoye au Responsable seul, par email et par push.
   if (action === "refuse_film") {
-    const { error } = await admin.from("projects").update({ status: "refused" }).eq("id", target_id);
-    return finalize(error, "refuse_film", "project", { reason });
+    const reasons: string[] = Array.isArray(body.reasons)
+      ? [...new Set((body.reasons as unknown[]).filter((r): r is string => REFUSAL_REASONS.some((x) => x.value === r)))]
+      : [];
+    const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 1000) : null;
+    if (reasons.length === 0) {
+      return NextResponse.json({ error: "Choisis au moins un motif." }, { status: 400 });
+    }
+    if (reasons.includes("autre") && !note) {
+      return NextResponse.json({ error: "Précise le motif « Autre »." }, { status: 400 });
+    }
+
+    // Le motif d'abord : s'il ne s'enregistre pas, le film n'est pas refuse (un
+    // refus sans motif visible dans « Mes films » serait incomprehensible).
+    const { error: moderationError } = await admin.from("project_moderation")
+      .upsert({ project_id: target_id, refusal_reasons: reasons, refusal_note: note }, { onConflict: "project_id" });
+    if (moderationError) return finalize(moderationError, "refuse_film", "project");
+
+    const { data: film, error } = await admin.from("projects")
+      .update({ status: "refused" }).eq("id", target_id).select("title, profile_id").maybeSingle();
+    if (error || !film) {
+      return finalize(error ?? { message: "film introuvable" }, "refuse_film", "project");
+    }
+
+    // Message au Responsable : jamais bloquant, le refus a deja porte.
+    let emailSent = false;
+    if (film.profile_id) {
+      const [{ data: owner }, { data: auth }] = await Promise.all([
+        admin.from("profiles").select(DISPLAY_NAME_COLUMNS).eq("id", film.profile_id).maybeSingle(),
+        admin.auth.admin.getUserById(film.profile_id),
+      ]);
+      const to = auth?.user?.email;
+      if (to) {
+        const res = await sendFilmRefusedEmail({
+          to,
+          name: displayNameOf(owner) ?? "",
+          projectTitle: film.title,
+          reasons: refusalMessages(reasons),
+          note,
+        });
+        emailSent = res.sent;
+      }
+      sendPushToUser(film.profile_id, {
+        title: "Film non retenu",
+        body: `Ton film « ${film.title} » n'a pas été retenu. Ouvre Mes films pour voir pourquoi.`,
+        url: "/moi",
+      }).catch(() => {});
+    }
+    return finalize(null, "refuse_film", "project", { reasons, note, email_sent: emailSent });
   }
 
   // --- Gestion des films (migration 20261008_film_management.sql) ---
