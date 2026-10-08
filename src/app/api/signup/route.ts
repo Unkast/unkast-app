@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/utils";
 import {
   MAX_PROJECTS_FREE,
+  checkProfileRoles,
   DECLARED_ROLES,
   CLIENT_AUTHORIZATION_CATEGORIES,
   RIGHTS_DECLARATION_VERSION,
@@ -31,6 +32,8 @@ export async function POST(request: NextRequest) {
     email,
     password,
     full_name,
+    first_name,
+    last_name,
     roles,
     location,
     bio,
@@ -61,6 +64,13 @@ export async function POST(request: NextRequest) {
       { code: "terms_required", error: "Accepte les CGU et la politique de confidentialité pour créer ton compte." },
       { status: 400 }
     );
+  }
+
+  // Metiers : memes regles que la route de profil (5 au plus, liste officielle),
+  // controlees avant de creer quoi que ce soit.
+  const checkedRoles = checkProfileRoles(roles ?? []);
+  if (!checkedRoles.ok) {
+    return NextResponse.json({ code: "roles_invalid", error: checkedRoles.error }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -115,6 +125,10 @@ export async function POST(request: NextRequest) {
   const { error: profileError } = await supabase.from("profiles").insert({
     id: userId,
     full_name,
+    // Prenom et nom separes : sans eux, le formulaire de /moi s'ouvrait avec un
+    // prenom vide et enregistrait un nom d'affichage vide.
+    first_name: typeof first_name === "string" && first_name.trim() ? first_name.trim() : null,
+    last_name: typeof last_name === "string" && last_name.trim() ? last_name.trim() : null,
     slug: profileSlug,
     bio: bio || null,
     avatar_url: avatar_url || null,
@@ -149,8 +163,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Insert roles
-  if (roles && Array.isArray(roles) && roles.length > 0) {
-    const roleInserts = roles.map((role_name: string) => ({
+  if (checkedRoles.roles.length > 0) {
+    const roleInserts = checkedRoles.roles.map((role_name) => ({
       profile_id: userId,
       role_name,
     }));

@@ -208,8 +208,14 @@ export default function MoiClient() {
 
   function startEditProfile() {
     if (!profile) return;
-    setEditFirstName((profile as any).first_name || "");
-    setEditLastName((profile as any).last_name || "");
+    // Profil sans prenom ni nom separes (inscrit avant qu'ils soient enregistres) :
+    // on les deduit du nom complet, pour ne pas ouvrir le formulaire avec un
+    // prenom vide, que le serveur refuse.
+    const names = profile as { full_name?: string | null; first_name?: string | null; last_name?: string | null };
+    const nameParts = (names.full_name || "").trim().split(/\s+/).filter(Boolean);
+    const hasSplitName = !!(names.first_name || names.last_name);
+    setEditFirstName(hasSplitName ? names.first_name || "" : nameParts[0] || "");
+    setEditLastName(hasSplitName ? names.last_name || "" : nameParts.slice(1).join(" "));
     setEditStageName((profile as any).stage_name || "");
     setEditDisplayPref((profile as any).display_name_preference || "real_name");
     setEditBio(profile.bio ?? "");
@@ -266,6 +272,13 @@ export default function MoiClient() {
     // Coordonnees dans la bio : rien n'est enregistre, on reste sur le formulaire.
     if (res.status === 400 && data?.code === "contact_refused") {
       setBioError(data.error || "");
+      setSaving(false);
+      return;
+    }
+    // Refus du serveur (prenom vide, metiers hors liste...) : on reste sur le
+    // formulaire et on affiche son message, au lieu d'annoncer un succes.
+    if (!res.ok) {
+      showToast(data?.error || "Enregistrement impossible, réessaie.");
       setSaving(false);
       return;
     }
@@ -416,6 +429,7 @@ export default function MoiClient() {
                   onChange={setEditRoles}
                   maxSelection={5}
                   placeholder="Rechercher un métier..."
+                  allowCustom={false}
                 />
               </div>
               <Field label="Ville" type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Paris, Lyon..." />

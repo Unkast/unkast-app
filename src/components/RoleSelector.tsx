@@ -16,6 +16,10 @@ interface Props {
   maxSelection?: number;
   placeholder?: string;
   singleSelect?: boolean;
+  /** Proposer « + Ajouter » pour un intitulé hors liste (défaut : oui). Désactivé
+   *  pour les métiers d'un profil, que le serveur limite à la liste officielle ;
+   *  conservé pour le rôle au générique d'un film, qui reste libre. */
+  allowCustom?: boolean;
 }
 
 function normalize(str: string): string {
@@ -48,6 +52,7 @@ export default function RoleSelector({
   maxSelection = 5,
   placeholder = "Rechercher un métier...",
   singleSelect = false,
+  allowCustom = true,
 }: Props) {
   const reduced = useReducedMotion();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -105,7 +110,7 @@ export default function RoleSelector({
   })).filter((g) => g.roles.length > 0);
 
   const customRole = query.trim();
-  const canAddCustom = customRole.length > 2 && !selectedRoles.includes(customRole) && (singleSelect || !atMax);
+  const canAddCustom = allowCustom && customRole.length > 2 && !selectedRoles.includes(customRole) && (singleSelect || !atMax);
 
   const roleChip = (role: string) => {
     const selected = selectedRoles.includes(role);

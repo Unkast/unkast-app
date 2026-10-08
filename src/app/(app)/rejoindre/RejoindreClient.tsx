@@ -290,6 +290,8 @@ export default function RejoindreClient() {
         email,
         password,
         full_name: fullName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         roles: selectedRoles,
         location: city || null,
         bio: bio || null,
@@ -599,6 +601,7 @@ export default function RejoindreClient() {
                       onChange={setSelectedRoles}
                       maxSelection={5}
                       placeholder="Rechercher ton métier..."
+                      allowCustom={false}
                     />
                   </div>
 

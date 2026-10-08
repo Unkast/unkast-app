@@ -51,6 +51,36 @@ export const ROLES_BY_CATEGORY: Record<string, string[]> = {
 
 export const ALL_ROLES = Object.values(ROLES_BY_CATEGORY).flat();
 
+// Metiers d'un profil : 5 au plus, pris dans la liste officielle (ALL_ROLES).
+export const MAX_PROFILE_ROLES = 5;
+
+/**
+ * Controle serveur des metiers d'un profil (inscription, finalisation, /moi).
+ * `alreadyOwned` : metiers deja sur le profil. Un metier hors liste saisi avant
+ * cette regle y est tolere, pour ne pas bloquer l'enregistrement d'un profil
+ * existant ; il ne peut plus etre ajoute.
+ */
+export function checkProfileRoles(
+  roles: unknown,
+  alreadyOwned: string[] = []
+): { ok: true; roles: string[] } | { ok: false; error: string } {
+  if (!Array.isArray(roles) || roles.some((r) => typeof r !== "string")) {
+    return { ok: false, error: "Liste de métiers invalide." };
+  }
+  const clean = [...new Set((roles as string[]).map((r) => r.trim()).filter(Boolean))];
+  if (clean.length > MAX_PROFILE_ROLES) {
+    return { ok: false, error: `Tu peux choisir ${MAX_PROFILE_ROLES} métiers au maximum.` };
+  }
+  const unknown = clean.filter((r) => !ALL_ROLES.includes(r) && !alreadyOwned.includes(r));
+  if (unknown.length > 0) {
+    return {
+      ok: false,
+      error: `Ce métier n'est pas dans la liste : ${unknown.join(", ")}. Choisis un métier proposé.`,
+    };
+  }
+  return { ok: true, roles: clean };
+}
+
 export const ROLE_CATEGORIES = [
   {
     id: 'realisation',

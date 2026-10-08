@@ -1,3 +1,4 @@
+import { checkProfileRoles } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -127,6 +128,24 @@ export async function PATCH(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { account_type, full_name, first_name, last_name, stage_name, display_name_preference, bio, location, is_available, avatar_url, roles, contact_email, contact_phone, instagram_url, website_url, show_contact_email_to, show_phone_to, show_real_name_to, is_recruiting, recruiting_roles } = body;
 
+  // Prenom : s'il est envoye, il ne peut pas etre vide (un nom d'affichage vide
+  // casserait toutes les pages qui montrent la personne).
+  if (first_name !== undefined && (typeof first_name !== "string" || !first_name.trim())) {
+    return NextResponse.json({ code: "first_name_required", error: "Indique ton prénom." }, { status: 400 });
+  }
+
+  // Metiers : 5 au plus, pris dans la liste officielle. Controle AVANT toute
+  // ecriture, pour ne rien enregistrer a moitie.
+  let cleanRoles: string[] | null = null;
+  if (roles !== undefined && roles !== null) {
+    const { data: ownedRows } = await supabase.from("profile_roles").select("role_name").eq("profile_id", user.id);
+    const checked = checkProfileRoles(roles, (ownedRows ?? []).map((r) => r.role_name as string));
+    if (!checked.ok) {
+      return NextResponse.json({ code: "roles_invalid", error: checked.error }, { status: 400 });
+    }
+    cleanRoles = checked.roles;
+  }
+
   // Plan + role + bio courants (verif serveur).
   const { data: me } = await supabase
     .from("profiles")
@@ -160,7 +179,7 @@ export async function PATCH(request: NextRequest) {
   const updates: Record<string, unknown> = {};
   const systemUpdates: Record<string, unknown> = {};
   if (full_name !== undefined) updates.full_name = full_name;
-  if (first_name !== undefined) updates.first_name = first_name;
+  if (first_name !== undefined) updates.first_name = first_name.trim();
   if (last_name !== undefined) updates.last_name = last_name;
   if (stage_name !== undefined) updates.stage_name = stage_name;
   if (display_name_preference !== undefined) updates.display_name_preference = display_name_preference;
@@ -234,7 +253,7 @@ export async function PATCH(request: NextRequest) {
 
   // Auto-sync full_name from first_name + last_name
   if (first_name !== undefined || last_name !== undefined) {
-    const fn = first_name ?? body.first_name;
+    const fn = typeof first_name === "string" ? first_name.trim() : body.first_name;
     const ln = last_name ?? body.last_name;
     updates.full_name = [fn, ln].filter(Boolean).join(" ");
   }
@@ -290,7 +309,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Update roles if provided
-  if (roles && Array.isArray(roles)) {
+  if (cleanRoles) {
     const { error: deleteError } = await supabase
       .from("profile_roles")
       .delete()
@@ -300,9 +319,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
-    if (roles.length > 0) {
+    if (cleanRoles.length > 0) {
       const { error: insertError } = await supabase.from("profile_roles").insert(
-        roles.map((role_name: string) => ({ profile_id: user.id, role_name }))
+        cleanRoles.map((role_name) => ({ profile_id: user.id, role_name }))
       );
 
       if (insertError) {

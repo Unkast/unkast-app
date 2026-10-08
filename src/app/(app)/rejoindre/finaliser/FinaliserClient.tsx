@@ -223,6 +223,7 @@ export default function FinaliserClient({
                   onChange={setSelectedRoles}
                   maxSelection={5}
                   placeholder="Rechercher ton métier..."
+                  allowCustom={false}
                 />
               </div>
 

@@ -179,6 +179,8 @@ Routes existantes modifiées : `/api/signup` (film via `publish_project`, répon
 `/api/dashboard/profile` (bio passée au détecteur seulement quand elle change),
 `/api/messages` (détecteur sur les 3 premiers messages), `/api/admin` (voir plus bas).
 
+**Contrôles serveur du profil** (`PATCH /api/dashboard/profile`, `/api/signup`) : un prénom envoyé ne peut pas être vide (400 `first_name_required`) ; les métiers passent par `checkProfileRoles` (`src/lib/constants.ts`) : tableau de textes, 5 au plus, pris dans la liste officielle `ALL_ROLES` (400 `roles_invalid`). Un métier hors liste déjà présent sur le profil est toléré, il ne peut plus être ajouté. Le sélecteur de métiers du profil (`RoleSelector` avec `allowCustom={false}`) ne propose plus d'intitulé libre ; le rôle au générique d'un film reste libre.
+
 **Pages légales** (`/cgu`, `/confidentialite`, `/mentions-legales`, publiques) : `/api/signup` exige
 `terms_accepted: true` (400 `terms_required` sinon) et enregistre version et date ;
 `POST /api/terms/accept` `{ accepted: true }` fait de même pour un membre connecté (écran « Avant de
