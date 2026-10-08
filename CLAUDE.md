@@ -55,6 +55,7 @@ RISQUE ELEVE — migration Supabase, modification de RLS, suppression de fichier
 6. Ne supprime JAMAIS une feature sans validation explicite.
 7. Ne modifie les fichiers Kotlin (android/) que sur demande explicite.
 8. Ne fais apparaitre AUCUNE cle API, secret ou credential dans le code versionne.
+9. N'arrete JAMAIS toi-meme le serveur de dev de Maxime (pas de taskkill, pas de kill du process next dev). Si un build est necessaire pendant qu'il tourne, demande-lui de l'arreter et attends.
 
 ## Interdictions explicites
 
