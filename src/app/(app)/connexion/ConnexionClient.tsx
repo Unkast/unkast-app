@@ -7,6 +7,7 @@ import { EnterItem, EnterList } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
+import LegalLinks from "@/components/LegalLinks";
 
 export default function ConnexionClient({ next }: { next?: string }) {
   const router = useRouter();
@@ -177,6 +178,10 @@ export default function ConnexionClient({ next }: { next?: string }) {
         <Button variant="glass" href="/rejoindre" className="w-full text-center">
           Je n&apos;ai pas de compte : créer un compte
         </Button>
+      </EnterItem>
+
+      <EnterItem className="mt-6">
+        <LegalLinks className="justify-center" />
       </EnterItem>
     </EnterList>
   );

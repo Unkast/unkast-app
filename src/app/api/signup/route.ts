@@ -13,6 +13,7 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
 import { sendConfirmationEmail, sendAdminNewFilmEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/stripe";
+import { TERMS_VERSION } from "@/lib/legal";
 
 export async function POST(request: NextRequest) {
   // Anti-abus : max 5 créations de compte par heure et par IP.
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
     recruiter_website,
     is_looking_for,
     invitation_token,
+    terms_accepted,
   } = body;
   // SÉCURITÉ : recruiter_status n'est JAMAIS lu depuis le body — un client pourrait
   // s'auto-attribuer "approved". Toujours forcé à "pending" (validation manuelle admin).
@@ -51,6 +53,14 @@ export async function POST(request: NextRequest) {
   }
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "Email invalide." }, { status: 400 });
+  }
+  // CGU et politique de confidentialite : acceptation obligatoire, enregistree
+  // avec sa version et sa date (profiles.terms_version / terms_accepted_at).
+  if (terms_accepted !== true) {
+    return NextResponse.json(
+      { code: "terms_required", error: "Accepte les CGU et la politique de confidentialité pour créer ton compte." },
+      { status: 400 }
+    );
   }
 
   const supabase = createAdminClient();
@@ -112,6 +122,8 @@ export async function POST(request: NextRequest) {
     is_available: false,
     status: "approved",
     account_type: account_type || "talent",
+    terms_version: TERMS_VERSION,
+    terms_accepted_at: new Date().toISOString(),
     ...(account_type === "recruiter" ? {
       recruiter_company: recruiter_company || null,
       recruiter_role: recruiter_role || null,

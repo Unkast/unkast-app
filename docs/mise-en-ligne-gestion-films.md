@@ -176,6 +176,34 @@ A tester, sur telephone :
 - [ ] **Chronometre** : un film valide en moins de 30 secondes, de l'email d'alerte au clic sur
       « Approuver ».
 
+## 4 quinquies. Lot « pages legales beta »
+
+Avant de deployer :
+- [ ] Executer `20261012_terms_acceptance.sql`, puis ses verifications 1 et 2.
+- [ ] **Remplir les informations de la societe** dans `src/lib/legal.ts` (nom, forme juridique,
+      capital, adresse, immatriculation, directeur de la publication, email de contact, region
+      d'hebergement Supabase, droit applicable). Tant qu'un champ est entre crochets, il s'affiche
+      surligne en jaune sur les trois pages : aucune page ne doit en montrer avant la mise en ligne.
+- [ ] Relire les trois textes. Trois regles y ont ete ajoutees par proposition et sont a valider :
+      contenus sexuels explicites interdits, interdiction de demander de l'argent pour un casting
+      ou une mise en relation, Pro offert jusqu'au **1er fevrier 2027** (annee deduite).
+- [ ] Verifier l'adresse de l'hebergeur (Vercel) dans les mentions legales.
+
+A tester :
+- [ ] Les trois pages s'ouvrent sans etre connecte, depuis le pied de page de l'accueil, de la
+      connexion et de l'inscription, et depuis l'onglet Compte de /moi.
+- [ ] **Inscription** : impossible de creer un compte sans cocher la case. Apres inscription, la
+      verification 3 de la migration montre la version et une ligne de plus.
+- [ ] **Inscription par Google** : l'acceptation est bien enregistree (ecran d'acceptation a la
+      premiere page, ou directement).
+- [ ] **Membre deja inscrit** : a la connexion, l'ecran « Les CGU ont ete mises a jour » bloque
+      l'app jusqu'a l'acceptation ; les trois pages restent lisibles ; « Me deconnecter » marche.
+      Une fois accepte, l'ecran ne revient pas.
+- [ ] **Videos** : en navigation privee, outils du navigateur ouverts sur l'onglet Reseau, ouvrir
+      le feed, une fiche et une page de film : aucune requete vers youtube.com, youtube-nocookie.com
+      ni vimeo.com avant de cliquer sur lecture. Apres le clic sur un film YouTube, le lecteur vient
+      de `youtube-nocookie.com`.
+
 ## Avant le lancement public (lot separe, non fait)
 
 - [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
@@ -183,6 +211,19 @@ A tester, sur telephone :
       personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
       A traiter : droits par colonne et nom d'affichage calcule en base.
 - [ ] Refuser une demande de credit sur un film non visible.
+- [ ] **Avis d'un juriste, representant dans l'Union europeenne.** Une societe etablie hors de
+      l'Union europeenne qui s'adresse a des residents francais peut devoir designer un
+      representant dans l'Union (RGPD, article 27). Le champ est prevu dans `src/lib/legal.ts`.
+- [ ] **Avis d'un juriste, clause « sans garantie ».** Une clause qui exclut toute garantie a des
+      limites face a des consommateurs. Faire relire les CGU (sections 1 et 10) avant le
+      lancement public, ainsi que le droit applicable.
+- [ ] **Durees de conservation annoncees, pas encore automatisees.** La politique promet la
+      suppression des donnees 30 jours apres celle du compte, des justificatifs apres 1 an et des
+      journaux techniques apres 12 mois. Rien dans le code ne le fait tout seul aujourd'hui :
+      prevoir la procedure (manuelle ou planifiee), et un moyen de supprimer son compte.
+- [ ] **Bandeau de cookies** : inutile tant qu'il n'y a ni mesure d'audience ni pixel
+      publicitaire, et que les lecteurs video ne se chargent qu'au clic. A reconsiderer des
+      qu'un tel outil est ajoute.
 - [ ] **Centre de notifications dans l'app.** Aujourd'hui une personne est prevenue par email et
       par notification du telephone, et retrouve l'information dans « Mes films ». Il n'existe pas
       de liste de notifications dans l'app. A faire dans un lot separe si besoin.

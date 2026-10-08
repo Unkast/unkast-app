@@ -10,6 +10,13 @@ import Avatar from "@/components/Avatar";
 import { getDisplayName } from "@/lib/profile";
 import LiquidDock from "@/components/LiquidDock";
 import MobileTabBar from "@/components/MobileTabBar";
+import Button from "@/components/ui/Button";
+import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
+import { LEGAL_LINKS } from "@/lib/legal";
+
+// Pages ou l'ecran « Les CGU ont ete mises a jour » ne s'affiche pas : les trois
+// pages legales (pour pouvoir les lire) et les deux pages de compte bloque.
+const TERMS_EXEMPT_PATHS: string[] = [...LEGAL_LINKS.map((l) => l.href), "/suspended", "/compte-introuvable"];
 
 // App installee (Capacitor natif, ou PWA en display-mode standalone) → classe
 // `app-installed` sur <html>. Elle choisit en CSS la navigation mobile : LiquidDock si
@@ -176,10 +183,14 @@ export default function AppShell({
   children,
   initialUser = null,
   initialUnread = 0,
+  needsTerms = false,
 }: {
   children: React.ReactNode;
   initialUser?: UserProfile | null;
   initialUnread?: number;
+  // Vrai si le membre connecte n'a pas accepte la version en vigueur des CGU
+  // (calcule cote serveur par (app)/layout.tsx).
+  needsTerms?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -193,6 +204,51 @@ export default function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnread);
   const isAdmin = user?.is_admin === true;
+
+  // Ecran bloquant « Les CGU ont ete mises a jour ». termsDone le ferme tout de
+  // suite apres l'acceptation, le temps que router.refresh() remette needsTerms a
+  // faux ; il est remis a zero a la deconnexion (un autre compte peut suivre).
+  const [termsDone, setTermsDone] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [termsSaving, setTermsSaving] = useState(false);
+  const [termsError, setTermsError] = useState("");
+  const termsCheckboxRef = useRef<HTMLInputElement>(null);
+  const showTerms = needsTerms && !!user && !termsDone && !TERMS_EXEMPT_PATHS.includes(pathname);
+
+  useEffect(() => {
+    if (showTerms) termsCheckboxRef.current?.focus();
+  }, [showTerms]);
+
+  function resetTerms() {
+    setTermsDone(false);
+    setTermsChecked(false);
+    setTermsError("");
+  }
+
+  async function handleAcceptTerms() {
+    if (!termsChecked || termsSaving) return;
+    setTermsSaving(true);
+    setTermsError("");
+    try {
+      const res = await fetch("/api/terms/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepted: true }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setTermsError(data?.error || "Enregistrement impossible, réessaie.");
+        return;
+      }
+      setTermsDone(true);
+      // Le layout serveur recalcule needsTerms (sinon sa valeur resterait en cache).
+      router.refresh();
+    } catch {
+      setTermsError("Connexion impossible, réessaie.");
+    } finally {
+      setTermsSaving(false);
+    }
+  }
 
   const showBack = !ROOT_PAGES.includes(pathname);
   const pageTitle = getPageTitle(pathname);
@@ -271,6 +327,7 @@ export default function AppShell({
         fetchUserProfile(session.user.id);
       } else {
         setUser(null);
+        resetTerms();
       }
     });
 
@@ -375,6 +432,7 @@ export default function AppShell({
     sessionStorage.removeItem("unkast_has_explored");
     localStorage.removeItem("unkast_splash_time");
     setUser(null);
+    resetTerms();
     setMenuOpen(false);
     setMobileMenuOpen(false);
     router.replace("/");
@@ -472,9 +530,11 @@ export default function AppShell({
   }, [activeIndex, user]);
 
   return (
-    // Hauteur = zone reellement visible (100dvh, repli 100vh) : avec 100vh seul, le bas du
-    // shell passait sous la barre d'adresse de Chrome Android.
-    <div ref={rootRef} className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden">
+    <>
+    {/* Hauteur = zone reellement visible (100dvh, repli 100vh) : avec 100vh seul, le bas du
+        shell passait sous la barre d'adresse de Chrome Android.
+        inert : sous l'ecran des CGU, rien n'est cliquable ni atteignable au clavier. */}
+    <div ref={rootRef} inert={showTerms} className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden">
       {fromServerHtml && <script dangerouslySetInnerHTML={{ __html: INSTALLED_SCRIPT }} />}
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 m-[14px] rounded-[30px] glass-strong">
@@ -682,6 +742,61 @@ export default function AppShell({
         </>
       )}
     </div>
+
+    {/* Ecran bloquant : aucune fermeture au clic sur le fond ni avec Echap. Seules
+        issues : accepter ou se deconnecter. Au-dessus de tout (Toast = 10000). */}
+    {showTerms && (
+      <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 p-4 backdrop-blur-[20px]">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="terms-update-title"
+          aria-describedby="terms-update-text"
+          className="glass-strong bg-glass-solid/80 max-h-full w-full max-w-md overflow-y-auto rounded-panel p-5 sm:p-6"
+        >
+          <h2 id="terms-update-title" className="text-xl font-bold tracking-tight text-text-primary">
+            Les CGU ont été mises à jour
+          </h2>
+          <p id="terms-update-text" className="mt-2 text-sm leading-relaxed text-text-secondary">
+            Pour continuer à utiliser Unkast, lis et accepte les conditions d&apos;utilisation et la politique de confidentialité.
+          </p>
+
+          <LegalLinks newTab className="mt-2" />
+
+          <TermsCheckbox
+            checked={termsChecked}
+            onChange={setTermsChecked}
+            inputRef={termsCheckboxRef}
+            className="mt-3"
+          />
+
+          {termsError && (
+            <p role="alert" className="mt-3 text-sm text-red-400">{termsError}</p>
+          )}
+
+          <Button
+            size="lg"
+            fullWidth
+            onClick={handleAcceptTerms}
+            disabled={!termsChecked || termsSaving}
+            className="mt-4 disabled:cursor-not-allowed"
+          >
+            {termsSaving ? "Enregistrement..." : "Continuer"}
+          </Button>
+
+          <div className="mt-2 flex justify-center">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="min-h-11 px-3 text-[13px] text-text-secondary underline underline-offset-2 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+            >
+              Me déconnecter
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

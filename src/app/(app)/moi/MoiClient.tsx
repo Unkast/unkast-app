@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { LEGAL_LINKS } from "@/lib/legal";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { PHONE_CODES } from "@/lib/phone-codes";
@@ -1022,6 +1024,23 @@ export default function MoiClient() {
                 <p className="mt-1 text-xs text-text-secondary">Toutes les fonctionnalités sont déverrouillées.</p>
               </EnterItem>
             )}
+
+            {/* Informations légales */}
+            <EnterItem className="glass rounded-panel p-5 sm:p-6">
+              <SectionLabel>Informations légales</SectionLabel>
+              <div className="mt-2 flex flex-col divide-y divide-white/10">
+                {LEGAL_LINKS.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    className="flex min-h-11 items-center justify-between gap-3 text-sm text-text-primary hover:text-lime focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+                  >
+                    {l.label}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-tertiary" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                ))}
+              </div>
+            </EnterItem>
 
             {/* Disconnect — separate */}
             <EnterItem>

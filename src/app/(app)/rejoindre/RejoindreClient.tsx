@@ -23,6 +23,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import ProgressSteps from "@/components/ui/ProgressSteps";
 import Select from "@/components/ui/Select";
 import Toggle from "@/components/ui/Toggle";
+import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
 
 // Compte créé mais film non créé : message selon video_skipped_reason (api/signup).
 const VIDEO_SKIPPED_MESSAGES: Record<string, string> = {
@@ -107,6 +108,11 @@ export default function RejoindreClient() {
     }
     setResendState("sent");
   }
+
+  // CGU et politique de confidentialité : case obligatoire, jamais cochée d'avance.
+  // Demandée à l'étape 2 (avant « Continuer avec Google ») et à l'étape 4 (là où
+  // /api/signup crée le compte). Même état : cochée une fois, elle le reste.
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Step 1
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -198,6 +204,9 @@ export default function RejoindreClient() {
   }, [searchQuery]);
 
   async function handleGoogle() {
+    // Le compte Google est créé par /auth/callback, qui ne connaît pas la case :
+    // l'acceptation est enregistrée ensuite par l'écran des CGU d'AppShell.
+    if (!termsAccepted) return;
     setGoogleLoading(true);
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -259,11 +268,16 @@ export default function RejoindreClient() {
     if (step === 3) return selectedRoles.length > 0;
     // 4A, 4B et 4C sont optionnelles. Seule exception : un film commencé (4A)
     // doit être complet pour partir, sinon « Passer cette étape ».
-    if (step === 4) return accountType !== "creator" || !filmStarted || filmReady;
+    // La case des CGU est exigée dans tous les cas : c'est ici que le compte est créé.
+    if (step === 4) return termsAccepted && (accountType !== "creator" || !filmStarted || filmReady);
     return false;
   }
 
   async function handleSubmit() {
+    if (!termsAccepted) {
+      setError("Accepte les CGU et la politique de confidentialité pour créer ton compte.");
+      return;
+    }
     setError("");
     setLoading(true);
 
@@ -279,6 +293,8 @@ export default function RejoindreClient() {
         bio: bio || null,
         avatar_url: null,
         account_type: accountType,
+        // Exigé par /api/signup (sinon 400 terms_required, affiché comme toute erreur).
+        terms_accepted: termsAccepted,
         ...(invitationToken ? { invitation_token: invitationToken } : {}),
       };
 
@@ -499,11 +515,18 @@ export default function RejoindreClient() {
                 <h1 className={TITLE}>Tes informations</h1>
                 <p className={SUBTITLE}>Crée ton compte pour commencer.</p>
 
+                <TermsCheckbox checked={termsAccepted} onChange={setTermsAccepted} ageNote className="mb-4" />
+
                 {/* Google button */}
-                <Button variant="light" onClick={handleGoogle} disabled={googleLoading} fullWidth>
+                <Button variant="light" onClick={handleGoogle} disabled={googleLoading || !termsAccepted} fullWidth>
                   {GOOGLE_LOGO}
                   {googleLoading ? "Redirection..." : "Continuer avec Google"}
                 </Button>
+                {!termsAccepted && (
+                  <p className="mt-2 text-center text-xs text-text-secondary">
+                    Coche la case pour continuer avec Google.
+                  </p>
+                )}
 
                 <div className="my-5 flex items-center gap-3">
                   <div className="h-px flex-1 bg-white/10" />
@@ -856,6 +879,11 @@ export default function RejoindreClient() {
           </motion.div>
         </AnimatePresence>
 
+        {/* Le compte est créé à la fin de l'étape 4 : la case est demandée ici. */}
+        {step === 4 && (
+          <TermsCheckbox checked={termsAccepted} onChange={setTermsAccepted} ageNote className="mt-4" />
+        )}
+
         {/* Error */}
         {error && (
           <div role="alert" className="mt-4 rounded-card border border-red-500/30 bg-red-500/10 p-3">
@@ -869,7 +897,7 @@ export default function RejoindreClient() {
             <Button variant="glass" onClick={prevStep}>Retour</Button>
             <div className="flex-1" />
             {step === 4 && (
-              <Button variant="glass" onClick={handleSubmit} disabled={loading} className="order-last w-full sm:order-none sm:w-auto">
+              <Button variant="glass" onClick={handleSubmit} disabled={loading || !termsAccepted} className="order-last w-full sm:order-none sm:w-auto">
                 {loading ? "Envoi..." : "Passer cette étape"}
               </Button>
             )}
@@ -882,6 +910,16 @@ export default function RejoindreClient() {
             </Button>
           </div>
         )}
+        {step === 4 && !termsAccepted && (
+          <p className="mt-3 text-xs text-text-secondary sm:text-right">
+            Coche la case ci-dessus pour créer ton compte.
+          </p>
+        )}
+      </EnterItem>
+
+      {/* Nouvel onglet : le formulaire en cours n'est pas perdu. */}
+      <EnterItem className="mt-8">
+        <LegalLinks newTab className="justify-center" />
       </EnterItem>
     </EnterList>
   );

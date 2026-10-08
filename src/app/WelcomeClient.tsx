@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
+import LegalLinks from "@/components/LegalLinks";
 import { createBrowserClient } from "@supabase/ssr";
 
 export default function WelcomeClient() {
@@ -145,8 +147,17 @@ export default function WelcomeClient() {
             lineHeight: 1.6,
           }}
         >
-          En continuant, tu acceptes nos conditions d&apos;utilisation et notre politique de confidentialité
+          En continuant, tu acceptes nos{" "}
+          <Link href="/cgu" className="underline underline-offset-2" style={{ color: "rgba(255,255,255,0.45)" }}>
+            conditions d&apos;utilisation
+          </Link>{" "}
+          et notre{" "}
+          <Link href="/confidentialite" className="underline underline-offset-2" style={{ color: "rgba(255,255,255,0.45)" }}>
+            politique de confidentialité
+          </Link>
         </p>
+
+        <LegalLinks className="mt-2 justify-center" />
       </div>
     </main>
   );

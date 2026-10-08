@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import VideoEmbed from "@/components/VideoEmbed";
+import VideoEmbed, { VIDEO_COOKIE_NOTICE } from "@/components/VideoEmbed";
 
 interface Props {
   url: string;
@@ -47,6 +47,11 @@ export default function VideoFacade({ url, title, poster, className = "" }: Prop
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M8 5v14l11-7z" />
         </svg>
+      </span>
+
+      {/* Mention cookies, visible avant le clic */}
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-2 pt-6 text-left text-[11px] leading-snug text-white/80">
+        {VIDEO_COOKIE_NOTICE}
       </span>
     </button>
   );

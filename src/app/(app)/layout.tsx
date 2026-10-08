@@ -2,6 +2,7 @@ import AppShell from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DISPLAY_NAME_COLUMNS, getDisplayName } from "@/lib/profile";
+import { TERMS_VERSION } from "@/lib/legal";
 
 // On résout l'utilisateur + son profil + le compteur de non-lus CÔTÉ SERVEUR,
 // puis on les passe à AppShell en props. Évite le waterfall client au montage
@@ -17,6 +18,10 @@ export default async function AppLayout({
 
   let initialUser = null;
   let initialUnread = 0;
+  // Vrai si le membre n'a pas accepte la version en vigueur des CGU : AppShell
+  // affiche alors l'ecran « Les CGU ont ete mises a jour ». Si la lecture echoue,
+  // on ne bloque pas (false) : l'ecran reviendra a la page suivante.
+  let needsTerms = false;
 
   if (user) {
     // is_admin est revoque en SELECT pour `authenticated` (migration
@@ -37,7 +42,8 @@ export default async function AppLayout({
         .select("id", { count: "exact", head: true })
         .neq("sender_id", user.id)
         .eq("is_read", false),
-      admin.from("profiles").select("is_admin").eq("id", user.id).single(),
+      // terms_version n'a aucun droit client (migration 20261012) : meme lecture.
+      admin.from("profiles").select("is_admin, terms_version").eq("id", user.id).single(),
     ]);
 
     if (profile) {
@@ -51,10 +57,11 @@ export default async function AppLayout({
       };
     }
     initialUnread = count ?? 0;
+    needsTerms = !!adminRow && adminRow.terms_version !== TERMS_VERSION;
   }
 
   return (
-    <AppShell initialUser={initialUser} initialUnread={initialUnread}>
+    <AppShell initialUser={initialUser} initialUnread={initialUnread} needsTerms={needsTerms}>
       {children}
     </AppShell>
   );

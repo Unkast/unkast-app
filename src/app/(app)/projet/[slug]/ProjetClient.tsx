@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ManagerRequestKind, ManagerRequestStatus, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
-import VideoEmbed from "@/components/VideoEmbed";
+import VideoEmbed, { VIDEO_COOKIE_NOTICE } from "@/components/VideoEmbed";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList, ModalBackdrop } from "@/components/motion";
 import Button from "@/components/ui/Button";
@@ -297,6 +297,9 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             </div>
           </div>
         </div>
+
+        {/* Mention cookies : le lecteur ne se charge qu'au clic sur « Regarder » */}
+        <p className="mt-2 px-1 text-[11px] leading-snug text-text-tertiary">{VIDEO_COOKIE_NOTICE}</p>
 
         {/* ===== ZONE 2 — CONTENT ===== */}
           <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 lg:items-start lg:pt-8 pb-6 lg:pb-12">

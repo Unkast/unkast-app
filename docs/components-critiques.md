@@ -110,6 +110,13 @@ Composants / modules utilises par 3+ features.
 - **Consommateurs** : `api/signup`, `api/waitlist`
 - **Risque si modifie** : **ELEVE** — protege les endpoints publics contre l'abus
 
+## AppShell : écran d'acceptation des CGU (08/10/2026)
+
+- Prop `needsTerms` (calculée par `src/app/(app)/layout.tsx`, service role) : quand elle est vraie,
+  `AppShell` affiche un écran bloquant « Les CGU ont été mises à jour » sur toutes les pages, sauf
+  les pages légales, `/suspended` et `/compte-introuvable`. Il appelle `POST /api/terms/accept`.
+- Dépend de la migration `20261012_terms_acceptance.sql`.
+
 ## ReportModal
 
 - **Fichier** : `src/components/ReportModal.tsx`
