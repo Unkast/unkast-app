@@ -1,4 +1,4 @@
-import type { ProjectCategory } from "@/types/database";
+import type { ProjectCategory, ProjectVisibility, DeclaredRole, CareerKind } from "@/types/database";
 
 export const CATEGORY_COLORS: Record<ProjectCategory, string> = {
   "court-metrage": "#C8FF00",
@@ -151,3 +151,53 @@ export const POPULAR_ROLES = [
   'Ingénieur du son',
   'Chef décorateur',
 ];
+
+// -----------------------------------------------------------------------------
+// Gestion des films (migration 20261008_film_management.sql)
+// -----------------------------------------------------------------------------
+
+// Declaration de droits, obligatoire a la publication. Changer le texte impose de
+// changer la version : elle est enregistree avec chaque declaration.
+export const RIGHTS_DECLARATION_VERSION = "2026-10-08";
+export const RIGHTS_DECLARATION_TEXT = "Je détiens les droits de diffusion ou j'ai l'accord de leur détenteur";
+
+// Publicite et clip : accord du client ou du label, a cocher en plus.
+export const CLIENT_AUTHORIZATION_TEXT = "Le client ou le label a autorisé la diffusion publique";
+export const CLIENT_AUTHORIZATION_CATEGORIES: ProjectCategory[] = ["publicite", "clip"];
+
+// Role declare sur le film. `credit` : credit cree automatiquement pour le declarant.
+export const DECLARED_ROLES: { value: DeclaredRole; label: string; credit: string | null }[] = [
+  { value: "realisateur", label: "Réalisateur", credit: "Réalisateur" },
+  { value: "producteur", label: "Producteur", credit: "Producteur" },
+  { value: "ayant_droit", label: "Ayant droit", credit: null },
+  { value: "autre", label: "Autre", credit: null },
+];
+
+// Visibilite d'un film, choisie par le Responsable.
+export const PROJECT_VISIBILITIES: { value: ProjectVisibility; label: string }[] = [
+  { value: "public", label: "Public" },
+  { value: "members", label: "Membres seulement" },
+  { value: "unpublished", label: "Dépublié" },
+];
+export const MEMBERS_ONLY_WARNING =
+  "Unkast limite l'accès aux membres connectés, mais ne peut pas garantir qu'un festival ne considère pas cela comme une diffusion. La décision t'appartient.";
+
+// Parcours du profil : entrees declaratives, texte uniquement.
+export const MAX_CAREER_ENTRIES = 30;
+export const CAREER_KINDS: { value: CareerKind; label: string }[] = [
+  { value: "long-metrage", label: "Long-métrage" },
+  { value: "court-metrage", label: "Court-métrage" },
+  { value: "serie", label: "Série" },
+  { value: "web-serie", label: "Web-série" },
+  { value: "telefilm", label: "Téléfilm" },
+  { value: "documentaire", label: "Documentaire" },
+  { value: "publicite", label: "Publicité" },
+  { value: "clip", label: "Clip" },
+  { value: "emission", label: "Émission" },
+  { value: "theatre", label: "Théâtre" },
+  { value: "autre", label: "Autre" },
+];
+
+// Coordonnees refusees dans la bio, le Parcours et la description des films.
+export const CONTACT_REFUSED_MESSAGE =
+  "Ajoute tes coordonnées dans la section Contact de ton profil. Elles ne sont pas affichées publiquement.";

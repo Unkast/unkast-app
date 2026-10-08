@@ -93,6 +93,17 @@ export type InvitationStatus = 'pending' | 'accepted' | 'declined' | (string & {
 // des films : valeurs probables 'pending' | 'approved' | 'refused'.
 export type ProjectStatus = 'pending' | 'approved' | 'refused' | (string & {})
 
+// Gestion des films (migration 20261008_film_management.sql), contraints par CHECK.
+export type ProjectVisibility = 'public' | 'members' | 'unpublished'
+export type DeclaredRole = 'realisateur' | 'producteur' | 'ayant_droit' | 'autre'
+export type ManagerRequestKind = 'invite' | 'request'
+export type ManagerRequestStatus = 'pending' | 'accepted' | 'refused'
+export type ProjectClaimKind = 'report' | 'claim'
+export type ProjectClaimStatus = 'pending' | 'accepted' | 'rejected'
+export type CareerKind =
+  | 'long-metrage' | 'court-metrage' | 'serie' | 'web-serie' | 'telefilm'
+  | 'documentaire' | 'publicite' | 'clip' | 'emission' | 'theatre' | 'autre'
+
 // reports.status / waitlist.status : colonnes TEXT libres, defaut 'pending'.
 export type ReportStatus = 'pending' | 'reviewed' | 'resolved' | 'dismissed' | (string & {})
 export type WaitlistStatus = 'pending' | 'invited' | 'accepted' | (string & {})
@@ -193,7 +204,8 @@ export interface ProfileRole {
 // -----------------------------------------------------------------------------
 export interface Project {
   id: string
-  profile_id: string
+  profile_id: string | null      // Responsable du film ; null = film sans Responsable (compte supprime)
+  visibility: ProjectVisibility  // choix du Responsable, defaut 'public'
   title: string
   slug: string
   description: string | null
@@ -205,6 +217,89 @@ export interface Project {
   status: ProjectStatus | null   // text libre, defaut probable 'pending'
   poster_url: string | null
   preview_url: string | null
+}
+
+// -----------------------------------------------------------------------------
+// TABLES de la gestion des films (migration 20261008_film_management.sql)
+// -----------------------------------------------------------------------------
+
+// Co-gestionnaires (le Responsable est dans projects.profile_id).
+export interface ProjectManager {
+  project_id: string
+  profile_id: string
+  added_by: string | null
+  created_at: string
+}
+
+// Declaration de droits : ajout seul.
+export interface ProjectRightsDeclaration {
+  id: string
+  project_id: string
+  profile_id: string | null
+  declared_role: DeclaredRole
+  text_version: string
+  client_authorized: boolean
+  declared_at: string
+}
+
+// Invitation (par le Responsable) ou demande (par une personne creditee) de co-gestion.
+export interface ProjectManagerRequest {
+  id: string
+  project_id: string
+  profile_id: string
+  kind: ManagerRequestKind
+  status: ManagerRequestStatus
+  created_by: string | null
+  created_at: string
+  decided_at: string | null
+}
+
+// Signalement / revendication d'un film, traite par l'admin.
+export interface ProjectClaim {
+  id: string
+  project_id: string
+  claimant_id: string
+  kind: ProjectClaimKind
+  message: string
+  document_path: string | null
+  status: ProjectClaimStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
+// Donnees de moderation (service role uniquement).
+export interface ProjectModeration {
+  project_id: string
+  source_title: string | null
+  source_author: string | null
+  edited_at: string | null
+  edited_by: string | null
+}
+
+// Parcours du profil : entree declarative, texte uniquement.
+export interface CareerEntry {
+  id: string
+  profile_id: string
+  title: string
+  role: string
+  year: number
+  kind: CareerKind
+  production: string | null
+  created_at: string
+}
+
+// Ligne renvoyee par la fonction public_project_credits (equipe d'un film public,
+// lisible par un visiteur : initiales, sauf pour les credits de realisation).
+export interface PublicProjectCredit {
+  id: string
+  project_id: string
+  role_on_project: string
+  display_name: string | null
+  is_director: boolean
+  profile_id: string | null
+  profile_slug: string | null
+  avatar_url: string | null
 }
 
 // -----------------------------------------------------------------------------
@@ -336,7 +431,7 @@ export interface RateLimit {
 // -----------------------------------------------------------------------------
 export interface Report {
   id: string
-  reporter_id: string
+  reporter_id: string | null   // null = signalement automatique (detecteur de coordonnees)
   target_type: string
   target_id: string
   reason: string
