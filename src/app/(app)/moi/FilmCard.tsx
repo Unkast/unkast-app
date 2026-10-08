@@ -1,6 +1,6 @@
 "use client";
 // Un film de la liste : role, statut, visibilite, et ses panneaux (modifier,
-// visibilite, crediter par email, gestion).
+// image, visibilite, crediter par email, gestion).
 import { useState } from "react";
 import { CATEGORY_LABELS, MEMBERS_ONLY_WARNING, PROJECT_VISIBILITIES } from "@/lib/constants";
 import type { ProjectCategory, ProjectVisibility } from "@/types/database";
@@ -11,6 +11,7 @@ import Select from "@/components/ui/Select";
 import { FilmThumb, Note } from "./parts";
 import { callApi, type ManagedProject, type ShowToast } from "./api";
 import FilmManagers from "./FilmManagers";
+import PosterUpload from "./PosterUpload";
 import RightsDeclaration, {
   EMPTY_DECLARATION,
   declarationPayload,
@@ -19,7 +20,7 @@ import RightsDeclaration, {
   type Declaration,
 } from "./RightsDeclaration";
 
-type Panel = "edit" | "visibility" | "credit" | "managers";
+type Panel = "edit" | "poster" | "visibility" | "credit" | "managers";
 
 interface PanelProps {
   project: ManagedProject;
@@ -95,7 +96,7 @@ function EditPanel({ project, reload, showToast, close }: PanelProps) {
         <Field label="Année" type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || project.year)} min={1990} max={2030} />
       </div>
       <Field multiline rows={3} label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-      <p className={helpCls}>Le lien vidéo et les images ne sont pas modifiables. Pour changer de vidéo, publie un nouveau film.</p>
+      <p className={helpCls}>Le lien vidéo n&apos;est pas modifiable : pour changer de vidéo, publie un nouveau film. L&apos;image se change dans « Image ».</p>
 
       {showDeclaration && <RightsDeclaration value={declaration} onChange={setDeclaration} category={category} />}
       {!isOwner && becomesClientWork && (
@@ -235,6 +236,7 @@ export default function FilmCard({
 
   const tabs: { key: Panel; label: string }[] = [
     { key: "edit", label: "Modifier" },
+    { key: "poster", label: "Image" },
     ...(isOwner ? [{ key: "visibility" as const, label: "Visibilité" }] : []),
     { key: "credit", label: "Créditer" },
     { key: "managers", label: "Gestion" },
@@ -290,6 +292,7 @@ export default function FilmCard({
       {panel && (
         <div className="mt-3 border-t border-white/10 pt-3">
           {panel === "edit" && <EditPanel {...panelProps} />}
+          {panel === "poster" && <PosterUpload project={project} reload={reload} showToast={showToast} />}
           {panel === "visibility" && <VisibilityPanel {...panelProps} />}
           {panel === "credit" && <CreditPanel {...panelProps} />}
           {panel === "managers" && <FilmManagers projectId={project.id} userId={userId} reloadFilms={reload} showToast={showToast} />}

@@ -128,6 +128,29 @@ Avec deux comptes de test (A et B), plus le compte admin.
       membre (equipe d'un film, messagerie, recherche, invitations, notifications). Sur sa page
       profil, le vrai nom n'est pas dans le code source de la page.
 
+## 4 ter. Lot « image du film + films membres »
+
+Executer `20261010_film_poster_and_member_teasers.sql` (apres celle du 9) juste avant de
+deployer, puis ses trois verifications.
+
+- [ ] **Vignette automatique** : publier un film YouTube, puis un film Vimeo. Chacun a son image
+      dans « Mes films », sur le feed et sur sa page, sans rien envoyer.
+- [ ] **Films existants** : admin, onglet Films, « Recuperer les images manquantes ». Le message
+      donne le nombre d'images recuperees ; les films concernes ont maintenant une image.
+- [ ] **Image envoyee** (Responsable, puis co-gestionnaire) : panneau Image, choisir une photo,
+      recadrer en 16:9, valider. L'image change partout. Un fichier de plus de 5 Mo ou d'un autre
+      format est refuse avec un message clair.
+- [ ] **Revenir a l'image de la video** : le bouton n'apparait que sur une image envoyee ; la
+      vignette revient.
+- [ ] **Pas de suivi** : changer l'image ne fait rien apparaitre dans « Modifies recemment ».
+- [ ] **Film membres, navigation privee, lien direct** : carte verrouillee (image floutee,
+      cadenas, titre, « Reserve aux membres. Inscris-toi pour voir ce film. », bouton vers
+      l'inscription). Dans le code source de la page : ni lien YouTube / Vimeo, ni description,
+      ni nom de l'equipe. La page porte `noindex`.
+- [ ] **Film membres, navigation privee, fiche du Responsable** : la meme carte dans sa liste de
+      films. Connecte, le film s'affiche normalement, sans carte verrouillee.
+- [ ] **Film depublie** : toujours introuvable pour un visiteur, aucune carte.
+
 ## Avant le lancement public (lot separe, non fait)
 
 - [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
@@ -135,6 +158,8 @@ Avec deux comptes de test (A et B), plus le compte admin.
       personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
       A traiter : droits par colonne et nom d'affichage calcule en base.
 - [ ] Refuser une demande de credit sur un film non visible.
+- [ ] **Films ou la personne est creditee** : sa fiche ne liste que les films dont elle est
+      Responsable. Les afficher aussi (et leurs cartes verrouillees) fera l'objet d'un lot separe.
 - [ ] **Recherche sur le nom d'affichage.** `/api/search` filtre et trie encore sur `full_name` :
       chercher le vrai nom d'une personne la fait remonter sous son nom de scene, et on ne la
       trouve pas par son nom de scene. La recherche doit porter sur le nom d'affichage, jamais

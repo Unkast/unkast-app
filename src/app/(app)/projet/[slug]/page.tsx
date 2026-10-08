@@ -10,6 +10,7 @@ import type {
 } from "@/types/database";
 import { TEAM_SELECT, fetchVisitorCredits, loadFilmTeams, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, withDisplayName, type DisplayNameRow } from "@/lib/profile";
+import LockedFilmCard, { toLockedFilm, type LockedFilm } from "@/components/LockedFilmCard";
 import ProjetClient from "./ProjetClient";
 
 export const revalidate = 120; // Cache 2 minutes
@@ -65,6 +66,11 @@ async function getProject(slug: string): Promise<{
   ]);
 
   if (!project) return null;
+
+  // SÉCURITÉ, ceinture et bretelles : la RLS ne renvoie déjà pas un film
+  // « membres seulement » à un visiteur non connecté. Si elle le faisait un jour,
+  // il resterait introuvable ici et seule la carte verrouillée s'afficherait.
+  if (!user && project.visibility === "members") return null;
 
   // SÉCURITÉ : un film non approuvé (pending/refused) ne doit pas être accessible
   // publiquement par slug. Seuls ses gestionnaires (Responsable ou co-gestionnaire)
@@ -214,6 +220,20 @@ async function getProject(slug: string): Promise<{
   };
 }
 
+// Film introuvable pour ce lecteur : s'il n'est pas connecté et que le film est
+// « membres seulement », la fonction SQL renvoie de quoi afficher une carte
+// verrouillée (identifiant, adresse, titre, image, année). Rien d'autre du film
+// n'est lu ici : ni lien vidéo, ni description, ni équipe.
+async function getLockedFilm(slug: string): Promise<LockedFilm | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) return null;
+
+  const { data } = await supabase.rpc("member_only_film_teasers", { p_slug: slug });
+  const row = ((data ?? []) as LockedFilm[])[0];
+  return row ? toLockedFilm(row) : null;
+}
+
 type Props = {
   params: Promise<{ slug: string }>;
 };
@@ -222,7 +242,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const result = await getProject(slug);
 
-  if (!result) return { title: "Projet introuvable — Unkast" };
+  if (!result) {
+    // Carte verrouillée : le titre seul, jamais indexée. Ni description ni image
+    // tirées du film.
+    const locked = await getLockedFilm(slug);
+    if (locked) return { title: `${locked.title} | Unkast`, robots: { index: false, follow: false } };
+    return { title: "Projet introuvable — Unkast" };
+  }
 
   const { project } = result;
   const description = project.description
@@ -249,7 +275,15 @@ export default async function ProjetPage({ params }: Props) {
   const { slug } = await params;
   const result = await getProject(slug);
 
-  if (!result) notFound();
+  if (!result) {
+    const locked = await getLockedFilm(slug);
+    if (!locked) notFound();
+    return (
+      <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+        <LockedFilmCard film={locked} />
+      </main>
+    );
+  }
 
   return (
     <ProjetClient

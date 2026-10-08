@@ -169,6 +169,8 @@ Modèle : [database.md](database.md#gestion-des-films-migration-20261008_film_ma
 | | DELETE | `?profile_id=` : Responsable ou soi-même ; `?request_id=` : auteur d'une demande en attente | |
 | `/api/projects/[id]/transfer` | POST | Responsable | `{profile_id}` d'un co-gestionnaire ; refusé si le destinataire gratuit est au plafond et que le film occupe une place (en ligne ou en attente) |
 | `/api/projects/[id]/claims` | POST | connecté | multipart `kind` (`report`/`claim`), `message`, `file` (obligatoire pour `claim`, 4 Mo max, limite Vercel de 4,5 Mo) ; bucket privé `claims` |
+| `/api/projects/[id]/poster` | POST | gestionnaire | multipart `file` : image du film envoyée, déjà recadrée en 16:9 et compressée par le navigateur. Le serveur contrôle le **type réel** (signature JPEG, PNG, WebP) et le poids (4 Mo), enregistre dans le bucket `posters`, écrit `poster_url` |
+| | DELETE | gestionnaire | revenir à l'image de la vidéo (vignette relue via oEmbed, `null` si introuvable) |
 | `/api/dashboard/career` | GET, POST, PATCH, DELETE | propriétaire | Parcours. Codes : `contact_refused` (détecteur), `link_refused` (CHECK de la base), `career_limit_reached` |
 
 Routes existantes modifiées : `/api/signup` (film via `publish_project`, réponse `video_skipped_reason`),
@@ -188,7 +190,7 @@ sur l'existant.
 films `edited` (modifiés récemment, **seulement** ceux à surveiller : `title_changed` par rapport à `approved_title`, ou `reported`) et `orphans` (sans Responsable) ; `tab=claims` renvoie les
 signalements et revendications avec une URL signée du justificatif ; `tab=reports` renvoie les
 signalements automatiques, le contenu d'une entrée de Parcours signalée, l'expéditeur et le
-destinataire d'un message signalé. Actions : `mark_film_edit_seen`, `accept_claim`, `reject_claim`,
+destinataire d'un message signalé. Actions : `backfill_posters` (vignette de la vidéo pour les films sans image, par lots de 20, `offset` / `next_offset`), `mark_film_edit_seen`, `accept_claim`, `reject_claim`,
 `assign_project_owner`, `delete_career_entry`. Accepter une revendication ne transfère pas le film :
 l'admin l'attribue ensuite avec `assign_project_owner` (deux gestes, voulu).
 

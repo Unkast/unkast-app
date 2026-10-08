@@ -1,3 +1,4 @@
+import { fetchVideoThumbnail } from "@/lib/oembed";
 import { titleChangedALot } from "@/lib/title-change";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -247,6 +248,38 @@ export async function PATCH(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { action, target_id, reason } = body;
   const admin = createAdminClient();
+
+  // Rattrapage des images de film : vignette de la video pour les films qui
+  // n'ont aucune image (films anterieurs a la recuperation automatique). Ne
+  // touche jamais une image existante. Par lots, pour tenir dans le delai d'une
+  // requete : tant que `remaining` est vrai, relancer avec `offset: next_offset`
+  // (les films sans vignette disponible restent sans image et sont sautes).
+  if (action === "backfill_posters") {
+    const BATCH = 20;
+    const offset = Number.isInteger(body.offset) && body.offset > 0 ? (body.offset as number) : 0;
+    const { data: films, error } = await admin.from("projects")
+      .select("id, video_url").is("poster_url", null).neq("status", "refused")
+      .order("created_at", { ascending: false }).range(offset, offset + BATCH);
+    if (error) return NextResponse.json({ error: "Lecture des films impossible." }, { status: 500 });
+    const batch = (films ?? []).slice(0, BATCH);
+    let filled = 0;
+    await Promise.all(batch.map(async (f) => {
+      const thumbnail = await fetchVideoThumbnail(f.video_url);
+      if (!thumbnail) return;
+      const { error: writeError } = await admin.from("projects")
+        .update({ poster_url: thumbnail }).eq("id", f.id).is("poster_url", null);
+      if (!writeError) filled++;
+    }));
+    await admin.from("admin_logs").insert({
+      admin_id: adminId, action: "backfill_posters", target_type: "project", target_id: adminId,
+      details: { checked: batch.length, filled },
+    });
+    return NextResponse.json({
+      success: true, checked: batch.length, filled,
+      remaining: (films ?? []).length > BATCH,
+      next_offset: offset + batch.length - filled,
+    });
+  }
 
   // Auto-protection : refuse les actions qui, appliquees a soi-meme, sortiraient
   // l'admin du back-office (suspension) ou degraderaient son propre statut

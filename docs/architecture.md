@@ -289,7 +289,9 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/lib/credits.ts` | UTILITY | `isDirectorRole`, `directorNames` |
 | `src/lib/contact-detector.ts`, `src/lib/contact-flag.ts` | UTILITY | détecteur de coordonnées et signalement automatique |
 | `src/lib/title-change.ts` | UTILITY | `titleChangedALot` : titre nettement différent du titre validé (liste « modifiés récemment » de l'admin) |
-| `src/lib/oembed.ts` | UTILITY | titre et chaîne d'une vidéo, refus d'une vidéo privée |
+| `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée |
+| `src/app/(app)/moi/PosterUpload.tsx` | SUB | image du film : recadrage 16:9, compression dans le navigateur, retour à l'image de la vidéo |
+| `src/components/LockedFilmCard.tsx` | UTILITY | carte verrouillée d'un film « membres seulement » pour un visiteur (image floutée, cadenas, titre, bouton d'inscription) ; utilisée par la page film et la fiche profil |
 
 Points de vigilance :
 - Le nom affiché sur un film est celui du **crédit de réalisation**, jamais du Responsable. `/api/search` renvoie `director_name` (plus `owner_name`).

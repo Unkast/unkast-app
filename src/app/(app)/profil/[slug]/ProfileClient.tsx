@@ -12,6 +12,7 @@ import Field from "@/components/ui/Field";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoFacade from "@/components/VideoFacade";
 import Avatar from "@/components/Avatar";
+import LockedFilmCard, { type LockedFilm } from "@/components/LockedFilmCard";
 import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
@@ -36,6 +37,9 @@ type ProfileData = Omit<Profile, "first_name" | "last_name" | "stage_name" | "di
   show_verified_badge: boolean;
   projects: ProjectWithCredits[];
   career: CareerEntry[];
+  // Films « membres seulement » vus par un visiteur non connecté : de quoi
+  // afficher une carte verrouillée, rien d'autre. Vide pour un membre connecté.
+  locked_films: LockedFilm[];
 };
 
 interface Props {
@@ -92,6 +96,15 @@ export default function ProfileClient({
     activeFilter === "all"
       ? profile.projects
       : profile.projects.filter((p) => p.category === activeFilter);
+
+  // Liste affichée : les films lisibles et, pour un visiteur non connecté, les
+  // cartes verrouillées des films « membres seulement », à leur place selon
+  // l'année. Leur catégorie n'est pas transmise : elles n'apparaissent que sous
+  // « Tous ».
+  const filmItems: ({ locked: false; year: number | null; project: ProjectWithCredits } | { locked: true; year: number | null; film: LockedFilm })[] = [
+    ...filteredProjects.map((project) => ({ locked: false as const, year: project.year, project })),
+    ...(activeFilter === "all" ? profile.locked_films : []).map((film) => ({ locked: true as const, year: film.year, film })),
+  ].sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
 
   function toggleCredits(projectId: string) {
     setExpandedCredits((prev) => {
@@ -434,7 +447,7 @@ export default function ProfileClient({
             <h2 className="text-xl font-bold text-text-primary mb-4">
               Films
               <span className="text-text-tertiary font-normal ml-2 text-base">
-                ({profile.projects.length})
+                ({profile.projects.length + profile.locked_films.length})
               </span>
             </h2>
 
@@ -454,13 +467,23 @@ export default function ProfileClient({
             </EnterItem>
 
             {/* Project cards */}
-            {filteredProjects.length === 0 ? (
+            {filmItems.length === 0 ? (
               <div className="border border-dashed border-white/[0.08] rounded-card h-[120px] flex items-center justify-center">
                 <p className="text-[13px] text-[#444]">Aucun film pour le moment</p>
               </div>
             ) : (
               <EnterList className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-                {filteredProjects.map((project) => {
+                {filmItems.map((item) => {
+                  // Film « membres seulement », visiteur non connecté : carte
+                  // verrouillée, sans lecteur ni équipe. Le titre mène à la page du film.
+                  if (item.locked) {
+                    return (
+                      <motion.div key={item.film.id} variants={reduced ? enterFade : enterUp}>
+                        <LockedFilmCard film={item.film} href={`/projet/${item.film.slug}`} />
+                      </motion.div>
+                    );
+                  }
+                  const project = item.project;
                   const ownerCredit = project.credits.find(
                     (c) => c.profile_id === profile.id
                   );

@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, withDisplayName, type DisplayNameRow } from "@/lib/profile";
+import { toLockedFilm, type LockedFilm } from "@/components/LockedFilmCard";
 import ProfileClient from "./ProfileClient";
 
 export const revalidate = 60; // Cache 1 minute
@@ -26,6 +27,10 @@ type ProfileWithRelations = Omit<Profile, "first_name" | "last_name" | "stage_na
   })[];
   // Parcours : entrées déclaratives, texte uniquement, année décroissante.
   career: CareerEntry[];
+  // Films « membres seulement » dont la personne est Responsable, pour un
+  // visiteur non connecté : cartes verrouillées (identifiant, adresse, titre,
+  // image, année, rien d'autre). Toujours vide pour un membre connecté.
+  locked_films: LockedFilm[];
 };
 
 async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
@@ -47,7 +52,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
       profile_roles ( * ),
       projects!projects_profile_id_fkey (
         id, profile_id, title, slug, description, category, year,
-        video_url, poster_url, preview_url, status, created_at,
+        video_url, poster_url, preview_url, status, visibility, created_at,
         project_credits (
           *,
           profiles ( ${DISPLAY_NAME_COLUMNS}, slug, avatar_url )
@@ -76,7 +81,15 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   // connecté, équipe des films : il ne lit aucune ligne de project_credits (RLS),
   // elle passe par public_project_credits en un seul appel.
   const { data: { user } } = await supabase.auth.getUser();
-  const [{ data: career }, visitorCredits] = await Promise.all([
+  // Second verrou, en plus de la RLS : un visiteur ne recoit que les films
+  // publics. Un film « membres seulement » ne lui parvient que sous forme de
+  // carte verrouillee (member_only_film_teasers), sans video ni equipe.
+  if (!user) {
+    for (let i = rawProjects.length - 1; i >= 0; i--) {
+      if (rawProjects[i].visibility !== "public") rawProjects.splice(i, 1);
+    }
+  }
+  const [{ data: career }, visitorCredits, lockedRows] = await Promise.all([
     supabase
       .from("career_entries")
       .select("id, profile_id, title, role, year, kind, production, created_at")
@@ -84,7 +97,13 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
       .order("year", { ascending: false })
       .order("created_at", { ascending: false }),
     user ? null : fetchVisitorCredits(supabase, rawProjects.map((p) => p.id)),
+    // Films « membres seulement » : un visiteur ne les lit pas dans `projects`
+    // (RLS), la fonction lui en donne de quoi afficher une carte verrouillée.
+    user
+      ? null
+      : supabase.rpc("member_only_film_teasers", { p_profile_id: profile.id }).then((r) => r.data as LockedFilm[] | null),
   ]);
+  const lockedFilms = (lockedRows ?? []).map(toLockedFilm);
   if (visitorCredits) {
     // Rôle du titulaire sur ses propres films : son nom est déjà public sur cette
     // page, ses crédits y sont donc rendus en clair (les autres restent en initiales).
@@ -133,6 +152,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     show_verified_badge: profile.recruiter_verified === true && plan === "pro",
     projects: projectsWithCredits,
     career: (career ?? []) as CareerEntry[],
+    locked_films: lockedFilms,
   } as unknown as ProfileWithRelations;
 }
 

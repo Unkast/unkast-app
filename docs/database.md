@@ -210,7 +210,9 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 
 > **État au 08/10/2026** : la migration `20261008_film_management.sql` a été exécutée en
 > production (indiqué par Maxime). La migration `20261009_film_limit_and_edit_watch.sql`
-> (plafond, titre validé, voir plus bas) est **à exécuter** avant de déployer le code qui l'attend.
+> (plafond, titre validé, voir plus bas) puis `20261010_film_poster_and_member_teasers.sql`
+> (image du film, cartes verrouillées) sont **à exécuter**, dans cet ordre, avant de déployer le
+> code qui les attend.
 > Ordre de mise en ligne : [mise-en-ligne-gestion-films.md](mise-en-ligne-gestion-films.md). Décision : [ADR 0014](adr/0014-responsable-et-co-gestionnaires.md).
 
 ### Modèle
@@ -233,6 +235,16 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
 - `project_moderation.approved_title` (migration `20261009`) : titre validé par l'admin, écrit à
   l'approbation et quand l'admin clique « Vu ». La liste « modifiés récemment » ne garde que les
   films dont le titre s'en écarte nettement (`src/lib/title-change.ts`) ou qui sont signalés.
+- **Image du film** (`projects.poster_url`, migration `20261010`) : par défaut la vignette de la
+  vidéo, lue chez YouTube ou Vimeo par le serveur à la publication (`src/lib/oembed.ts`). Un
+  gestionnaire peut la remplacer par une image envoyée (bucket public `posters`, écrit par le
+  service role uniquement, 4 Mo, WebP/JPEG/PNG) ou revenir à celle de la vidéo. La colonne reste
+  protégée par le trigger : seule la route `/api/projects/[id]/poster` l'écrit. Aucune validation
+  admin, rien dans « modifiés récemment ».
+- **Film « membres seulement » vu par un visiteur** (migration `20261010`) : la fonction
+  `member_only_film_teasers(p_slug, p_profile_id)` renvoie uniquement `id`, `slug`, `title`,
+  `poster_url`, `year` (un filtre obligatoire). Le lien vidéo, la description et l'équipe ne
+  sortent pas de la base. Sert à la carte verrouillée (`src/components/LockedFilmCard.tsx`).
 - **Noms réels** : `full_name`, `first_name`, `last_name` restent lisibles en base avec la clé
   publique pour tout profil approuvé. L'app n'affiche que le nom d'affichage (`getDisplayName`),
   mais la fermeture en base est un **lot séparé, à faire avant le lancement public**.

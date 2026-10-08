@@ -233,6 +233,11 @@ export async function POST(request: NextRequest) {
       if (verdict.level === "doubtful" && description) {
         await flagContactInfo(admin, "project", result.project_id, verdict.reason, description);
       }
+      // Image du film par defaut : la vignette de la video (service role, la
+      // colonne est protegee par le trigger). Sans vignette, le film reste sans image.
+      if (meta.thumbnail) {
+        await admin.from("projects").update({ poster_url: meta.thumbnail }).eq("id", result.project_id);
+      }
       return NextResponse.json({ success: true, id: result.project_id });
     case "duplicate":
       // project null : doublon tranche par l'index unique (course), film non identifie.

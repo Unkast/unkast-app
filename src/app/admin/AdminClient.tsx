@@ -133,6 +133,7 @@ export default function AdminClient() {
   const [editedFilms, setEditedFilms] = useState<EditedFilm[]>([]);
   const [orphanFilms, setOrphanFilms] = useState<OrphanFilm[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [backfilling, setBackfilling] = useState(false);
 
   // Modal "Attribuer un Responsable" : recherche d'un membre par nom
   // (GET tab=users&q=), puis assign_project_owner avec son id.
@@ -273,6 +274,32 @@ export default function AdminClient() {
     showToast("Pro offert accordé");
     setGrantModal(null);
     fetchData();
+  }
+
+  // Rattrapage des images de film manquantes (backfill_posters), par lots :
+  // tant que remaining est vrai, on relance avec next_offset. 20 passes au plus.
+  async function backfillPosters() {
+    setBackfilling(true);
+    let offset = 0, checked = 0, filled = 0, remaining = false, failure = "";
+    for (let pass = 0; pass < 20; pass++) {
+      const res = await fetch("/api/admin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill_posters", offset }),
+      }).catch(() => null);
+      const data = res ? await res.json().catch(() => null) : null;
+      if (!res?.ok || !data) { failure = data?.error || "Erreur inconnue"; break; }
+      checked += data.checked ?? 0;
+      filled += data.filled ?? 0;
+      remaining = Boolean(data.remaining);
+      if (!remaining) break;
+      offset = data.next_offset ?? 0;
+    }
+    setBackfilling(false);
+    const summary = `${filled} image(s) récupérée(s) sur ${checked} film(s) vérifié(s)`;
+    if (failure) showToast(`${failure} (${summary})`, 7000);
+    else showToast(remaining ? `${summary}. Relance pour continuer.` : summary, 7000);
+    if (filled > 0) loadTab("films");
   }
 
   const filmsCount = films.length + editedFilms.length + orphanFilms.length;
@@ -595,6 +622,12 @@ export default function AdminClient() {
               <button onClick={() => openAssign({ projectId: f.id, title: f.title })} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12 }}>Attribuer un Responsable</button>
             </div>
           ))}
+          {/* Rattrapage : vignette de la video pour les films sans image */}
+          <div style={{ marginTop: 32 }}>
+            <button onClick={backfillPosters} disabled={backfilling} style={{ ...btnNeutral, padding: "6px 12px", fontSize: 12, fontWeight: 500, opacity: backfilling ? 0.5 : 1, cursor: backfilling ? "default" : "pointer" }}>
+              {backfilling ? "Récupération en cours..." : "Récupérer les images manquantes"}
+            </button>
+          </div>
         </div>
       )}
 

@@ -222,6 +222,9 @@ export async function POST(request: NextRequest) {
         videoSkippedReason = "rights";
       } else if (!result?.ok) {
         videoFailed = true;
+      } else if (meta.thumbnail) {
+        // Image du film par defaut : la vignette de la video.
+        await supabase.from("projects").update({ poster_url: meta.thumbnail }).eq("id", result.project_id);
       }
     }
   }
