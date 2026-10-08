@@ -6,6 +6,7 @@ import Link from "next/link";
 import { use } from "react";
 import ReportModal from "@/components/ReportModal";
 import Avatar from "@/components/Avatar";
+import Button from "@/components/ui/Button";
 
 interface Message {
   id: string;
@@ -219,7 +220,21 @@ export default function ConversationPage({
   }
 
   if (loading) {
-    return <div style={{ padding: 20, color: "#555" }}>Chargement...</div>;
+    // Squelette en verre sans flou (.lite) : même silhouette que la conversation.
+    return (
+      <div role="status" style={{ padding: "calc(20px + env(safe-area-inset-top, 0px)) 16px 20px" }}>
+        <span className="sr-only">Chargement...</span>
+        <div aria-hidden="true" className="flex items-center gap-3">
+          <div className="size-9 rounded-full bg-white/10 animate-pulse" />
+          <div className="h-3.5 w-32 rounded bg-white/10 animate-pulse" />
+        </div>
+        <div aria-hidden="true" className="mt-8 flex flex-col gap-2">
+          <div className="glass lite h-11 w-[60%] rounded-card animate-pulse" />
+          <div className="glass lite h-16 w-[70%] self-end rounded-card animate-pulse" />
+          <div className="glass lite h-11 w-[45%] rounded-card animate-pulse" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -236,21 +251,23 @@ export default function ConversationPage({
     >
       {/* ── Header ── */}
       <div
+        // Verre : seule la bordure basse est gardee (borderWidth), la boite ne change pas.
+        className="glass"
         style={{
           display: "flex",
           alignItems: "center",
           gap: 12,
           // En mobile le header d'AppShell est masque ici : ce header porte la safe area haute.
           padding: "calc(6px + env(safe-area-inset-top, 0px)) 16px 6px 4px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderWidth: "0 0 1px",
           flexShrink: 0,
         }}
       >
         <button
           onClick={() => router.back()}
           aria-label="Retour"
+          className="btn-back rounded-pill text-text-primary hover:bg-white/10"
           style={{
-            background: "none",
             border: "none",
             cursor: "pointer",
             width: 44,
@@ -266,7 +283,7 @@ export default function ConversationPage({
             height="20"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#f0f0f0"
+            stroke="currentColor"
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -298,6 +315,8 @@ export default function ConversationPage({
             </Link>
             <Link
               href={`/profil/${other.slug}`}
+              // after: etend la cible tactile a 44 px de haut sans changer la boite.
+              className="relative text-text-secondary hover:text-text-primary after:absolute after:-inset-x-1.5 after:-inset-y-[9px]"
               style={{ padding: 4, flexShrink: 0 }}
             >
               <svg
@@ -305,7 +324,7 @@ export default function ConversationPage({
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#666"
+                stroke="currentColor"
                 strokeWidth={1.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -319,9 +338,11 @@ export default function ConversationPage({
             <button
               onClick={() => setReportOpen(true)}
               title="Signaler"
+              aria-label="Signaler"
+              className="relative text-text-secondary hover:text-text-primary after:absolute after:-inset-x-1.5 after:-inset-y-[9px]"
               style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                 <line x1="4" y1="22" x2="4" y2="15" />
               </svg>
@@ -360,11 +381,16 @@ export default function ConversationPage({
               }}
             >
               <div
+                // Les autres : verre SANS flou (.lite), une bulle floutee par message
+                // couterait trop cher sur Android. Padding reduit de 1 px pour absorber
+                // la bordure du verre : la bulle garde sa taille.
+                className={isMine ? undefined : "glass lite"}
                 style={{
                   maxWidth: "75%",
-                  padding: "10px 14px",
-                  background: isMine ? "#C8FF00" : "#1a1a1a",
-                  color: isMine ? "#0d0d0d" : "#f0f0f0",
+                  padding: isMine ? "10px 14px" : "9px 13px",
+                  background: isMine ? "var(--accent-gradient)" : undefined,
+                  boxShadow: isMine ? "inset 0 1px 0 rgba(255,255,255,0.45)" : undefined,
+                  color: isMine ? "#0A0A0C" : "#f0f0f0",
                   borderRadius: isMine
                     ? "18px 18px 4px 18px"
                     : "18px 18px 18px 4px",
@@ -384,7 +410,8 @@ export default function ConversationPage({
                   style={{
                     fontSize: 9,
                     fontFamily: "JetBrains Mono, monospace",
-                    color: isMine ? "rgba(13,13,13,0.5)" : "rgba(240,240,240,0.35)",
+                    // Contraste releve (9 px) : environ 6:1 sur le citron comme sur le verre.
+                    color: isMine ? "rgba(10,10,12,0.7)" : "rgba(240,240,240,0.6)",
                     marginTop: 4,
                     textAlign: isMine ? "right" : "left",
                   }}
@@ -407,12 +434,11 @@ export default function ConversationPage({
           contacts gratuits et garde l'accès à ses échanges en cours. */}
       {error === "free_limit" && (
         <div
+          className="glass rounded-card"
           style={{
             margin: "0 16px 12px",
             padding: 16,
-            background: "rgba(200,255,0,0.06)",
-            border: "1px solid rgba(200,255,0,0.2)",
-            borderRadius: 12,
+            borderColor: "rgba(200,255,0,0.25)",
             textAlign: "center",
           }}
         >
@@ -429,7 +455,7 @@ export default function ConversationPage({
           <p
             style={{
               fontSize: 12.5,
-              color: "#888",
+              color: "#8a8a8a",
               lineHeight: 1.5,
               marginBottom: 10,
             }}
@@ -439,14 +465,11 @@ export default function ConversationPage({
           </p>
           <Link
             href="/pro"
+            className="btn-accent"
             style={{
               display: "inline-block",
               padding: "10px 20px",
-              background: "#C8FF00",
-              color: "#0d0d0d",
               fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 10,
               textDecoration: "none",
             }}
           >
@@ -510,9 +533,9 @@ export default function ConversationPage({
           style={{
             margin: "0 16px 8px",
             padding: "10px 12px",
-            background: "rgba(200,255,0,0.05)",
-            border: "1px solid rgba(200,255,0,0.2)",
-            borderRadius: 10,
+            background: "rgba(200,255,0,0.06)",
+            border: "1px solid rgba(200,255,0,0.25)",
+            borderRadius: 16,
           }}
         >
           <p style={{ fontSize: 12, color: "#C8FF00", margin: 0, lineHeight: 1.5 }}>
@@ -524,9 +547,11 @@ export default function ConversationPage({
       {/* ── Input — masqué si quota gratuit épuisé, désactivé pour les autres blocages ── */}
       {error !== "free_limit" && (
         <div
+          // Verre fort : seule la bordure haute est gardee (borderWidth), la boite ne change pas.
+          className="glass-strong"
           style={{
             padding: "12px 16px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderWidth: "1px 0 0",
             display: "flex",
             gap: 10,
             alignItems: "flex-end",
@@ -553,9 +578,9 @@ export default function ConversationPage({
             style={{
               flex: 1,
               padding: "10px 14px",
-              background: "#1a1a1a",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 12,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 20,
               fontSize: 14,
               color: inputBlocked ? "#555" : "#f0f0f0",
               outline: "none",
@@ -570,11 +595,15 @@ export default function ConversationPage({
           <button
             onClick={handleSendClick}
             disabled={!input.trim() || sending || inputBlocked}
+            aria-label="Envoyer"
+            // Bouton existant rhabille (ui/Button ferait 44 px et deplacerait la barre).
+            // after: etend la cible tactile a 44 px sans changer la boite de 40 px.
+            className={`relative after:absolute after:-inset-0.5 ${input.trim() && !inputBlocked ? "btn-accent" : ""}`}
             style={{
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: input.trim() && !inputBlocked ? "#C8FF00" : "#1a1a1a",
+              background: input.trim() && !inputBlocked ? undefined : "rgba(255,255,255,0.06)",
               border: "none",
               display: "flex",
               alignItems: "center",
@@ -588,7 +617,7 @@ export default function ConversationPage({
               width="18"
               height="18"
               viewBox="0 0 24 24"
-              fill={input.trim() && !inputBlocked ? "#0d0d0d" : "#555"}
+              fill={input.trim() && !inputBlocked ? "#0A0A0C" : "#555"}
             >
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
@@ -604,25 +633,20 @@ export default function ConversationPage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}
+            className="glass-strong bg-glass-solid/80 rounded-panel"
+            style={{ padding: 24, width: "100%", maxWidth: 380 }}
           >
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", margin: 0, marginBottom: 10 }}>Confirmer l&apos;envoi</h3>
             <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, margin: 0, marginBottom: 20 }}>
               Ton message va être envoyé. Tu devras attendre la réponse avant de pouvoir en envoyer un autre. Es-tu sûr de ton message, ou veux-tu le modifier ?
             </p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setConfirmFirst(false)}
-                style={{ flex: 1, padding: "11px 16px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f0f0f0", fontSize: 14, fontWeight: 500, borderRadius: 10, cursor: "pointer" }}
-              >
+              <Button variant="glass" className="flex-1" onClick={() => setConfirmFirst(false)}>
                 Modifier
-              </button>
-              <button
-                onClick={() => { setConfirmFirst(false); handleSend(); }}
-                style={{ flex: 1, padding: "11px 16px", background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 10, border: "none", cursor: "pointer" }}
-              >
+              </Button>
+              <Button className="flex-1" onClick={() => { setConfirmFirst(false); handleSend(); }}>
                 Envoyer
-              </button>
+              </Button>
             </div>
           </div>
         </div>

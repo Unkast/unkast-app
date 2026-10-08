@@ -1,9 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { CATEGORY_LABELS, CATEGORY_COLORS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { CATEGORY_LABELS, MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
 import { PHONE_CODES } from "@/lib/phone-codes";
 import type { Profile, ProfileRole, Project, ProjectCredit, ProjectCategory, CreditRequest } from "@/types/database";
 import AvatarUpload from "@/components/AvatarUpload";
@@ -13,6 +12,13 @@ import RoleSelector from "@/components/RoleSelector";
 import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
 import { isGrantValid } from "@/lib/pro-plan";
+import { EnterList, EnterItem, cardSpring } from "@/components/motion";
+import Button from "@/components/ui/Button";
+import Chip from "@/components/ui/Chip";
+import Badge from "@/components/ui/Badge";
+import Field from "@/components/ui/Field";
+import GlassCard from "@/components/ui/GlassCard";
+import { SectionLabel, Toggle, Select, StatusBadge, FilmThumb, Toast, MoiSkeleton } from "./parts";
 
 /* ---------- types ---------- */
 
@@ -28,18 +34,13 @@ interface CreditRequestWithProject extends CreditRequest {
 
 /* ---------- style helpers ---------- */
 
-const inputCls =
-  "w-full px-4 py-3 bg-[#0d0d0d] border border-white/5 rounded-xl text-text-primary text-base focus:outline-none focus:border-[rgba(200,255,0,0.5)] transition";
-
-const sectionHeader: React.CSSProperties = {
-  fontFamily: "JetBrains Mono, monospace",
-  fontSize: 11,
-  color: "#555",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  marginBottom: 12,
-  marginTop: 24,
-};
+const labelCls = "text-sm font-medium text-text-secondary";
+const titleCls = "text-lg font-semibold text-text-primary";
+const subCls = "mt-1 text-[13px] text-text-secondary";
+const emptyCls = "text-[13px] text-text-secondary";
+const rowTitleCls = "text-sm font-semibold text-text-primary";
+const rowMetaCls = "mt-0.5 text-xs text-text-secondary";
+const linkCls = "inline-flex min-h-11 items-center text-[13px] text-lime hover:underline";
 
 /* ========================================================================== */
 
@@ -102,6 +103,8 @@ export default function MoiClient() {
 
   /* --- pro upsell --- */
   const [showProModal, setShowProModal] = useState(false);
+  const pressedOnBackdrop = useRef(false);
+  const reduced = useReducedMotion();
 
   /* --- tabs --- */
   type MoiTab = "profil" | "content" | "activity" | "recrutement" | "compte";
@@ -396,23 +399,15 @@ export default function MoiClient() {
 
   /* ============================== RENDER ============================== */
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-[#C8FF00]/30 border-t-[#C8FF00] rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <MoiSkeleton />;
 
   if (!profile) {
     return (
-      <div className="flex items-center justify-center text-center px-4 py-20">
-        <div>
-          <p style={{ color: "#666", fontSize: 14, marginBottom: 16 }}>Tu dois être connecté pour accéder à cette page.</p>
-          <Link href="/connexion" style={{ padding: "12px 24px", background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 14, borderRadius: 8, textDecoration: "none" }}>
-            Se connecter
-          </Link>
-        </div>
+      <div className="flex items-center justify-center px-4 py-20">
+        <GlassCard radius="panel" className="flex max-w-sm flex-col items-center gap-5 p-8 text-center">
+          <p className="text-sm text-text-secondary">Tu dois être connecté pour accéder à cette page.</p>
+          <Button href="/connexion">Se connecter</Button>
+        </GlassCard>
       </div>
     );
   }
@@ -421,357 +416,312 @@ export default function MoiClient() {
 
   if (isEditing) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-        {/* Toast */}
-        <AnimatePresence>
-          {toast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              style={{ position: "fixed", top: 16, right: 16, zIndex: 50, padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}
-            >
-              {toast}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <>
+        <Toast message={toast} />
 
-        {/* Header bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <button onClick={() => setIsEditing(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 14, cursor: "pointer" }}>
-            Annuler
-          </button>
-          <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 13, color: "#f0f0f0", fontWeight: 600 }}>Modifier le profil</span>
-          <button onClick={saveProfile} disabled={saving} style={{ background: "none", border: "none", color: "#C8FF00", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: saving ? 0.5 : 1 }}>
-            {saving ? "..." : "Enregistrer"}
-          </button>
-        </div>
-
-        <div style={{ padding: "0 16px", paddingBottom: 64 }}>
-          {/* PHOTO */}
-          <p style={sectionHeader}>Photo</p>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "8px 0" }}>
-            <AvatarUpload
-              currentAvatarUrl={profile.avatar_url}
-              onUploadComplete={(url) => setProfile({ ...profile, avatar_url: url || null })}
-              initials={getInitials()}
-              size={80}
-            />
-            <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#444", textAlign: "center" }}>Appuie pour changer la photo</p>
+        <div className="mx-auto w-full max-w-2xl px-4 pb-10">
+          {/* Barre d'actions (reste visible pendant le defilement du formulaire) */}
+          <div className="glass-strong sticky top-3 z-30 my-3 flex items-center justify-between gap-2 rounded-pill bg-glass-solid/70 p-1.5">
+            <Button variant="glass" size="sm" onClick={() => setIsEditing(false)}>
+              Annuler
+            </Button>
+            <h1 className="truncate text-sm font-semibold text-text-primary">Modifier le profil</h1>
+            <Button size="sm" onClick={saveProfile} disabled={saving}>
+              {saving ? "..." : "Enregistrer"}
+            </Button>
           </div>
 
-          {/* IDENTITE */}
-          <p style={sectionHeader}>Identité</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Prénom</label>
-              <input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} className={inputCls} placeholder="Prénom" />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Nom</label>
-              <input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} className={inputCls} placeholder="Nom de famille" />
-            </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Nom de scène / Pseudonyme</label>
-            <input type="text" value={editStageName} onChange={(e) => setEditStageName(e.target.value)} className={inputCls} placeholder="Ex: J.M. Vision" />
-            <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#444", marginTop: 6 }}>Laisse vide si tu n&apos;en as pas</p>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 8 }}>Afficher sur le profil public</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setEditDisplayPref("real_name")}
-                style={{ padding: "8px 16px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer", background: editDisplayPref === "real_name" ? "#C8FF00" : "transparent", color: editDisplayPref === "real_name" ? "#0d0d0d" : "#555", border: editDisplayPref === "real_name" ? "1px solid #C8FF00" : "1px solid #333" }}
-              >
-                Vrai nom
-              </button>
-              <button
-                onClick={() => setEditDisplayPref("stage_name")}
-                style={{ padding: "8px 16px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer", background: editDisplayPref === "stage_name" ? "#C8FF00" : "transparent", color: editDisplayPref === "stage_name" ? "#0d0d0d" : "#555", border: editDisplayPref === "stage_name" ? "1px solid #C8FF00" : "1px solid #333" }}
-              >
-                Nom de scène
-              </button>
-            </div>
-          </div>
-
-          {/* PROFIL PRO */}
-          <p style={sectionHeader}>Profil pro</p>
-          <div>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Métiers</label>
-            <RoleSelector
-              selectedRoles={editRoles}
-              onChange={setEditRoles}
-              maxSelection={5}
-              placeholder="Rechercher un métier..."
-            />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Ville</label>
-            <input type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className={inputCls} placeholder="Paris, Lyon..." />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>
-              {isRecruiter ? "Description professionnelle" : "Bio"} <span style={{ color: "#555" }}>({editBio.length}/280)</span>
-            </label>
-            <textarea
-              rows={4}
-              value={editBio}
-              onChange={(e) => { if (e.target.value.length <= 280) setEditBio(e.target.value); }}
-              className={inputCls}
-              style={{ resize: "none" }}
-              placeholder={isRecruiter ? "Ton parcours, les films faits, les postes occupés..." : "Décris ton parcours, tes spécialités..."}
-            />
-            {isRecruiter && (
-              <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#8aa800", marginTop: 6, lineHeight: 1.5 }}>
-                Toute modification de ta description est vérifiée par l&apos;équipe avant publication. Le public continue de voir ta version actuelle en attendant.
-              </p>
-            )}
-          </div>
-
-          {/* DISPONIBILITE */}
-          <p style={sectionHeader}>Disponibilité</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" checked={editAvailable} onChange={(e) => setEditAvailable(e.target.checked)} className="sr-only peer" />
-              <div className="w-9 h-5 bg-border rounded-full peer peer-checked:bg-teal transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4" />
-            </label>
-            <span style={{ fontSize: 14, color: "#888" }}>Disponible pour des projets</span>
-          </div>
-
-          {/* RECRUTEMENT — reserve aux comptes Pro createur/recruteur */}
-          {isCreatorOrRecruiter && (
-            <>
-              <p style={{ ...sectionHeader }}>Recrutement</p>
-              {canRecruit ? (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <span style={{ fontSize: 14, color: "#f0f0f0" }}>Je recrute activement</span>
-                    <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, cursor: "pointer" }}>
-                      <input type="checkbox" checked={editIsRecruiting} onChange={(e) => { setEditIsRecruiting(e.target.checked); if (!e.target.checked) setEditRecruitingRoles([]); }} style={{ display: "none" }} />
-                      <div style={{ width: 44, height: 24, borderRadius: 12, background: editIsRecruiting ? "#22c55e" : "#333", transition: "background 200ms", position: "relative" }}>
-                        <div style={{ position: "absolute", top: 2, left: editIsRecruiting ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 200ms" }} />
-                      </div>
-                    </label>
-                  </div>
-                  {editIsRecruiting && (
-                    <>
-                      <p style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>Quel(s) métier(s) recherches-tu ?</p>
-                      <RoleSelector
-                        selectedRoles={editRecruitingRoles}
-                        onChange={setEditRecruitingRoles}
-                        maxSelection={5}
-                        placeholder="Quel métier recherches-tu ?"
-                      />
-                      <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#444", marginTop: 8 }}>Ce badge sera visible sur ton profil public et dans les résultats de recherche.</p>
-                    </>
-                  )}
-                </>
-              ) : (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span style={{ fontSize: 13, color: "#666" }}>Le badge « Je recrute » est réservé aux comptes Pro.</span>
-                  <a href="/pro" style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: "#C8FF00", textDecoration: "none" }}>Passer à Pro →</a>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* CONTACT & VISIBILITE */}
-          <p style={sectionHeader}>Contact &amp; visibilité</p>
-          <div style={{ padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.02)", borderLeft: "2px solid #C8FF00", paddingLeft: 16, marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: "#888", lineHeight: 1.5 }}>Ces informations permettent aux recruteurs de te contacter via Unkast. Elles ne sont pas affichées publiquement sur ton profil.</p>
-          </div>
-
-          {/* contact_email */}
-          <div>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Email de contact</label>
-            <input type="email" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)} className={inputCls} placeholder="contact@exemple.com" />
-          </div>
-
-          {/* contact_phone */}
-          <div style={{ marginTop: 16 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Telephone</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <select
-                value={editPhonePrefix}
-                onChange={(e) => setEditPhonePrefix(e.target.value)}
-                style={{ width: 100, padding: "12px 8px", background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, color: "#f0f0f0", fontSize: 14, outline: "none", flexShrink: 0 }}
-              >
-                {PHONE_CODES.map((c) => (
-                  <option key={c.label} value={c.dial}>{c.label}</option>
-                ))}
-              </select>
-              <input
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                value={editContactPhone}
-                onChange={(e) => setEditContactPhone(e.target.value)}
-                style={{ flex: 1, padding: "12px 14px", background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, color: "#f0f0f0", fontSize: 16, outline: "none" }}
-                placeholder="6 12 34 56 78"
+          <EnterList className="flex flex-col gap-4">
+            {/* PHOTO */}
+            <EnterItem className="glass flex flex-col items-center gap-3 rounded-panel p-5">
+              <SectionLabel className="self-start">Photo</SectionLabel>
+              <AvatarUpload
+                currentAvatarUrl={profile.avatar_url}
+                onUploadComplete={(url) => setProfile({ ...profile, avatar_url: url || null })}
+                initials={getInitials()}
+                size={96}
               />
-            </div>
-          </div>
+              <p className="text-center text-xs text-text-secondary">Appuie pour changer la photo</p>
+            </EnterItem>
 
-          {/* instagram */}
-          <div style={{ marginTop: 16 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Instagram</label>
-            <input type="url" value={editInstagram} onChange={(e) => setEditInstagram(e.target.value)} className={inputCls} placeholder="https://instagram.com/tonpseudo" />
-          </div>
+            {/* IDENTITE */}
+            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5">
+              <SectionLabel>Identité</SectionLabel>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Prénom" type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} placeholder="Prénom" />
+                <Field label="Nom" type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} placeholder="Nom de famille" />
+              </div>
+              <div>
+                <Field label="Nom de scène / Pseudonyme" type="text" value={editStageName} onChange={(e) => setEditStageName(e.target.value)} placeholder="Ex: J.M. Vision" />
+                <p className="mt-2 text-xs text-text-secondary">Laisse vide si tu n&apos;en as pas</p>
+              </div>
+              <div>
+                <p className={labelCls}>Afficher sur le profil public</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Chip selected={editDisplayPref === "real_name"} onClick={() => setEditDisplayPref("real_name")}>
+                    Vrai nom
+                  </Chip>
+                  <Chip selected={editDisplayPref === "stage_name"} onClick={() => setEditDisplayPref("stage_name")}>
+                    Nom de scène
+                  </Chip>
+                </div>
+              </div>
+            </EnterItem>
 
-          {/* website */}
-          <div style={{ marginTop: 16 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Site web / Portfolio</label>
-            <input type="url" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} className={inputCls} placeholder="https://tonsite.com" />
-          </div>
+            {/* PROFIL PRO */}
+            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5">
+              <SectionLabel>Profil pro</SectionLabel>
+              <div>
+                <p className={`${labelCls} mb-2`}>Métiers</p>
+                <RoleSelector
+                  selectedRoles={editRoles}
+                  onChange={setEditRoles}
+                  maxSelection={5}
+                  placeholder="Rechercher un métier..."
+                />
+              </div>
+              <Field label="Ville" type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Paris, Lyon..." />
+              <div>
+                <Field
+                  multiline
+                  rows={4}
+                  label={
+                    <>
+                      {isRecruiter ? "Description professionnelle" : "Bio"}{" "}
+                      <span className="font-normal text-text-tertiary">({editBio.length}/280)</span>
+                    </>
+                  }
+                  value={editBio}
+                  onChange={(e) => { if (e.target.value.length <= 280) setEditBio(e.target.value); }}
+                  placeholder={isRecruiter ? "Ton parcours, les films faits, les postes occupés..." : "Décris ton parcours, tes spécialités..."}
+                />
+                {isRecruiter && (
+                  <p className="mt-2 text-xs leading-relaxed text-lime/80">
+                    Toute modification de ta description est vérifiée par l&apos;équipe avant publication. Le public continue de voir ta version actuelle en attendant.
+                  </p>
+                )}
+              </div>
+            </EnterItem>
 
+            {/* DISPONIBILITE */}
+            <EnterItem className="glass flex flex-col gap-2 rounded-panel p-5">
+              <SectionLabel>Disponibilité</SectionLabel>
+              <Toggle checked={editAvailable} onChange={setEditAvailable} label="Disponible pour des projets" />
+            </EnterItem>
+
+            {/* RECRUTEMENT : reserve aux comptes Pro createur/recruteur */}
+            {isCreatorOrRecruiter && (
+              <EnterItem className="glass flex flex-col gap-3 rounded-panel p-5">
+                <SectionLabel>Recrutement</SectionLabel>
+                {canRecruit ? (
+                  <>
+                    <Toggle
+                      checked={editIsRecruiting}
+                      onChange={(checked) => { setEditIsRecruiting(checked); if (!checked) setEditRecruitingRoles([]); }}
+                      label="Je recrute activement"
+                    />
+                    {editIsRecruiting && (
+                      <>
+                        <p className="text-[13px] text-text-secondary">Quel(s) métier(s) recherches-tu ?</p>
+                        <RoleSelector
+                          selectedRoles={editRecruitingRoles}
+                          onChange={setEditRecruitingRoles}
+                          maxSelection={5}
+                          placeholder="Quel métier recherches-tu ?"
+                        />
+                        <p className="text-xs text-text-secondary">Ce badge sera visible sur ton profil public et dans les résultats de recherche.</p>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-[13px] text-text-secondary">Le badge « Je recrute » est réservé aux comptes Pro.</span>
+                    <Button variant="dashed" size="sm" href="/pro" className="shrink-0">
+                      Passer à Pro →
+                    </Button>
+                  </div>
+                )}
+              </EnterItem>
+            )}
+
+            {/* CONTACT & VISIBILITE */}
+            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5">
+              <SectionLabel>Contact &amp; visibilité</SectionLabel>
+              <p className="border-l-2 border-lime pl-3 text-xs leading-relaxed text-text-secondary">
+                Ces informations permettent aux recruteurs de te contacter via Unkast. Elles ne sont pas affichées publiquement sur ton profil.
+              </p>
+
+              {/* contact_email */}
+              <Field label="Email de contact" type="email" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)} placeholder="contact@exemple.com" />
+
+              {/* contact_phone */}
+              <div>
+                <label htmlFor="moi-phone" className={labelCls}>Telephone</label>
+                <div className="mt-2 flex gap-2">
+                  <Select
+                    aria-label="Indicatif"
+                    value={editPhonePrefix}
+                    onChange={(e) => setEditPhonePrefix(e.target.value)}
+                    className="w-[104px]! shrink-0"
+                  >
+                    {PHONE_CODES.map((c) => (
+                      <option key={c.label} value={c.dial}>{c.label}</option>
+                    ))}
+                  </Select>
+                  <Field
+                    id="moi-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={editContactPhone}
+                    onChange={(e) => setEditContactPhone(e.target.value)}
+                    placeholder="6 12 34 56 78"
+                    className="min-w-0 flex-1"
+                  />
+                </div>
+              </div>
+
+              {/* instagram */}
+              <Field label="Instagram" type="url" value={editInstagram} onChange={(e) => setEditInstagram(e.target.value)} placeholder="https://instagram.com/tonpseudo" />
+
+              {/* website */}
+              <Field label="Site web / Portfolio" type="url" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} placeholder="https://tonsite.com" />
+            </EnterItem>
+          </EnterList>
         </div>
-      </motion.div>
+      </>
     );
   }
 
   /* ======================== VIEW MODE ======================== */
 
+  const reviewStatus = isRecruiter ? profile.recruiter_review_status : null;
+  // Meme regle que le profil public (profil/[slug]/page.tsx) : verification admin ET Pro actif.
+  const showVerifiedBadge = profile.recruiter_verified === true && plan === "pro";
+  const recruitingRoles = profile.is_recruiting ? profile.recruiting_roles ?? [] : [];
+  const instagram = formatInstagram(profile.instagram_url);
+  const limitReached = projects.length >= projectLimit;
+  const pendingSentRequests = myCreditRequests.filter((r) => r.status === "pending");
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            style={{ position: "fixed", top: 16, right: 16, zIndex: 50, padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}
-          >
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <>
+      <Toast message={toast} />
+      <style>{`@keyframes recruiting-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }`}</style>
 
-      <div style={{ paddingBottom: 64 }}>
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }} className="no-scrollbar mx-auto w-full max-w-2xl">
-          {(([
-            { key: "profil", label: "Profil" },
-            { key: "content", label: isCreator ? "Mes films" : "Mes participations" },
-            { key: "activity", label: "Activité" },
-            // Espace pré-casting : visible des qu'on est Pro createur/recruteur
-            // (independamment du badge "Je recrute", qui ne gere que la visibilite
-            // cote talent). canRecruit = plan pro + role creator/recruteur.
-            ...(canRecruit ? [{ key: "recrutement", label: "Recrutement" }] : []),
-            { key: "compte", label: "Compte" },
-          ] as { key: MoiTab; label: string }[])).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              style={{
-                padding: "12px 16px",
-                fontSize: 14,
-                fontWeight: activeTab === key ? 600 : 400,
-                color: activeTab === key ? "#f0f0f0" : "#444",
-                background: "none",
-                border: "none",
-                borderBottom: activeTab === key ? "2px solid #C8FF00" : "2px solid transparent",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                transition: "color 150ms",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-10 pt-4 lg:pt-8">
+        <EnterList className="flex flex-col gap-4">
+          {/* En-tete : avatar, nom, badges */}
+          <EnterItem className="glass flex items-center gap-4 rounded-panel p-5 sm:p-6">
+            <Avatar
+              url={profile.avatar_url}
+              name={getDisplayName()}
+              size={80}
+              style={{ background: "rgba(255,255,255,0.03)", border: "2px solid rgba(200,255,0,0.35)", boxShadow: "0 0 0 5px rgba(200,255,0,0.06), 0 0 40px rgba(200,255,0,0.25)" }}
+            />
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sheen break-words text-[26px] font-semibold" style={{ letterSpacing: "-0.5px" }}>
+                {getDisplayName()}
+              </h1>
+              {(plan === "pro" || showVerifiedBadge || profile.is_available || reviewStatus === "pending") && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {plan === "pro" && <Badge variant="pro" />}
+                  {showVerifiedBadge && <Badge variant="verified">Recruteur vérifié</Badge>}
+                  {profile.is_available && <Badge variant="available" />}
+                  {reviewStatus === "pending" && <Badge variant="pending">Validation en attente</Badge>}
+                </div>
+              )}
+            </div>
+          </EnterItem>
 
-        <div className="mx-auto w-full max-w-2xl lg:pt-2" style={{ padding: "0 16px" }}>
-          {/* TAB: Profil */}
-          {activeTab === "profil" && (
-            <div style={{ marginTop: 16, padding: "0 4px" }}>
-              {/* Bouton modifier flottant */}
-              <button
-                onClick={startEditProfile}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, cursor: "pointer", marginBottom: 20 }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+          {/* Onglets */}
+          <EnterItem className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1">
+            {(([
+              { key: "profil", label: "Profil" },
+              { key: "content", label: isCreator ? "Mes films" : "Mes participations" },
+              { key: "activity", label: "Activité" },
+              // Espace pré-casting : visible des qu'on est Pro createur/recruteur
+              // (independamment du badge "Je recrute", qui ne gere que la visibilite
+              // cote talent). canRecruit = plan pro + role creator/recruteur.
+              ...(canRecruit ? [{ key: "recrutement", label: "Recrutement" }] : []),
+              { key: "compte", label: "Compte" },
+            ] as { key: MoiTab; label: string }[])).map(({ key, label }) => (
+              <Chip key={key} selected={activeTab === key} onClick={() => setActiveTab(key)}>
+                {label}
+              </Chip>
+            ))}
+          </EnterItem>
+        </EnterList>
+
+        {/* TAB: Profil */}
+        {activeTab === "profil" && (
+          <EnterList className="flex flex-col gap-4">
+            {/* Recruteur : modification de description en attente de validation */}
+            {reviewStatus === "pending" && (
+              <EnterItem className="glass rounded-card border-lime/25 p-4">
+                <p className="text-[13px] font-semibold text-lime">Modification en attente de validation</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
+                  Ta nouvelle description est en cours de vérification. Le public voit encore ta version actuelle en attendant.
+                </p>
+                {profile.bio_pending && (
+                  <p className="mt-3 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-text-primary/80">
+                    « {profile.bio_pending} »
+                  </p>
+                )}
+              </EnterItem>
+            )}
+
+            {/* Recruteur : derniere modification de description refusee */}
+            {reviewStatus === "rejected" && (
+              <EnterItem className="glass rounded-card border-red-500/30 p-4">
+                <p className="text-[13px] font-semibold text-red-400">Modification refusée</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
+                  Ta nouvelle description n&apos;a pas été validée. Le public voit toujours ta version actuelle. Tu peux modifier ton profil pour soumettre une autre version.
+                </p>
+                {profile.recruiter_review_reason && (
+                  <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-text-primary/80">
+                    Motif : {profile.recruiter_review_reason}
+                  </p>
+                )}
+              </EnterItem>
+            )}
+
+            {/* Rendu profil public */}
+            <EnterItem className="glass flex flex-col items-start gap-4 rounded-panel p-5 sm:p-6">
+              <Button variant="glass" size="sm" onClick={startEditProfile} className="text-lime!">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
-                <span style={{ fontSize: 13, fontWeight: 500, color: "#C8FF00" }}>Modifier mon profil</span>
-              </button>
-
-              {/* Recruteur : modification de description en attente de validation */}
-              {isRecruiter && (profile as any).recruiter_review_status === "pending" && (
-                <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.2)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#C8FF00", margin: 0, marginBottom: 6 }}>Modification en attente de validation</p>
-                  <p style={{ fontSize: 12, color: "#888", margin: 0, lineHeight: 1.5 }}>
-                    Ta nouvelle description est en cours de vérification. Le public voit encore ta version actuelle en attendant.
-                  </p>
-                  {(profile as any).bio_pending && (
-                    <p style={{ fontSize: 12, color: "#aaa", fontStyle: "italic", margin: "10px 0 0", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.6 }}>
-                      « {(profile as any).bio_pending} »
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Recruteur : derniere modification de description refusee */}
-              {isRecruiter && (profile as any).recruiter_review_status === "rejected" && (
-                <div style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#ef4444", margin: 0, marginBottom: 6 }}>Modification refusée</p>
-                  <p style={{ fontSize: 12, color: "#888", margin: 0, lineHeight: 1.5 }}>
-                    Ta nouvelle description n'a pas été validée. Le public voit toujours ta version actuelle. Tu peux modifier ton profil pour soumettre une autre version.
-                  </p>
-                  {(profile as any).recruiter_review_reason && (
-                    <p style={{ fontSize: 12, color: "#aaa", margin: "10px 0 0", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", lineHeight: 1.6 }}>
-                      Motif : {(profile as any).recruiter_review_reason}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Rendu profil public */}
-              {/* Avatar */}
-              <div style={{ marginBottom: 16 }}>
-                <Avatar url={profile.avatar_url} name={getDisplayName()} size={88} style={{ border: "2px solid rgba(200,255,0,0.2)" }} />
-              </div>
-
-              {/* Nom + badge dispo */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <h2 style={{ fontSize: 24, fontWeight: 600, color: "#f0f0f0", margin: 0, letterSpacing: "-0.5px" }}>{getDisplayName()}</h2>
-                {profile.is_available && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.3)", color: "#00D4AA", fontSize: 11, fontWeight: 600 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00D4AA", animation: "recruiting-pulse 2s ease infinite" }} />
-                    Disponible
-                  </span>
-                )}
-              </div>
+                Modifier mon profil
+              </Button>
 
               {/* Rôles */}
               {roles.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                <div className="flex flex-wrap gap-2">
                   {roles.map((r) => (
-                    <span key={r.id} style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(200,255,0,0.1)", border: "1px solid rgba(200,255,0,0.2)", color: "#C8FF00", fontSize: 12, fontWeight: 500 }}>
+                    <Chip key={r.id} variant="static">
                       {r.role_name}
-                    </span>
+                    </Chip>
                   ))}
                 </div>
               )}
 
               {/* Recruiting badge */}
-              {(profile as any).is_recruiting && (profile as any).recruiting_roles?.length > 0 && (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 20, padding: "6px 14px", marginBottom: 12 }}>
+              {recruitingRoles.length > 0 && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 20, padding: "6px 14px" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", animation: "recruiting-pulse 2s ease infinite", flexShrink: 0 }} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: "#22c55e" }}>Je recrute</span>
                   <span style={{ color: "rgba(34,197,94,0.4)", fontSize: 12 }}>·</span>
                   <span style={{ fontSize: 12, color: "rgba(34,197,94,0.8)" }}>
-                    {((profile as any).recruiting_roles as string[]).slice(0, 2).join(" · ")}{(profile as any).recruiting_roles.length > 2 ? ` +${(profile as any).recruiting_roles.length - 2}` : ""}
+                    {recruitingRoles.slice(0, 2).join(" · ")}{recruitingRoles.length > 2 ? ` +${recruitingRoles.length - 2}` : ""}
                   </span>
                 </div>
               )}
 
               {/* Localisation */}
               {profile.location && (
-                <p style={{ fontSize: 14, color: "#888", marginBottom: 8 }}>
-                  <svg style={{ display: "inline-block", width: 14, height: 14, marginRight: 4, verticalAlign: "-2px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <p className="flex items-center gap-1.5 text-sm text-text-secondary">
+                  <svg className="size-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
@@ -780,528 +730,531 @@ export default function MoiClient() {
               )}
 
               {/* Bio */}
-              {profile.bio && (
-                <p style={{ fontSize: 14, color: "#888", lineHeight: 1.7, marginTop: 8 }}>{profile.bio}</p>
-              )}
+              {profile.bio && <p className="text-sm leading-relaxed text-text-secondary">{profile.bio}</p>}
 
               {/* Contact info */}
-              {((profile as any).contact_email || (profile as any).instagram_url || (profile as any).website_url) && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
-                  {(profile as any).contact_email && (
-                    <a href={`mailto:${(profile as any).contact_email}`} style={{ fontSize: 12, color: "#C8FF00", textDecoration: "none" }}>{(profile as any).contact_email}</a>
+              {(profile.contact_email || profile.instagram_url || profile.website_url) && (
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {profile.contact_email && (
+                    <a href={`mailto:${profile.contact_email}`} className={linkCls}>{profile.contact_email}</a>
                   )}
-                  {(profile as any).instagram_url && (
-                    <a href={formatInstagram((profile as any).instagram_url)?.href || "#"} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#C8FF00", textDecoration: "none" }}>
-                      {formatInstagram((profile as any).instagram_url)?.display || (profile as any).instagram_url}
+                  {profile.instagram_url && (
+                    <a href={instagram?.href || "#"} target="_blank" rel="noopener noreferrer" className={linkCls}>
+                      {instagram?.display || profile.instagram_url}
                     </a>
                   )}
-                  {(profile as any).website_url && (
-                    <a href={normalizeUrl((profile as any).website_url) || "#"} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#C8FF00", textDecoration: "none" }}>Site web</a>
+                  {profile.website_url && (
+                    <a href={normalizeUrl(profile.website_url) || "#"} target="_blank" rel="noopener noreferrer" className={linkCls}>Site web</a>
                   )}
                 </div>
               )}
+            </EnterItem>
+          </EnterList>
+        )}
 
-              <style>{`@keyframes recruiting-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }`}</style>
-            </div>
-          )}
-
-          {/* TAB: Content (films or credits) */}
-          {activeTab === "content" && (
-            <div style={{ marginTop: 16 }}>
-              {/* ============ SECTION 2 — My content ============ */}
-              {isCreator ? (
-                /* ----- Creator: Mes films ----- */
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0 }}>Mes films</h3>
-                    <span style={{ fontSize: 12, color: "#555" }}>{projects.length}/{projectLimit}</span>
+        {/* TAB: Content (films or credits) */}
+        {activeTab === "content" && (
+          <EnterList className="flex flex-col gap-3">
+            {/* ============ SECTION 2 — My content ============ */}
+            {isCreator ? (
+              /* ----- Creator: Mes films ----- */
+              <>
+                {/* Jauge : X sur la limite */}
+                <EnterItem className="glass rounded-panel p-5">
+                  <div className="flex items-end justify-between gap-3">
+                    <h2 className={titleCls}>Mes films</h2>
+                    <p className="text-sm text-text-secondary">
+                      <span className="text-xl font-semibold text-text-primary">{projects.length}</span> sur {projectLimit}
+                    </p>
                   </div>
-
-                  {/* Progress bar */}
-                  <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
-                    <div style={{ height: "100%", borderRadius: 2, background: projects.length >= projectLimit ? "#f97316" : "#C8FF00", width: `${Math.min(100, (projects.length / projectLimit) * 100)}%`, transition: "width 300ms" }} />
+                  <div
+                    role="progressbar"
+                    aria-label="Films ajoutés sur la limite du forfait"
+                    aria-valuemin={0}
+                    aria-valuemax={projectLimit}
+                    aria-valuenow={projects.length}
+                    className="mt-3 h-2 overflow-hidden rounded-pill bg-white/10"
+                  >
+                    <div
+                      className={`h-full rounded-pill transition-[width] duration-slow ease-glass ${limitReached ? "bg-orange-400" : "bg-lime shadow-[0_0_12px_rgba(200,255,0,0.5)]"}`}
+                      style={{ width: `${Math.min(100, (projects.length / projectLimit) * 100)}%` }}
+                    />
                   </div>
+                </EnterItem>
 
-                  {/* Project list */}
-                  {projects.map((project) => {
-                    const statusColor = project.status === "approved" ? "#22c55e" : project.status === "pending" ? "#f97316" : "#ef4444";
-                    const statusLabel = project.status === "approved" ? "Publié" : project.status === "pending" ? "En attente" : "Refusé";
+                {/* Project list */}
+                {projects.map((project) => {
+                  const statusTone = project.status === "approved" ? "ok" : project.status === "pending" ? "pending" : "ko";
+                  const statusLabel = project.status === "approved" ? "Publié" : project.status === "pending" ? "En attente" : "Refusé";
 
-                    const inviteOpen = inviteForProject === project.id;
-                    return (
-                      <div key={project.id} style={{ marginBottom: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          {/* Thumbnail */}
-                          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {project.poster_url ? (
-                              <img src={project.poster_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            ) : (
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth={1.5}><path d="M15 12l-4 2.5v-5l4 2.5z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            )}
+                  const inviteOpen = inviteForProject === project.id;
+                  return (
+                    <EnterItem key={project.id} className="glass rounded-card p-3">
+                      <div className="flex items-center gap-3">
+                        <FilmThumb url={project.poster_url} />
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 text-sm font-semibold leading-snug text-text-primary">{project.title}</p>
+                          <div className="mt-1.5">
+                            <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
                           </div>
-                          {/* Info */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.title}</p>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, color: statusColor, marginTop: 4 }}>
-                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
-                              {statusLabel}
-                            </span>
-                          </div>
-                          {/* Inviter */}
-                          <button onClick={() => { setInviteForProject(inviteOpen ? null : project.id); setInviteName(""); setInviteEmail(""); setInviteRole(""); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 11, fontWeight: 600, color: inviteOpen ? "#C8FF00" : "#aaa" }}>
-                            Créditer
-                          </button>
-                          {/* Delete */}
-                          <button onClick={() => deleteProject(project.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                            </svg>
-                          </button>
                         </div>
-                        {inviteOpen && (
-                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                            <p style={{ fontSize: 11, color: "#888", margin: "0 0 8px" }}>
-                              Crédite un collaborateur absent d&apos;Unkast : il reçoit un email pour rejoindre et revendiquer son crédit. Pour un membre déjà inscrit, passe par son profil.
-                            </p>
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                              <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom" className={inputCls} style={{ flex: "1 1 100px" }} />
-                              <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" className={inputCls} style={{ flex: "2 1 160px" }} />
-                              <input type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Rôle" className={inputCls} style={{ flex: "1 1 100px" }} />
-                              <button onClick={() => sendEmailInvitation(project.id)} disabled={!inviteEmail || !inviteRole || inviteSending} style={{ padding: "10px 16px", background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 13, borderRadius: 10, border: "none", cursor: "pointer", opacity: !inviteEmail || !inviteRole || inviteSending ? 0.5 : 1 }}>
-                                Inviter
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        {/* Inviter */}
+                        <Button
+                          variant="glass"
+                          size="sm"
+                          aria-expanded={inviteOpen}
+                          onClick={() => { setInviteForProject(inviteOpen ? null : project.id); setInviteName(""); setInviteEmail(""); setInviteRole(""); }}
+                          className={`shrink-0 px-3! ${inviteOpen ? "border-lime/40! text-lime!" : ""}`}
+                        >
+                          Créditer
+                        </Button>
+                        {/* Delete */}
+                        <Button variant="icon" size="sm" aria-label="Supprimer le film" onClick={() => deleteProject(project.id)} className="shrink-0 text-text-secondary!">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          </svg>
+                        </Button>
                       </div>
-                    );
-                  })}
+                      {inviteOpen && (
+                        <div className="mt-3 border-t border-white/10 pt-3">
+                          <p className="mb-3 text-xs leading-relaxed text-text-secondary">
+                            Crédite un collaborateur absent d&apos;Unkast : il reçoit un email pour rejoindre et revendiquer son crédit. Pour un membre déjà inscrit, passe par son profil.
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
+                            <Field aria-label="Nom" type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom" />
+                            <Field aria-label="Email" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" />
+                            <Field aria-label="Rôle" type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Rôle" />
+                          </div>
+                          <Button onClick={() => sendEmailInvitation(project.id)} disabled={!inviteEmail || !inviteRole || inviteSending} className="mt-3 w-full sm:w-auto">
+                            Inviter
+                          </Button>
+                        </div>
+                      )}
+                    </EnterItem>
+                  );
+                })}
 
-                  {/* Add button */}
-                  {!addingProject && projects.length < projectLimit && (
-                    <button
-                      onClick={() => setAddingProject(true)}
-                      style={{ width: "100%", padding: 12, borderRadius: 10, background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", marginTop: 8 }}
-                    >
+                {/* Add button */}
+                {!addingProject && projects.length < projectLimit && (
+                  <EnterItem>
+                    <Button size="lg" onClick={() => setAddingProject(true)} className="w-full">
                       + Ajouter un film
-                    </button>
-                  )}
+                    </Button>
+                  </EnterItem>
+                )}
 
-                  {!addingProject && plan !== "pro" && projects.length >= projectLimit && (
-                    <button
-                      onClick={() => setShowProModal(true)}
-                      style={{ width: "100%", padding: 12, borderRadius: 10, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.3)", color: "#f97316", fontWeight: 600, fontSize: 13, cursor: "pointer", marginTop: 8 }}
-                    >
+                {!addingProject && plan !== "pro" && projects.length >= projectLimit && (
+                  <EnterItem>
+                    <Button variant="dashed" onClick={() => setShowProModal(true)} className="w-full">
                       Passer a Unkast Pro pour publier plus &rarr;
-                    </button>
-                  )}
+                    </Button>
+                  </EnterItem>
+                )}
 
-                  {/* Add project form */}
-                  {addingProject && (
-                    <div style={{ marginTop: 16, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(200,255,0,0.2)", borderRadius: 12, padding: 16 }}>
-                      <h4 style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0", marginBottom: 12, marginTop: 0 }}>Nouveau projet</h4>
-                      <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Titre du projet" className={inputCls} style={{ marginBottom: 10 }} />
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                        <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as ProjectCategory)} className={inputCls}>
-                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
-                        </select>
-                        <input type="number" value={newYear} onChange={(e) => setNewYear(parseInt(e.target.value) || new Date().getFullYear())} className={inputCls} min={1990} max={2030} />
-                      </div>
-                      <input type="url" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)} placeholder="URL video (Vimeo ou YouTube)" className={inputCls} style={{ marginBottom: 10 }} />
-                      <input type="text" value={newOwnerRole} onChange={(e) => setNewOwnerRole(e.target.value)} placeholder="Ton role sur ce projet" className={inputCls} style={{ marginBottom: 10 }} />
-                      <textarea rows={3} value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" className={inputCls} style={{ resize: "none", marginBottom: 10 }} />
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", marginBottom: 12 }}>
-                        <span style={{ color: "#555", fontSize: 12, marginTop: 1 }}>i</span>
-                        <p style={{ fontSize: 12, color: "#888", lineHeight: 1.5, margin: 0 }}>Chaque film est examiné par l&apos;équipe Unkast avant d&apos;être publié. Délai habituel : 24-48h.</p>
-                      </div>
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <button onClick={addProject} disabled={!newTitle || !newVideoUrl || saving} style={{ flex: 1, padding: 12, background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 14, borderRadius: 10, border: "none", cursor: "pointer", opacity: !newTitle || !newVideoUrl || saving ? 0.5 : 1 }}>
-                          {saving ? "Ajout..." : "Ajouter"}
-                        </button>
-                        <button onClick={() => setAddingProject(false)} style={{ flex: 1, padding: 12, background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#888", fontSize: 14, borderRadius: 10, cursor: "pointer" }}>
-                          Annuler
-                        </button>
-                      </div>
+                {/* Add project form */}
+                {addingProject && (
+                  <EnterItem className="glass flex flex-col gap-3 rounded-panel border-lime/25 p-5">
+                    <h3 className="text-[15px] font-semibold text-text-primary">Nouveau projet</h3>
+                    <Field aria-label="Titre du projet" type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Titre du projet" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Select aria-label="Catégorie" value={newCategory} onChange={(e) => setNewCategory(e.target.value as ProjectCategory)}>
+                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
+                      </Select>
+                      <Field aria-label="Année" type="number" value={newYear} onChange={(e) => setNewYear(parseInt(e.target.value) || new Date().getFullYear())} min={1990} max={2030} />
                     </div>
-                  )}
-                </div>
-              ) : (
-                /* ----- Talent: Mes credits ----- */
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Mes participations</h3>
-                  <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Les films dans lesquels tu apparais.</p>
+                    <Field aria-label="URL video (Vimeo ou YouTube)" type="url" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)} placeholder="URL video (Vimeo ou YouTube)" />
+                    <Field aria-label="Ton role sur ce projet" type="text" value={newOwnerRole} onChange={(e) => setNewOwnerRole(e.target.value)} placeholder="Ton role sur ce projet" />
+                    <Field multiline rows={3} aria-label="Description" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
+                    <div className="flex items-start gap-2.5 rounded-card border border-white/10 bg-white/5 p-3">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="mt-0.5 shrink-0 text-text-secondary" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 11v5M12 7.5v.5" />
+                      </svg>
+                      <p className="text-xs leading-relaxed text-text-secondary">Chaque film est examiné par l&apos;équipe Unkast avant d&apos;être publié. Délai habituel : 24-48h.</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button onClick={addProject} disabled={!newTitle || !newVideoUrl || saving} className="flex-1">
+                        {saving ? "Ajout..." : "Ajouter"}
+                      </Button>
+                      <Button variant="glass" onClick={() => setAddingProject(false)} className="flex-1">
+                        Annuler
+                      </Button>
+                    </div>
+                  </EnterItem>
+                )}
+              </>
+            ) : (
+              /* ----- Talent: Mes credits ----- */
+              <>
+                <EnterItem className="px-1">
+                  <h2 className={titleCls}>Mes participations</h2>
+                  <p className={subCls}>Les films dans lesquels tu apparais.</p>
+                </EnterItem>
 
-                  {/* Confirmed */}
-                  {myCredits.length === 0 ? (
-                    <p style={{ fontSize: 13, color: "#444", marginBottom: 16 }}>Tu n&apos;apparais dans aucun film pour le moment.</p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                      {myCredits.map((credit) => (
-                        <div key={credit.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div>
-                            <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0 }}>{credit.project_title || "Projet"}</p>
-                            <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>{credit.role_on_project}</p>
-                          </div>
-                          {credit.project_slug && (
-                            <Link href={`/projet/${credit.project_slug}`} style={{ fontSize: 12, color: "#C8FF00", textDecoration: "none" }}>Voir</Link>
+                {/* Confirmed */}
+                {myCredits.length === 0 ? (
+                  <EnterItem className="px-1">
+                    <p className={emptyCls}>Tu n&apos;apparais dans aucun film pour le moment.</p>
+                  </EnterItem>
+                ) : (
+                  myCredits.map((credit) => (
+                    <EnterItem key={credit.id} className="glass flex items-center justify-between gap-3 rounded-card p-3 pl-4">
+                      <div className="min-w-0">
+                        <p className={rowTitleCls}>{credit.project_title || "Projet"}</p>
+                        <p className={rowMetaCls}>{credit.role_on_project}</p>
+                      </div>
+                      {credit.project_slug && (
+                        <Button variant="glass" size="sm" href={`/projet/${credit.project_slug}`} className="shrink-0">
+                          Voir
+                        </Button>
+                      )}
+                    </EnterItem>
+                  ))
+                )}
+
+                {/* Pending requests */}
+                {pendingSentRequests.length > 0 && (
+                  <>
+                    <EnterItem className="px-1 pt-3">
+                      <SectionLabel>Demandes de participation envoyees</SectionLabel>
+                    </EnterItem>
+                    {pendingSentRequests.map((req) => (
+                      <EnterItem key={req.id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card p-3 pl-4">
+                        <div className="min-w-40 flex-1">
+                          <p className={rowTitleCls}>{req.project_title || "Projet"}</p>
+                          <p className={rowMetaCls}>{req.role}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <StatusBadge tone="pending">En attente</StatusBadge>
+                          <Button variant="glass" size="sm" onClick={() => cancelMyCreditRequest(req.id)}>
+                            Annuler
+                          </Button>
+                        </div>
+                      </EnterItem>
+                    ))}
+                  </>
+                )}
+
+                {/* Become Creator card */}
+                <EnterItem className="glass mt-3 flex flex-col items-center rounded-panel border-dashed border-lime/25 p-6 text-center">
+                  <svg className="mb-3 text-lime/60" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" /></svg>
+                  <p className="text-[15px] font-semibold text-text-primary">Tu réalises ou produis des films ?</p>
+                  <p className="mb-4 mt-1.5 text-[13px] leading-relaxed text-text-secondary">Passe en compte Créateur pour publier tes œuvres et construire ton équipe sur Unkast.</p>
+                  <Button variant="dashed" onClick={() => switchAccountType("creator")}>
+                    Devenir Créateur →
+                  </Button>
+                </EnterItem>
+              </>
+            )}
+          </EnterList>
+        )}
+
+        {/* TAB: Activity */}
+        {activeTab === "activity" && (
+          <EnterList className="flex flex-col gap-3">
+            {!isCreator ? (
+              /* ----- Talent activity ----- */
+              <>
+                {/* Mes demandes de participation */}
+                <EnterItem className="px-1">
+                  <h2 className={titleCls}>Mes demandes de participation</h2>
+                  <p className={subCls}>Les projets que tu as demandé à rejoindre.</p>
+                </EnterItem>
+                {myCreditRequests.length === 0 ? (
+                  <EnterItem className="flex flex-col items-start gap-3 px-1">
+                    <p className={emptyCls}>Tu n&apos;as pas encore demandé à rejoindre un projet.</p>
+                    <Button variant="dashed" href="/recherche">
+                      Explorer les films →
+                    </Button>
+                  </EnterItem>
+                ) : (
+                  myCreditRequests.map((req) => {
+                    const statusTone = req.status === "pending" ? "pending" : req.status === "accepted" ? "ok" : "ko";
+                    const statusLabel = req.status === "pending" ? "En attente" : req.status === "accepted" ? "Accepté" : "Refusé";
+                    return (
+                      <EnterItem key={req.id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card p-3 pl-4">
+                        <div className="min-w-40 flex-1">
+                          <p className={`${rowTitleCls} truncate`}>{req.project_title || "Projet"}</p>
+                          <p className={rowMetaCls}>{req.role}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                          {req.status === "pending" && (
+                            <Button variant="glass" size="sm" onClick={() => cancelMyCreditRequest(req.id)}>
+                              Annuler
+                            </Button>
+                          )}
+                          {req.status === "accepted" && req.project_slug && (
+                            <Button variant="glass" size="sm" href={`/projet/${req.project_slug}`}>
+                              Voir le projet
+                            </Button>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Pending requests */}
-                  {myCreditRequests.filter((r) => r.status === "pending").length > 0 && (
-                    <div>
-                      <p style={{ ...sectionHeader, marginTop: 16 }}>Demandes de participation envoyees</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {myCreditRequests.filter((r) => r.status === "pending").map((req) => (
-                          <div key={req.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div>
-                              <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0 }}>{req.project_title || "Projet"}</p>
-                              <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>{req.role}</p>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: "rgba(234,179,8,0.1)", color: "#eab308", border: "1px solid rgba(234,179,8,0.2)" }}>En attente</span>
-                              <button onClick={() => cancelMyCreditRequest(req.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#555", cursor: "pointer" }}>
-                                Annuler
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Become Creator card */}
-                  <div style={{ background: "rgba(200,255,0,0.03)", border: "1px dashed rgba(200,255,0,0.15)", borderRadius: 12, padding: 20, textAlign: "center", marginTop: 24 }}>
-                    <svg style={{ margin: "0 auto 10px", opacity: 0.5 }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" /></svg>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Tu réalises ou produis des films ?</p>
-                    <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6, marginBottom: 16 }}>Passe en compte Créateur pour publier tes œuvres et construire ton équipe sur Unkast.</p>
-                    <button onClick={() => switchAccountType("creator")} style={{ background: "transparent", border: "1px solid rgba(200,255,0,0.3)", color: "#C8FF00", borderRadius: 10, padding: "11px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-                      Devenir Créateur →
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB: Activity */}
-          {activeTab === "activity" && (
-            <div style={{ marginTop: 16 }}>
-              {!isCreator ? (
-                /* ----- Talent activity ----- */
-                <>
-                  {/* Mes demandes de participation */}
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Mes demandes de participation</h3>
-                    <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Les projets que tu as demandé à rejoindre.</p>
-                    {myCreditRequests.length === 0 ? (
-                      <div style={{ marginBottom: 24 }}>
-                        <p style={{ fontSize: 13, color: "#444", marginBottom: 12 }}>Tu n&apos;as pas encore demandé à rejoindre un projet.</p>
-                        <Link href="/recherche" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "rgba(200,255,0,0.08)", border: "1px solid rgba(200,255,0,0.2)", borderRadius: 10, textDecoration: "none", fontSize: 13, fontWeight: 600, color: "#C8FF00" }}>
-                          Explorer les films →
-                        </Link>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-                        {myCreditRequests.map((req) => {
-                          const statusColor = req.status === "pending" ? "#f97316" : req.status === "accepted" ? "#22c55e" : "#ef4444";
-                          const statusLabel = req.status === "pending" ? "En attente" : req.status === "accepted" ? "Accepté" : "Refusé";
-                          return (
-                            <div key={req.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                  <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{req.project_title || "Projet"}</p>
-                                  <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>{req.role}</p>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-                                  <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: `rgba(${req.status === "pending" ? "249,115,22" : req.status === "accepted" ? "34,197,94" : "239,68,68"},0.1)`, color: statusColor, border: `1px solid rgba(${req.status === "pending" ? "249,115,22" : req.status === "accepted" ? "34,197,94" : "239,68,68"},0.2)` }}>{statusLabel}</span>
-                                  {req.status === "pending" && (
-                                    <button onClick={() => cancelMyCreditRequest(req.id)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#555", cursor: "pointer" }}>
-                                      Annuler
-                                    </button>
-                                  )}
-                                  {req.status === "accepted" && req.project_slug && (
-                                    <Link href={`/projet/${req.project_slug}`} style={{ fontSize: 12, color: "#C8FF00", textDecoration: "none" }}>Voir le projet</Link>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 0 24px" }} />
-
-                  {/* Invitations reçues */}
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Invitations reçues</h3>
-                    <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Des créateurs t&apos;ont invité à rejoindre leur projet.</p>
-                    {receivedInvitations.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "#444" }}>Aucune invitation reçue.</p>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {receivedInvitations.map((inv) => (
-                          <div key={inv.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: inv.message ? 8 : 0 }}>
-                              {/* Project thumbnail */}
-                              <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                {inv.project_poster_url ? (
-                                  <img src={inv.project_poster_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                ) : (
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth={1.5}><path d="M15 12l-4 2.5v-5l4 2.5z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                )}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.project_title || "Projet"}</p>
-                                <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>
-                                  {inv.role_offered && <span>{inv.role_offered}</span>}
-                                  {inv.inviter_name && <span style={{ color: "#444" }}> · {inv.inviter_name}</span>}
-                                </p>
-                              </div>
-                            </div>
-                            {inv.message && (
-                              <p style={{ fontSize: 11, color: "#555", fontStyle: "italic", margin: "0 0 10px" }}>&quot;{inv.message}&quot;</p>
-                            )}
-                            {inv.status === "pending" && (
-                              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                                <button onClick={() => handleInvitationAction(inv.id, "accepted")} style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                  Accepter
-                                </button>
-                                <button onClick={() => handleInvitationAction(inv.id, "refused")} style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                  Refuser
-                                </button>
-                              </div>
-                            )}
-                            {inv.status !== "pending" && (
-                              <span style={{ display: "inline-block", marginTop: 8, padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: inv.status === "accepted" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", color: inv.status === "accepted" ? "#22c55e" : "#ef4444", border: `1px solid ${inv.status === "accepted" ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}` }}>
-                                {inv.status === "accepted" ? "Acceptée" : "Déclinée"}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                /* ----- Creator activity ----- */
-                <>
-                  {/* Demandes de participation */}
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Demandes de participation</h3>
-                    <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Des membres veulent apparaître dans l&apos;équipe de tes films.</p>
-                    {pendingReceivedCredits.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "#444" }}>Aucune demande en attente.</p>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {pendingReceivedCredits.map((cr) => (
-                          <div key={cr.id} style={{ background: "rgba(249,115,22,0.04)", border: "1px solid rgba(249,115,22,0.15)", borderRadius: 12, padding: 12 }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <div>
-                                <p style={{ fontSize: 13, fontWeight: 600, color: "#f0f0f0", margin: 0 }}>{cr.requester_name || "Membre"}</p>
-                                <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>
-                                  {cr.project_title && <span>{cr.project_title} &middot; </span>}
-                                  {cr.role}
-                                </p>
-                                {cr.message && <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 4, fontStyle: "italic" }}>&quot;{cr.message}&quot;</p>}
-                              </div>
-                              <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 12 }}>
-                                <button onClick={() => handleCreditAction(cr.id, "accepted")} style={{ padding: "6px 12px", background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 11, borderRadius: 8, border: "none", cursor: "pointer" }}>
-                                  Accepter
-                                </button>
-                                <button onClick={() => handleCreditAction(cr.id, "refused")} style={{ padding: "6px 12px", background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#555", fontSize: 11, borderRadius: 8, cursor: "pointer" }}>
-                                  Refuser
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "24px 0" }} />
-
-                  {/* Invitations envoyées */}
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>Invitations envoyées</h3>
-                    <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Les membres que tu as invités à rejoindre tes projets.</p>
-                    {sentInvitations.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "#444" }}>Aucune invitation envoyée.</p>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {sentInvitations.map((inv) => {
-                          const statusColor = inv.status === "pending" ? "#f97316" : inv.status === "accepted" ? "#22c55e" : "#ef4444";
-                          const statusLabel = inv.status === "pending" ? "En attente" : inv.status === "accepted" ? "Acceptée" : "Déclinée";
-                          return (
-                            <div key={inv.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                {/* Invited person avatar */}
-                                <Avatar url={inv.invitee_avatar_url} name={inv.invitee_name || "?"} size={36} style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)" }} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0 }}>{inv.invitee_name || "Membre"}</p>
-                                  <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.project_title || "Projet"}</p>
-                                </div>
-                                <span style={{ flexShrink: 0, padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: `rgba(${inv.status === "pending" ? "249,115,22" : inv.status === "accepted" ? "34,197,94" : "239,68,68"},0.1)`, color: statusColor, border: `1px solid rgba(${inv.status === "pending" ? "249,115,22" : inv.status === "accepted" ? "34,197,94" : "239,68,68"},0.2)` }}>{statusLabel}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* TAB: Recrutement (espace pré-casting — Pro createur/recruteur) */}
-          {activeTab === "recrutement" && canRecruit && (
-            <RecruitmentSpace showToast={showToast} />
-          )}
-
-          {/* TAB: Compte */}
-          {activeTab === "compte" && (
-            <div style={{ marginTop: 16 }}>
-              {/* Mon forfait */}
-              <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20, marginBottom: 16 }}>
-                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Mon forfait</p>
-
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: "#f0f0f0" }}>
-                    {plan === "pro" ? "Unkast Pro" : "Gratuit"}
-                  </p>
-                  <span style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: plan === "pro" ? "rgba(200,255,0,0.1)" : "rgba(255,255,255,0.06)", color: plan === "pro" ? "#C8FF00" : "#666", border: plan === "pro" ? "1px solid rgba(200,255,0,0.3)" : "1px solid rgba(255,255,255,0.08)" }}>
-                    {plan === "pro" ? "Actif" : "Free"}
-                  </span>
-                </div>
-
-                {proOrigin && (
-                  <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>{proOrigin}</p>
+                      </EnterItem>
+                    );
+                  })
                 )}
 
-                <p style={{ fontSize: 13, color: "#555", marginBottom: 4 }}>
-                  Type de compte : {profile.account_type === "creator" ? "Créateur" : profile.account_type === "recruiter" ? "Recruteur" : "Talent"}
-                </p>
-
-                {/* Bascule de role : uniquement talent <-> creator (recruteur masque) */}
-                {(profile.account_type === "talent" || profile.account_type === "creator") && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    {(["talent", "creator"] as const).map((r) => {
-                      const active = profile.account_type === r;
-                      return (
-                        <button
-                          key={r}
-                          onClick={() => switchAccountType(r)}
-                          disabled={active}
-                          style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: active ? "default" : "pointer", background: active ? "rgba(200,255,0,0.1)" : "rgba(255,255,255,0.03)", color: active ? "#C8FF00" : "#888", border: active ? "1px solid rgba(200,255,0,0.3)" : "1px solid rgba(255,255,255,0.08)" }}
-                        >
-                          {r === "creator" ? "Je publie des œuvres (Créateur)" : "J'ai participé à un projet (Talent)"}
-                        </button>
-                      );
-                    })}
-                  </div>
+                {/* Invitations reçues */}
+                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">
+                  <h2 className={titleCls}>Invitations reçues</h2>
+                  <p className={subCls}>Des créateurs t&apos;ont invité à rejoindre leur projet.</p>
+                </EnterItem>
+                {receivedInvitations.length === 0 ? (
+                  <EnterItem className="px-1">
+                    <p className={emptyCls}>Aucune invitation reçue.</p>
+                  </EnterItem>
+                ) : (
+                  receivedInvitations.map((inv) => (
+                    <EnterItem key={inv.id} className="glass rounded-card p-3">
+                      <div className="flex items-center gap-3">
+                        {/* Project thumbnail */}
+                        <FilmThumb url={inv.project_poster_url} />
+                        <div className="min-w-0 flex-1">
+                          <p className={`${rowTitleCls} truncate`}>{inv.project_title || "Projet"}</p>
+                          <p className={rowMetaCls}>
+                            {inv.role_offered && <span>{inv.role_offered}</span>}
+                            {inv.inviter_name && <span> · {inv.inviter_name}</span>}
+                          </p>
+                        </div>
+                      </div>
+                      {inv.message && (
+                        <p className="mt-2.5 text-xs italic text-text-secondary">&quot;{inv.message}&quot;</p>
+                      )}
+                      {inv.status === "pending" && (
+                        <div className="mt-3 flex gap-2">
+                          <Button size="sm" onClick={() => handleInvitationAction(inv.id, "accepted")}>
+                            Accepter
+                          </Button>
+                          <Button variant="glass" size="sm" onClick={() => handleInvitationAction(inv.id, "refused")}>
+                            Refuser
+                          </Button>
+                        </div>
+                      )}
+                      {inv.status !== "pending" && (
+                        <div className="mt-2.5">
+                          <StatusBadge tone={inv.status === "accepted" ? "ok" : "ko"}>
+                            {inv.status === "accepted" ? "Acceptée" : "Déclinée"}
+                          </StatusBadge>
+                        </div>
+                      )}
+                    </EnterItem>
+                  ))
+                )}
+              </>
+            ) : (
+              /* ----- Creator activity ----- */
+              <>
+                {/* Demandes de participation */}
+                <EnterItem className="px-1">
+                  <h2 className={titleCls}>Demandes de participation</h2>
+                  <p className={subCls}>Des membres veulent apparaître dans l&apos;équipe de tes films.</p>
+                </EnterItem>
+                {pendingReceivedCredits.length === 0 ? (
+                  <EnterItem className="px-1">
+                    <p className={emptyCls}>Aucune demande en attente.</p>
+                  </EnterItem>
+                ) : (
+                  pendingReceivedCredits.map((cr) => (
+                    <EnterItem key={cr.id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card border-yellow-500/25 p-3 pl-4">
+                      <div className="min-w-40 flex-1">
+                        <p className={rowTitleCls}>{cr.requester_name || "Membre"}</p>
+                        <p className={rowMetaCls}>
+                          {cr.project_title && <span>{cr.project_title} &middot; </span>}
+                          {cr.role}
+                        </p>
+                        {cr.message && <p className="mt-1 text-xs italic text-text-secondary">&quot;{cr.message}&quot;</p>}
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button size="sm" onClick={() => handleCreditAction(cr.id, "accepted")}>
+                          Accepter
+                        </Button>
+                        <Button variant="glass" size="sm" onClick={() => handleCreditAction(cr.id, "refused")}>
+                          Refuser
+                        </Button>
+                      </div>
+                    </EnterItem>
+                  ))
                 )}
 
-                {plan === "free" && (
-                  <p style={{ fontSize: 12, color: "#444", lineHeight: 1.5, marginTop: 8 }}>
-                    Version gratuite — {MAX_PROJECTS_FREE} publications de films maximum.
-                  </p>
+                {/* Invitations envoyées */}
+                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">
+                  <h2 className={titleCls}>Invitations envoyées</h2>
+                  <p className={subCls}>Les membres que tu as invités à rejoindre tes projets.</p>
+                </EnterItem>
+                {sentInvitations.length === 0 ? (
+                  <EnterItem className="px-1">
+                    <p className={emptyCls}>Aucune invitation envoyée.</p>
+                  </EnterItem>
+                ) : (
+                  sentInvitations.map((inv) => {
+                    const statusTone = inv.status === "pending" ? "pending" : inv.status === "accepted" ? "ok" : "ko";
+                    const statusLabel = inv.status === "pending" ? "En attente" : inv.status === "accepted" ? "Acceptée" : "Déclinée";
+                    return (
+                      <EnterItem key={inv.id} className="glass flex items-center gap-3 rounded-card p-3">
+                        {/* Invited person avatar */}
+                        <Avatar url={inv.invitee_avatar_url} name={inv.invitee_name || "?"} size={36} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }} />
+                        <div className="min-w-0 flex-1">
+                          <p className={rowTitleCls}>{inv.invitee_name || "Membre"}</p>
+                          <p className={`${rowMetaCls} truncate`}>{inv.project_title || "Projet"}</p>
+                        </div>
+                        <div className="shrink-0">
+                          <StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>
+                        </div>
+                      </EnterItem>
+                    );
+                  })
                 )}
+              </>
+            )}
+          </EnterList>
+        )}
+
+        {/* TAB: Recrutement (espace pré-casting — Pro createur/recruteur) */}
+        {activeTab === "recrutement" && canRecruit && (
+          <RecruitmentSpace showToast={showToast} />
+        )}
+
+        {/* TAB: Compte */}
+        {activeTab === "compte" && (
+          <EnterList className="flex flex-col gap-4">
+            {/* Mon forfait */}
+            <EnterItem className="glass rounded-panel p-5 sm:p-6">
+              <SectionLabel>Mon forfait</SectionLabel>
+
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-sheen text-2xl font-semibold">{plan === "pro" ? "Unkast Pro" : "Gratuit"}</p>
+                {plan === "pro" ? <Badge variant="pro">Actif</Badge> : <Badge variant="neutral">Free</Badge>}
               </div>
 
-              {/* Pro upsell card */}
+              {proOrigin && <p className="mt-2 text-xs text-text-secondary">{proOrigin}</p>}
+
+              <p className="mt-2 text-[13px] text-text-secondary">
+                Type de compte : {profile.account_type === "creator" ? "Créateur" : profile.account_type === "recruiter" ? "Recruteur" : "Talent"}
+              </p>
+
+              {/* Bascule de role : uniquement talent <-> creator (recruteur masque) */}
+              {(profile.account_type === "talent" || profile.account_type === "creator") && (
+                <div className="mt-3 flex flex-col gap-2">
+                  {(["talent", "creator"] as const).map((r) => {
+                    const active = profile.account_type === r;
+                    return (
+                      <Chip
+                        key={r}
+                        selected={active}
+                        onClick={() => switchAccountType(r)}
+                        disabled={active}
+                        className="h-11! w-full justify-center disabled:cursor-default"
+                      >
+                        {r === "creator" ? "Je publie des œuvres (Créateur)" : "J'ai participé à un projet (Talent)"}
+                      </Chip>
+                    );
+                  })}
+                </div>
+              )}
+
               {plan === "free" && (
-                <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.15)", borderRadius: 16, padding: 20, marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(200,255,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 2 }}>Passe a Unkast Pro</p>
-                      <p style={{ fontSize: 12, color: "#666" }}>A partir de 9,99 €/mois</p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                    {["Jusqu'à 30 films", "Messagerie directe", "Contacter les talents", "Badge Pro vérifié", "Priorité dans les résultats"].map((f) => (
-                      <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-                        <span style={{ fontSize: 13, color: "#ccc" }}>{f}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Link href="/pro" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", padding: 14, background: "#C8FF00", color: "#0d0d0d", fontSize: 15, fontWeight: 600, borderRadius: 12, textDecoration: "none", border: "none" }}>
-                    Découvrir Unkast Pro
-                  </Link>
-                </div>
+                <p className="mt-3 text-xs leading-relaxed text-text-secondary">
+                  Version gratuite : {MAX_PROJECTS_FREE} publications de films maximum.
+                </p>
               )}
+            </EnterItem>
 
-              {/* Pro active badge */}
-              {plan === "pro" && (
-                <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.15)", borderRadius: 16, padding: 20, marginBottom: 16, textAlign: "center" }}>
-                  <svg style={{ margin: "0 auto 12px" }} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", marginBottom: 4 }}>Tu es Pro !</p>
-                  <p style={{ fontSize: 12, color: "#666" }}>Toutes les fonctionnalités sont déverrouillées.</p>
+            {/* Pro upsell card */}
+            {plan === "free" && (
+              <EnterItem className="glass rounded-panel border-lime/25 p-5 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-media border border-lime/30 bg-lime/15 text-lime">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-text-primary">Passe a Unkast Pro</p>
+                    <p className="text-xs text-text-secondary">A partir de 9,99 €/mois</p>
+                  </div>
                 </div>
-              )}
 
-              {/* Disconnect — separate */}
-              <button onClick={handleLogout} style={{ width: "100%", padding: 14, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: 12, color: "#ef4444", fontSize: 14, fontWeight: 500, textAlign: "center", cursor: "pointer", marginTop: 8 }}>
+                <div className="my-4 flex flex-col gap-2">
+                  {["Jusqu'à 30 films", "Messagerie directe", "Contacter les talents", "Badge Pro vérifié", "Priorité dans les résultats"].map((f) => (
+                    <div key={f} className="flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-lime" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
+                      <span className="text-[13px] text-text-primary">{f}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Button size="lg" href="/pro" className="w-full">
+                  Découvrir Unkast Pro
+                </Button>
+              </EnterItem>
+            )}
+
+            {/* Pro active badge */}
+            {plan === "pro" && (
+              <EnterItem className="glass flex flex-col items-center rounded-panel border-lime/25 p-6 text-center">
+                <svg className="mb-3 text-lime" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-[15px] font-semibold text-text-primary">Tu es Pro !</p>
+                <p className="mt-1 text-xs text-text-secondary">Toutes les fonctionnalités sont déverrouillées.</p>
+              </EnterItem>
+            )}
+
+            {/* Disconnect — separate */}
+            <EnterItem>
+              <Button variant="glass" onClick={handleLogout} className="w-full border-red-500/25! text-red-400!">
                 Se déconnecter
-              </button>
-            </div>
-          )}
-        </div>
+              </Button>
+            </EnterItem>
+          </EnterList>
+        )}
       </div>
 
-      {/* Pro upsell modal */}
+      {/* Pro upsell modal. Fermeture au clic sur le fond seulement si mousedown ET
+          mouseup y ont lieu (un glisser-selectionner parti de la carte ne ferme pas). */}
       <AnimatePresence>
         {showProModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowProModal(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", padding: 16 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => { pressedOnBackdrop.current = e.target === e.currentTarget; }}
+            onClick={(e) => { if (e.target === e.currentTarget && pressedOnBackdrop.current) setShowProModal(false); }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[20px]"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="moi-pro-modal-title"
+              initial={{ opacity: 0, scale: reduced ? 1 : 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 16, padding: 24, maxWidth: 360, width: "100%", textAlign: "center" }}
+              exit={{ opacity: 0, scale: reduced ? 1 : 0.95 }}
+              transition={reduced ? { duration: 0.15 } : cardSpring}
+              className="glass-strong w-full max-w-[360px] rounded-panel bg-glass-solid/80 p-6 text-center"
             >
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(249,115,22,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-media border border-orange-400/30 bg-orange-400/10 text-orange-400">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#f0f0f0", marginBottom: 8 }}>Tu as utilise tes {MAX_PROJECTS_FREE} films gratuits</h3>
-              <p style={{ fontSize: 14, color: "#888", marginBottom: 24, lineHeight: 1.5 }}>Passe à Unkast Pro pour publier en illimité et booster ta visibilité.</p>
+              <h3 id="moi-pro-modal-title" className="text-lg font-semibold text-text-primary">Tu as utilise tes {MAX_PROJECTS_FREE} films gratuits</h3>
+              <p className="mb-6 mt-2 text-sm leading-relaxed text-text-secondary">Passe à Unkast Pro pour publier en illimité et booster ta visibilité.</p>
               <a
                 href="mailto:pro@unkast.com?subject=Liste attente Pro"
-                style={{ display: "block", width: "100%", padding: 12, background: "#C8FF00", color: "#0d0d0d", fontWeight: 700, fontSize: 14, borderRadius: 10, textDecoration: "none", textAlign: "center", marginBottom: 12 }}
+                className="btn-accent flex min-h-11 w-full items-center justify-center px-5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
               >
                 Rejoindre la liste d&apos;attente
               </a>
-              <button onClick={() => setShowProModal(false)} style={{ background: "none", border: "none", color: "#555", fontSize: 12, cursor: "pointer" }}>
+              <Button variant="glass" size="sm" onClick={() => setShowProModal(false)} className="mt-3">
                 Pas maintenant
-              </button>
+              </Button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 
 // react-player est lourd : on le charge en dynamique (hors bundle initial).
@@ -16,14 +15,8 @@ interface Props {
 }
 
 export default function VideoEmbed({ url, title, autoplay = false }: Props) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) {
-    return <div className="relative w-full bg-card" style={{ aspectRatio: "16 / 9" }} />;
-  }
-
+  // Pas de fond avant le chargement du lecteur : le conteneur reste transparent
+  // (ssr: false suffit, rien n'est rendu cote serveur).
   return (
     <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
       <ReactPlayer

@@ -26,8 +26,8 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/motion.tsx`
 - **Role** : Primitives d'animation partagees
-- **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `RechercheClient`, `ContactModal`, `dev/ui/UiShowcase`
-- **Risque si modifie** : **ELEVE** — affecte les animations de 4+ pages
+- **Consommateurs** : `HomeAnimations`, `ProfileClient`, `ProjetClient`, `RechercheClient`, `ContactModal`, `dev/ui/UiShowcase` ; depuis le chantier 6 : `RejoindreClient`, `ConnexionClient`, `auth/confirm`, `MoiClient`, `RecruitmentSpace`, `messages/page`, `pro/*`, `categories/[slug]/page`
+- **Risque si modifie** : **CRITIQUE** — affecte les animations de presque toutes les pages
 - **Chantier 5** : `enterUp` / `enterFade` finissent sur `filter: none` (`transitionEnd`) : un `.glass` place dans un `EnterItem` floute bien les halos du fond. `ModalBackdrop` : panneau `.glass-strong` teinte, `rounded-panel`
 
 ## ui/ (Button, Chip, Badge, GlassCard, Field)
@@ -36,7 +36,9 @@ Composants / modules utilises par 3+ features.
 - **Role** : briques du style verre liquide
 - **API** : `Button` (variant `accent | light | glass | dashed | icon`, size `sm | md | lg`, `href` → lien next/link) ; `Chip` (variant `filter | static`, `selected`) ; `Badge` (variant `verified | pro | available | neutral | pending`) ; `Field` (`label`, `icon`, `onClear`, `multiline`, size `md | lg`) ; `GlassCard` (`strong`, radius `card | panel`)
 - **Consommateurs** : `Button` → `ConversionBanner`, `HeroCarousel`, `ProfileClient`, `ProjetClient` ; `Chip` → `ProfileClient`, `RechercheClient` ; `Badge` → `ProfileClient`, `ProjetClient`, `RechercheClient` ; `Field` → `ProfileClient`, `ProjetClient`, `RechercheClient` ; `GlassCard` → `feed/page`, `ProjetClient`, `RechercheClient` ; toutes → `dev/ui/UiShowcase`
-- **Risque si modifie** : **ELEVE** — change le rendu de Feed, Profil, Projet et Recherche
+- **Consommateurs ajoutes au chantier 6 (08/10/2026)** : `RejoindreClient` (toutes + `ProgressSteps`), `ConnexionClient`, `auth/confirm`, `MoiClient`, `RecruitmentSpace`, `moi/parts`, `messages/page`, `messages/[id]`, `pro/*`, `categories/[slug]/page`, `RoleSelector`, `AvatarUpload`
+- **Risque si modifie** : **CRITIQUE** — change le rendu de presque toutes les pages
+- **Manques connus (contournes en local, a arbitrer)** : pas de Chip retirable, pas de brique Select ni Toggle ni Toast, pas de variant Badge « refuse » ni « publie », pas de Button 40 px ni pleine largeur ; `ModalBackdrop` n'est pas protege contre le drag-select
 - **Ajouts du 07/10/2026 (verre liquide, purement additifs)** : `cardSpring`, `listStagger`, `enterUp`, `enterFade`, `EnterList`, `EnterItem`
 
 ## globals.css (tokens, utilitaires verre, regle reduced motion)
@@ -50,8 +52,18 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/VideoEmbed.tsx`
 - **Role** : Wrapper SSR-safe de react-player pour embeds Vimeo/YouTube
-- **Consommateurs** : `ProfileClient`, `ProjetClient`
+- **Consommateurs** : `ProjetClient` (direct), `ProfileClient` (via `VideoFacade`)
 - **Risque si modifie** : **ELEVE** — casse l'affichage video sur les 2 pages principales
+- **Chantier 6** : conteneur transparent avant le chargement du lecteur (plus de `bg-card`), etat `mounted` supprime (`dynamic` avec `ssr: false` suffit)
+
+## RoleSelector
+
+- **Fichier** : `src/components/RoleSelector.tsx`
+- **Role** : selecteur de metiers (familles, recherche, metier libre). Refait au chantier 6 (08/10/2026) : selection en Chip retirables, la premiere = « Titre principal », feuille en verre rendue par `createPortal(document.body)`
+- **API (a ne pas casser)** : `selectedRoles`, `onChange`, `maxSelection` (defaut 5), `placeholder`, `singleSelect`. L'ordre de `selectedRoles` n'est jamais modifie (ajout en fin, retrait par filtre) : le premier element est le titre principal
+- **Consommateurs** : `RejoindreClient`, `MoiClient`, `ProfileClient` et `ProjetClient` (singleSelect, dans une `ModalBackdrop`)
+- **Risque si modifie** : **ELEVE** — 4 features
+- **Comportement herite** : en `singleSelect`, une fois un metier choisi, les autres sont desactives (il faut le retirer pour en changer)
 
 ## ContactModal
 
@@ -106,8 +118,9 @@ Composants / modules utilises par 3+ features.
 
 - **Fichier** : `src/components/AvatarUpload.tsx`
 - **Role** : Upload/suppression d'avatar (Storage `avatars`)
-- **Consommateurs** : `DashboardClient`, `MoiClient`
+- **Consommateurs** : `MoiClient` (`DashboardClient` aussi, mais inatteignable : `/dashboard` redirige vers `/moi`)
 - **Risque si modifie** : **MODERE**
+- **Chantier 6** : feuille, recadreur et toast rendus par `createPortal(document.body)` ; props inchangees
 
 ## types/database.ts
 

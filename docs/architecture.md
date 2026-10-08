@@ -170,23 +170,52 @@ FEATURE  Recherche — /recherche (src/app/(app)/recherche/) [+ RechercheClient]
   Recherche debounced, filtres role/categorie/localisation. [declenche] GET /api/search
 
 FEATURE  Categories — /categories/[slug] (src/app/(app)/categories/[slug]/)
-  Listing par categorie.
+  Listing par categorie (Server Component).
+  Verre liquide (chantier 6, 08/10/2026) : titre text-sheen + compteur en Badge neutral (point a la
+  couleur de la categorie), film a la une en panneau rounded-panel, grille de GlassCard (media
+  rounded-media, 2 / 3 / 4 colonnes), etat vide en GlassCard, loading.tsx en squelette de verre.
 
 FEATURE  Inscription — /rejoindre (src/app/(app)/rejoindre/ + RejoindreClient)
   Wizard multi-etapes. [declenche] POST /api/signup
+  Verre liquide (chantier 6, 08/10/2026) : ProgressSteps (5 etapes), transition entre etapes =
+  glissement de 40 px + fondu selon le sens (fondu seul en reduced motion), etapes en GlassCard,
+  Field / Button / Chip partout. Annee du film : Chip sur les 5 dernieres annees + « Plus ancien »
+  (revele les annees anterieures de la meme liste, payload inchange). Selects restants (categorie,
+  poste recruteur) : <select> natif habille en verre (GlassSelect local a RejoindreClient).
+  [utilise] RoleSelector, ui/*, motion.tsx
 
 FEATURE  Connexion — /connexion (src/app/(app)/connexion/ + ConnexionClient)
   Login. Callback OAuth/magic-link : src/app/(app)/auth/callback/route.ts
+  Pas de « mot de passe oublie » (aucune route, aucun appel resetPasswordForEmail).
+  Verre liquide (chantier 6) : carte GlassCard, Field, Button, titre text-sheen ; meme habillage
+  pour /auth/confirm.
 
 FEATURE  Dashboard — /dashboard, /dashboard/projets, /dashboard/contacts (+ DashboardClient)
+  ⚠️ INATTEIGNABLE : next.config.ts redirige en permanent /dashboard* vers /moi. Le code reste
+  en place mais n'a pas ete refait au chantier 6.
   Profil (view/edit), projets (CRUD, max 3 gratuit / 30 en Pro), contacts, credits.
   [declenche] /api/dashboard/{profile,projects,contacts,credits}, /api/avatar
 
-FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient)
+FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient + RecruitmentSpace + parts.tsx)
+  Verre liquide (chantier 6, 08/10/2026) : en-tete permanent en verre (avatar a halo citron, nom
+  text-sheen, Badge Pro / Recruteur verifie / Disponible / Validation en attente), onglets en Chip,
+  jauge de films « X sur limite » (projectLimit existant), cartes de films avec statut en Badge,
+  « Ajouter un film » en Button accent, formulaires en Field, squelette de verre.
+  parts.tsx = sous-composants de presentation locaux (SectionLabel, Toggle, Select, StatusBadge,
+  FilmThumb, Toast, MoiSkeleton, ListSkeleton). RecruitmentSpace : barre « ecarte / Annuler »
+  portee dans <body> et calee au-dessus de la navigation mobile (68 px + safe area, 100 px si
+  app-installed, 24 px en desktop).
+  [utilise] RoleSelector, AvatarUpload, Avatar, ui/*, motion.tsx
 
 FEATURE  Messagerie — /messages, /messages/[id] (src/app/(app)/messages/)
   Conversations + messages. Quotas (5 conv/j, anti-coordonnees, relance 48h).
   [declenche] /api/messages*  [persiste dans] conversations, messages
+  Verre liquide (chantier 6, 08/10/2026), habillage seul. Liste : conversations en GlassCard
+  (avatar, apercu, heure, compteur de non lus citron), recherche en Field, squelettes de verre.
+  Conversation : bulles a moi en --accent-gradient (texte sombre), bulles des autres en
+  `glass lite` (verre opaque SANS backdrop-filter : une bulle floutee par message couterait trop
+  cher sur Android), en-tete .glass, barre de saisie .glass-strong. Pas d'animation d'entree sur
+  les messages (defilement automatique). Structure plein ecran et logique inchangees.
 
 FEATURE  Pro / Freemium — /pro (src/app/(app)/pro/)
   Page offre Pro. Deux sources cumulables (chantier grants, 10/08/2026) : abonnement Stripe
@@ -194,7 +223,12 @@ FEATURE  Pro / Freemium — /pro (src/app/(app)/pro/)
   Bandeau "Pro offert" si grant valide ; boutons d'achat visibles si NEXT_PUBLIC_BILLING_ENABLED
   ou is_admin ; "Gerer mon abonnement" visible seulement si has_stripe_customer (pas juste isPro).
   Detail complet : docs/database.md section "Modele Pro".
-  [utilise] useUserStatus, /api/me (plan, pro_grant_type, pro_grant_expires_at, has_stripe_customer)
+  [utilise] /api/me (plan, pro_grant_type, pro_grant_expires_at, has_stripe_customer)
+  (pro/page.tsx n'utilise pas useUserStatus.)
+  Verre liquide (chantier 6, 08/10/2026) : deux panneaux GlassCard (Pro en strong, bord citron),
+  prix en text-sheen 60 / 72 px, boutons en Button, liste d'attente en Field, pro/loading.tsx en
+  squelette de verre (couvre aussi /pro/success et /pro/cancel). En mobile le panneau Pro passe
+  en premier. Textes commerciaux et prix inchanges (a revoir avec la monetisation).
 
 CORE  Cron expiration Pro — /api/cron/pro-expiry (src/app/api/cron/pro-expiry/)
   Vercel Cron quotidien (vercel.json, 0 6 * * *), secouru par CRON_SECRET (header Authorization).
@@ -231,12 +265,22 @@ FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) d
 
 ```
 UTILITY  VideoEmbed (src/components/VideoEmbed.tsx)  — wrapper SSR-safe react-player
+         (dynamic ssr:false ; conteneur 16/9 transparent, plus de fond opaque avant le chargement
+         du lecteur, chantier 6)
          + VideoFacade.tsx (facade clic-pour-charger) : bouton lecture .glass-strong, fond
          translucide, prop className (plus de styles en ligne a surcharger)
 UTILITY  ContactModal (src/components/ContactModal.tsx)   [declenche] POST /api/contact
 UTILITY  ReportModal (src/components/ReportModal.tsx)     [declenche] POST /api/reports
 UTILITY  AvatarUpload (src/components/AvatarUpload.tsx)   [declenche] /api/avatar
+         Chantier 6 : feuille, recadreur et toast en verre, rendus par createPortal(document.body)
+         (un parent en verre devient le bloc conteneur d'un position: fixed).
 UTILITY  RoleSelector (src/components/RoleSelector.tsx) + icons/RoleIcons.tsx
+         Refait au chantier 6 (08/10/2026), API de props inchangee (selectedRoles, onChange,
+         maxSelection, placeholder, singleSelect). Selection en Chip retirables au-dessus du
+         declencheur, la premiere = « Titre principal ». Feuille en verre (basse en mobile, modale
+         centree des sm) rendue par createPortal(document.body) : Populaires, puis metiers groupes
+         par famille (ROLE_CATEGORIES), recherche en Field, metier libre, Echap, fermeture au clic
+         exterieur protegee contre le drag-select.
 UTILITY  skeletons/ (Feed, Profile, Project, Search) — en verre, cales sur la mise en page des
          pages (memes conteneurs, memes rayons) ; a tenir a jour si une de ces pages change
 UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte visuelle, 07/10/2026) :
@@ -246,7 +290,9 @@ UTILITY  ui/ (src/components/ui/) — briques du style verre liquide (refonte vi
          Button [utilise] framer-motion (appui ressort, useReducedMotion)
          Consommees depuis le chantier 4 (07/10/2026) par Feed (ConversionBanner, page), Profil
          public (ProfileClient), Page projet (ProjetClient), Recherche (RechercheClient), et par
-         la vitrine /dev/ui. API (chantier 5, 07/10/2026) :
+         la vitrine /dev/ui ; depuis le chantier 6 (08/10/2026) aussi par Inscription, Connexion,
+         /auth/confirm, /moi, Messagerie, Pro, Categories, RoleSelector, AvatarUpload.
+         API (chantier 5, 07/10/2026) :
          Button — variant accent | light | glass | dashed | icon (aria-label obligatoire),
            size sm | md | lg, href (rendu en next/link, memes styles et meme appui).
          Chip — variant filter (bouton, selected) | static (span, affichage seul).

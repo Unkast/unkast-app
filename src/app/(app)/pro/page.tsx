@@ -4,6 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { isGrantValid } from "@/lib/pro-plan";
 import { MAX_PROJECTS_FREE, MAX_PROJECTS_PRO } from "@/lib/constants";
+import { EnterItem, EnterList } from "@/components/motion";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import Field from "@/components/ui/Field";
+import GlassCard from "@/components/ui/GlassCard";
 
 const FREE_FEATURES = [
   { label: "Profil public", included: true },
@@ -30,6 +35,31 @@ const PRO_FEATURES = [
 // Interrupteur public : tant que false, le public voit la liste d'attente.
 // Au lancement, passer NEXT_PUBLIC_BILLING_ENABLED=true (Vercel) => boutons d'achat.
 const BILLING_ENABLED = process.env.NEXT_PUBLIC_BILLING_ENABLED === "true";
+
+// Ligne d'argument : pastille coche (citron en Pro, verte en Gratuit) ou croix si non inclus.
+function Feature({ label, included, accent = false }: { label: string; included: boolean; accent?: boolean }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        aria-hidden="true"
+        className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-pill border ${
+          !included
+            ? "border-white/10 bg-white/5 text-text-tertiary"
+            : accent
+              ? "border-lime/30 bg-lime/15 text-lime"
+              : "border-green-500/25 bg-green-500/10 text-green-500"
+        }`}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+          <path d={included ? "M5 13l4 4L19 7" : "M18 6L6 18M6 6l12 12"} />
+        </svg>
+      </span>
+      <span className={`text-sm leading-snug ${!included ? "text-text-tertiary" : accent ? "text-text-primary" : "text-text-secondary"}`}>
+        {label}
+      </span>
+    </li>
+  );
+}
 
 export default function ProPage() {
   // Waitlist (public)
@@ -124,130 +154,144 @@ export default function ProPage() {
   }
 
   return (
-    <div style={{ padding: "20px 16px 120px", maxWidth: 600, margin: "0 auto" }}>
+    <EnterList className="mx-auto flex w-full max-w-[880px] flex-col gap-5 px-4 pt-6 pb-10 lg:gap-6 lg:pt-12 lg:pb-16">
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <span style={{ display: "inline-block", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "rgba(200,255,0,0.1)", color: "#C8FF00", border: "1px solid rgba(200,255,0,0.2)", marginBottom: 16 }}>
+      <EnterItem className="text-center">
+        <Badge variant="pro" className="mb-4">
           {showCheckout ? "Unkast Pro" : "Bientot disponible"}
-        </span>
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.8px", color: "#f0f0f0", marginBottom: 8 }}>
+        </Badge>
+        <h1 className="text-sheen mb-3 text-[40px] font-bold lg:text-[56px]">
           Unkast Pro
         </h1>
-        <p style={{ fontSize: 15, color: "#666", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
+        <p className="mx-auto max-w-[400px] text-[15px] leading-relaxed text-text-secondary">
           Deverrouille tout le potentiel d&apos;Unkast. Messagerie directe, films illimites, visibilite maximale.
         </p>
-      </div>
+      </EnterItem>
 
       {/* Bandeau mode test (visible uniquement quand les boutons d'achat sont montrés en test) */}
       {showCheckout && testMode && (
-        <div style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 12, padding: "10px 14px", marginBottom: 20, textAlign: "center" }}>
-          <p style={{ fontSize: 12, color: "#f97316", margin: 0, lineHeight: 1.5 }}>
-            Mode test — aucun paiement réel. Carte de test : 4242 4242 4242 4242.
-          </p>
-        </div>
+        <EnterItem>
+          <GlassCard className="border-orange-500/25 bg-orange-500/[0.08] px-4 py-3 text-center">
+            <p className="text-xs leading-normal text-orange-500">
+              Mode test — aucun paiement réel. Carte de test : 4242 4242 4242 4242.
+            </p>
+          </GlassCard>
+        </EnterItem>
       )}
 
-      {/* Comparison */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
+      {/* Comparison : empilee en mobile (offre Pro en premier), cote a cote des md */}
+      <EnterItem className="grid gap-4 md:grid-cols-2 lg:gap-5">
         {/* Free */}
-        <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#888", marginBottom: 4 }}>Gratuit</p>
-          <p style={{ fontSize: 24, fontWeight: 700, color: "#f0f0f0", marginBottom: 16 }}>0€</p>
-          {FREE_FEATURES.map((f) => (
-            <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              {f.included ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-              )}
-              <span style={{ fontSize: 12, color: f.included ? "#888" : "#444" }}>{f.label}</span>
-            </div>
-          ))}
-        </div>
+        <GlassCard radius="panel" className="p-5 lg:p-7">
+          <Badge variant="neutral">Gratuit</Badge>
+          <p className="mt-4 mb-5 text-5xl font-bold leading-[1.1] tracking-tight text-text-primary lg:text-6xl">0€</p>
+          <ul className="flex flex-col gap-3">
+            {FREE_FEATURES.map((f) => (
+              <Feature key={f.label} label={f.label} included={f.included} />
+            ))}
+          </ul>
+        </GlassCard>
 
         {/* Pro */}
-        <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.2)", borderRadius: 16, padding: 20, position: "relative" }}>
-          <div style={{ position: "absolute", top: -10, right: 16, padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: "#C8FF00", color: "#0d0d0d" }}>Recommande</div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#C8FF00", marginBottom: 4 }}>Pro</p>
-          <p style={{ fontSize: 24, fontWeight: 700, color: "#f0f0f0", marginBottom: 2 }}>9,99 €<span style={{ fontSize: 13, fontWeight: 400, color: "#555" }}>/mois</span></p>
-          <p style={{ fontSize: 11, color: "#555", marginBottom: 16 }}>ou 99,90 €/an — 2 mois offerts</p>
-          {PRO_FEATURES.map((f) => (
-            <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-              <span style={{ fontSize: 12, color: "#f0f0f0" }}>{f.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+        <GlassCard
+          strong
+          radius="panel"
+          className="border-lime/30 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_24px_70px_rgba(200,255,0,0.10)] max-md:order-first lg:p-7"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <Badge variant="pro">Pro</Badge>
+            <span className="inline-flex h-6 items-center rounded-pill bg-lime px-2.5 text-xs font-bold leading-none text-canvas">Recommande</span>
+          </div>
+          <p className="mt-4 flex flex-wrap items-baseline gap-x-1.5">
+            <span className="text-sheen text-6xl font-bold leading-[1.1] tracking-tight lg:text-7xl">9,99 €</span>
+            <span className="text-base text-text-secondary">/mois</span>
+          </p>
+          <p className="mt-1 mb-5 text-sm text-text-secondary">ou 99,90 €/an — 2 mois offerts</p>
+          <ul className="flex flex-col gap-3">
+            {PRO_FEATURES.map((f) => (
+              <Feature key={f.label} label={f.label} included={f.included} accent />
+            ))}
+          </ul>
+        </GlassCard>
+      </EnterItem>
 
       {/* Bandeau "Pro offert" : au-dessus du bloc d'achat/gestion, visible tant
           que le grant reste valide, independamment de showCheckout/isPro. */}
       {grantValid && (
-        <div style={{ background: "rgba(200,255,0,0.04)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: "#C8FF00", margin: 0, lineHeight: 1.5 }}>
-            Tu bénéficies déjà d&apos;un Pro offert{grantExpiryLabel ? ` — jusqu'au ${grantExpiryLabel}` : " — sans échéance"}.
-          </p>
-        </div>
+        <EnterItem className="mx-auto w-full max-w-xl">
+          <GlassCard className="border-lime/20 bg-lime/[0.04] px-4 py-3">
+            <p className="text-[13px] leading-normal text-lime">
+              Tu bénéficies déjà d&apos;un Pro offert{grantExpiryLabel ? ` — jusqu'au ${grantExpiryLabel}` : " — sans échéance"}.
+            </p>
+          </GlassCard>
+        </EnterItem>
       )}
 
       {/* Bloc action : boutons d'achat (billing activé / admin) OU liste d'attente (public) */}
-      {showCheckout ? (
-        <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24 }}>
-          {/* isPro seul suffisait avant le chantier grants (une seule source de
-              Pro). Desormais isPro peut venir d'un grant SANS stripe_customer_id
-              (portal 400) ; hasStripeCustomer seul se tromperait en sens inverse
-              (un ex-abonne resilie garde son customer id a vie, cf. checkout/route.ts,
-              et se verrait "Tu es Pro" a tort). Les deux ensemble seulement. */}
-          {isPro && hasStripeCustomer ? (
-            <>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Tu es Pro</h3>
-              <p style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Gère ton abonnement (résiliation, carte, mensuel/annuel) via le portail sécurisé Stripe.</p>
-              <button onClick={openPortal} disabled={busy === "portal"} style={{ width: "100%", padding: 14, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f0f0f0", fontSize: 14, fontWeight: 600, borderRadius: 12, cursor: "pointer", opacity: busy === "portal" ? 0.6 : 1 }}>
-                {busy === "portal" ? "Ouverture…" : "Gérer mon abonnement"}
-              </button>
-            </>
-          ) : (
-            <>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Passer à Pro</h3>
-              <p style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Choisis ta formule. Paiement sécurisé par Stripe.</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <button onClick={() => startCheckout("monthly")} disabled={busy !== null} style={{ width: "100%", padding: 14, background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 12, border: "none", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
-                  {busy === "monthly" ? "Redirection…" : "Mensuel — 9,99 €/mois"}
-                </button>
-                <button onClick={() => startCheckout("yearly")} disabled={busy !== null} style={{ width: "100%", padding: 14, background: "transparent", border: "1px solid rgba(200,255,0,0.4)", color: "#C8FF00", fontSize: 14, fontWeight: 600, borderRadius: 12, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
-                  {busy === "yearly" ? "Redirection…" : "Annuel — 99,90 €/an (2 mois offerts)"}
-                </button>
+      <EnterItem className="mx-auto w-full max-w-xl">
+        {showCheckout ? (
+          <GlassCard radius="panel" className="p-5 lg:p-7">
+            {/* isPro seul suffisait avant le chantier grants (une seule source de
+                Pro). Desormais isPro peut venir d'un grant SANS stripe_customer_id
+                (portal 400) ; hasStripeCustomer seul se tromperait en sens inverse
+                (un ex-abonne resilie garde son customer id a vie, cf. checkout/route.ts,
+                et se verrait "Tu es Pro" a tort). Les deux ensemble seulement. */}
+            {isPro && hasStripeCustomer ? (
+              <>
+                <h3 className="mb-1.5 text-lg font-semibold text-text-primary">Tu es Pro</h3>
+                <p className="mb-5 text-sm leading-normal text-text-secondary">Gère ton abonnement (résiliation, carte, mensuel/annuel) via le portail sécurisé Stripe.</p>
+                <Button variant="glass" size="lg" onClick={openPortal} disabled={busy === "portal"} className="w-full">
+                  {busy === "portal" ? "Ouverture…" : "Gérer mon abonnement"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="mb-1.5 text-lg font-semibold text-text-primary">Passer à Pro</h3>
+                <p className="mb-5 text-sm leading-normal text-text-secondary">Choisis ta formule. Paiement sécurisé par Stripe.</p>
+                {/* px-3 : le libelle annuel tient sur une ligne a 360 px */}
+                <div className="flex flex-col gap-3">
+                  <Button size="lg" onClick={() => startCheckout("monthly")} disabled={busy !== null} className="w-full px-3! text-center text-sm!">
+                    {busy === "monthly" ? "Redirection…" : "Mensuel — 9,99 €/mois"}
+                  </Button>
+                  <Button variant="glass" size="lg" onClick={() => startCheckout("yearly")} disabled={busy !== null} className="w-full px-3! text-center text-sm!">
+                    {busy === "yearly" ? "Redirection…" : "Annuel — 99,90 €/an (2 mois offerts)"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </GlassCard>
+        ) : (
+          <GlassCard radius="panel" className="p-5 lg:p-7">
+            {sent ? (
+              <div className="py-3 text-center">
+                <span aria-hidden="true" className="mx-auto mb-4 flex size-14 items-center justify-center rounded-pill border border-green-500/30 bg-green-500/10 text-green-500">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+                </span>
+                <p className="mb-1.5 text-lg font-semibold text-text-primary">Tu es sur la liste !</p>
+                <p className="text-sm text-text-secondary">On te previent des que Pro est disponible.</p>
               </div>
-            </>
-          )}
-        </div>
-      ) : (
-        <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24 }}>
-          {sent ? (
-            <div style={{ textAlign: "center", padding: "12px 0" }}>
-              <svg style={{ margin: "0 auto 12px" }} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-              <p style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Tu es sur la liste !</p>
-              <p style={{ fontSize: 13, color: "#555" }}>On te previent des que Pro est disponible.</p>
-            </div>
-          ) : (
-            <>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Rejoins la liste d&apos;attente</h3>
-              <p style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Sois parmi les premiers a acceder a Pro.</p>
-              <form onSubmit={handleSubmit}>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton nom (optionnel)" style={{ width: "100%", padding: "12px 14px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", marginBottom: 10, outline: "none" }} />
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Ton email" style={{ width: "100%", padding: "12px 14px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, fontSize: 14, color: "#f0f0f0", marginBottom: 14, outline: "none" }} />
-                <button type="submit" disabled={sending || !email} style={{ width: "100%", padding: 14, background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, borderRadius: 10, border: "none", cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
-                  {sending ? "Envoi..." : "Rejoindre la liste d'attente"}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      )}
+            ) : (
+              <>
+                <h3 className="mb-1.5 text-lg font-semibold text-text-primary">Rejoins la liste d&apos;attente</h3>
+                <p className="mb-5 text-sm leading-normal text-text-secondary">Sois parmi les premiers a acceder a Pro.</p>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                  <Field type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton nom (optionnel)" aria-label="Ton nom (optionnel)" />
+                  <Field type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Ton email" aria-label="Ton email" />
+                  <Button type="submit" size="lg" disabled={sending || !email} className="mt-1 w-full">
+                    {sending ? "Envoi..." : "Rejoindre la liste d'attente"}
+                  </Button>
+                </form>
+              </>
+            )}
+          </GlassCard>
+        )}
+      </EnterItem>
 
-      <p style={{ textAlign: "center", fontSize: 11, color: "#444", marginTop: 20 }}>
-        Des questions ? <Link href="mailto:pro@unkast.com" style={{ color: "#C8FF00", textDecoration: "none" }}>pro@unkast.com</Link>
-      </p>
-    </div>
+      <EnterItem>
+        <p className="text-center text-xs text-text-secondary">
+          Des questions ? <Link href="mailto:pro@unkast.com" className="inline-flex min-h-11 items-center text-lime hover:underline">pro@unkast.com</Link>
+        </p>
+      </EnterItem>
+    </EnterList>
   );
 }

@@ -4,6 +4,10 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
+import { EnterItem, EnterList } from "@/components/motion";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import GlassCard from "@/components/ui/GlassCard";
 
 export const revalidate = 300; // Cache 5 minutes (était absent → aucun cache)
 
@@ -62,104 +66,105 @@ export default async function CategoryPage({ params }: Props) {
   const rest = enrichedProjects.slice(1);
 
   return (
-    <div>
+    <EnterList className="mx-auto w-full max-w-[1600px] pb-8 lg:px-12 lg:pb-12 xl:px-16">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4">
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-[22px] font-semibold text-text-primary" style={{ letterSpacing: "-0.5px" }}>
+      <EnterItem className="px-5 pt-5 pb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-sheen text-[30px] lg:text-[40px] font-semibold" style={{ letterSpacing: "-0.5px" }}>
             {label}
           </h1>
-          <span
-            className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold"
-            style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}
-          >
+          <Badge variant="neutral" className="font-mono">
+            <span className="size-1.5 rounded-full" style={{ backgroundColor: catColor }} aria-hidden="true" />
             {enrichedProjects.length} film{enrichedProjects.length !== 1 ? "s" : ""}
-          </span>
+          </Badge>
         </div>
-      </div>
+      </EnterItem>
 
       {enrichedProjects.length === 0 ? (
         /* Empty state */
-        <div className="text-center px-8 py-20">
-          <svg className="w-12 h-12 mx-auto mb-4" style={{ color: catColor, opacity: 0.3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />
-          </svg>
-          <p className="text-sm font-medium text-text-primary mb-1">Aucun film dans cette catégorie</p>
-          <p className="text-xs text-[#555] mb-6">Sois le premier à publier</p>
-          <Link
-            href="/rejoindre"
-            className="inline-block px-5 py-3 bg-[#C8FF00] text-[#0d0d0d] font-semibold text-sm rounded-lg"
-          >
-            Publier un film
-          </Link>
-        </div>
+        <EnterItem className="px-4 lg:px-1">
+          <GlassCard radius="panel" className="mx-auto max-w-md px-6 py-12 text-center">
+            <span className="glass mx-auto mb-5 flex size-16 items-center justify-center rounded-pill" aria-hidden="true">
+              <svg className="w-7 h-7" style={{ color: catColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />
+              </svg>
+            </span>
+            <p className="text-base font-semibold text-text-primary mb-1">Aucun film dans cette catégorie</p>
+            <p className="text-sm text-text-secondary mb-6">Sois le premier à publier</p>
+            <Button href="/rejoindre">Publier un film</Button>
+          </GlassCard>
+        </EnterItem>
       ) : (
-        <div className="px-4">
+        <>
           {/* Featured project */}
           {featured && (
-            <Link
-              href={`/projet/${featured.slug}`}
-              className="block relative rounded-xl overflow-hidden mb-4 group"
-              style={{ aspectRatio: "16/9" }}
-            >
-              <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
+            <EnterItem className="px-4 lg:px-1">
+              <Link
+                href={`/projet/${featured.slug}`}
+                className="glass group relative mb-4 block aspect-video overflow-hidden rounded-panel shadow-[0_18px_40px_rgba(0,0,0,0.55)] transition-[border-color] duration-base ease-glass hover:border-white/20 lg:mb-6 lg:aspect-[21/9]"
+              >
                 {featured.preview_url ? (
                   <img
                     src={featured.preview_url}
                     alt={featured.title}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : (
-                  <svg className="w-10 h-10" style={{ color: "#C8FF00", opacity: 0.15 }} fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="glass-strong flex size-14 items-center justify-center rounded-pill" aria-hidden="true">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
+                    </span>
+                  </div>
                 )}
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent" />
-              <div className="absolute bottom-0 left-0 p-4">
-                <p className="text-lg font-semibold text-[#f0f0f0] group-hover:text-[#C8FF00] transition" style={{ letterSpacing: "-0.3px" }}>
-                  {featured.title}
-                </p>
-                <p className="text-xs text-[#888]">{featured.owner_name} · {featured.year}</p>
-              </div>
-            </Link>
+                <div className="absolute inset-0 bg-gradient-to-t from-canvas/90 via-transparent to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-4 lg:p-6">
+                  <p className="truncate text-lg lg:text-2xl font-semibold text-white group-hover:text-lime transition-colors duration-base" style={{ letterSpacing: "-0.3px" }}>
+                    {featured.title}
+                  </p>
+                  <p className="truncate text-xs lg:text-sm text-white/70">{featured.owner_name} · {featured.year}</p>
+                </div>
+              </Link>
+            </EnterItem>
           )}
 
           {/* Grid */}
           {rest.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 pb-6">
+            <EnterItem className="grid grid-cols-2 gap-2.5 px-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-4 lg:px-1">
               {rest.map((p) => (
                 <Link
                   key={p.id}
                   href={`/projet/${p.slug}`}
-                  className="group"
+                  className="group block"
                 >
-                  <div
-                    className="w-full rounded-lg overflow-hidden mb-2 flex items-center justify-center"
-                    style={{ aspectRatio: "16/9", background: "#1a1a1a", position: "relative" }}
-                  >
-                    {p.poster_url ? (
-                      <img
-                        src={p.poster_url}
-                        alt={p.title}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <svg className="w-6 h-6" style={{ color: "#C8FF00", opacity: 0.15 }} fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-[13px] font-medium text-text-primary group-hover:text-[#C8FF00] transition truncate leading-tight">
-                    {p.title}
-                  </p>
-                  <p className="text-[11px] text-[#555] truncate">{p.owner_name} · {p.year}</p>
+                  <GlassCard className="h-full p-2.5 transition-[translate,border-color,box-shadow] duration-base ease-glass group-hover:border-white/20 motion-safe:group-hover:-translate-y-1">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-media bg-white/5 shadow-[0_18px_40px_rgba(0,0,0,0.55)]">
+                      {p.poster_url ? (
+                        <img
+                          src={p.poster_url}
+                          alt={p.title}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="glass-strong flex size-11 items-center justify-center rounded-pill" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-2.5 px-1 pb-0.5">
+                      <p className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate leading-tight">
+                        {p.title}
+                      </p>
+                      <p className="mt-1 text-[11px] text-text-secondary truncate">{p.owner_name} · {p.year}</p>
+                    </div>
+                  </GlassCard>
                 </Link>
               ))}
-            </div>
+            </EnterItem>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </EnterList>
   );
 }

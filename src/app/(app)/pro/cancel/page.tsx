@@ -1,21 +1,27 @@
 "use client";
 
-import Link from "next/link";
+import { EnterItem, EnterList } from "@/components/motion";
+import Button from "@/components/ui/Button";
+import GlassCard from "@/components/ui/GlassCard";
 
 // Retour après annulation du Checkout (aucun paiement effectué).
 export default function ProCancelPage() {
   return (
-    <div style={{ padding: "60px 16px", maxWidth: 460, margin: "0 auto", textAlign: "center" }}>
-      <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-      </div>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#f0f0f0", marginBottom: 10, letterSpacing: "-0.5px" }}>Paiement annulé</h1>
-      <p style={{ fontSize: 14, color: "#888", lineHeight: 1.6, marginBottom: 24 }}>
-        Aucun montant n&apos;a été débité. Tu peux réessayer quand tu veux.
-      </p>
-      <Link href="/pro" style={{ display: "inline-block", padding: "12px 24px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f0f0f0", fontSize: 14, fontWeight: 600, borderRadius: 12, textDecoration: "none" }}>
-        Revenir à Unkast Pro
-      </Link>
-    </div>
+    <EnterList className="mx-auto w-full max-w-[460px] px-4 py-12 lg:py-20">
+      <EnterItem>
+        <GlassCard radius="panel" className="px-5 py-8 text-center lg:px-8 lg:py-10">
+          <span aria-hidden="true" className="mx-auto mb-5 flex size-14 items-center justify-center rounded-pill border border-white/10 bg-white/5 text-text-secondary">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </span>
+          <h1 className="text-sheen mb-3 text-[30px] font-bold lg:text-[36px]">Paiement annulé</h1>
+          <p className="mb-7 text-sm leading-relaxed text-text-secondary">
+            Aucun montant n&apos;a été débité. Tu peux réessayer quand tu veux.
+          </p>
+          <Button href="/pro" variant="glass" size="lg" className="max-sm:w-full">
+            Revenir à Unkast Pro
+          </Button>
+        </GlassCard>
+      </EnterItem>
+    </EnterList>
   );
 }

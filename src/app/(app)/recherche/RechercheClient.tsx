@@ -181,16 +181,9 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
   const [projects, setProjects] = useState<ProjectResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Reduced motion : la bascule Parcourir / Rechercher se fait en fondu seul.
   const shift = useReducedMotion() ? 0 : 8;
-
-  useEffect(() => {
-    if (mode === "search") {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [mode]);
 
   useEffect(() => {
     if (mode !== "search" || query.length < 2) {
@@ -324,7 +317,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
           >
             {/* Bordure citron tant que le champ a une valeur */}
             <Field
-              ref={inputRef}
+              autoFocus
               size="lg"
               type="text"
               aria-label="Rechercher"

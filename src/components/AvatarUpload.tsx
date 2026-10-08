@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
 import { canvasToWebpBlob, MAX_INPUT_BYTES } from "@/lib/image-compress";
+import Button from "@/components/ui/Button";
 
 interface Props {
   currentAvatarUrl: string | null;
@@ -21,6 +23,7 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pressedOnBackdrop = useRef(false);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 3000); }
 
@@ -138,65 +141,94 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
     showToast("Photo supprimee");
   }
 
+  const sheetRow =
+    "flex min-h-14 w-full items-center gap-3 rounded-card border border-white/10 bg-white/5 px-4 text-left text-sm hover:border-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime";
+
   return (
     <>
       {/* Avatar circle */}
-      <div
+      <button
+        type="button"
+        aria-label="Changer la photo de profil"
         onClick={() => setShowSheet(true)}
-        style={{ width: size, height: size, borderRadius: "50%", position: "relative", cursor: "pointer", overflow: "hidden", flexShrink: 0 }}
+        className="group relative shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime"
+        style={{ width: size, height: size }}
       >
-        {currentAvatarUrl ? (
-          <img src={currentAvatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <div style={{ width: "100%", height: "100%", background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: size * 0.3, fontWeight: 600, color: "#C8FF00" }}>{initials}</span>
-          </div>
-        )}
-        {/* Overlay */}
-        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 200ms" }} className="avatar-upload-overlay">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+        <span className="relative block size-full overflow-hidden rounded-full border-2 border-lime/35 bg-white/5 shadow-[0_0_0_5px_rgba(200,255,0,0.06),0_0_40px_rgba(200,255,0,0.25)]">
+          {currentAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={currentAvatarUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <span className="flex size-full items-center justify-center font-semibold text-lime" style={{ fontSize: size * 0.3 }}>
+              {initials}
+            </span>
+          )}
+          {/* Overlay */}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-fast group-hover:opacity-100 group-active:opacity-100">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </span>
+        </span>
+        {/* Pastille appareil photo : rend l'action visible au tactile (pas de survol) */}
+        <span className="btn-accent absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
             <circle cx="12" cy="13" r="4" />
           </svg>
-        </div>
-        <style>{`.avatar-upload-overlay:hover, .avatar-upload-overlay:active { opacity: 1 !important; }`}</style>
-      </div>
+        </span>
+      </button>
 
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileSelect} />
 
-      {/* Bottom sheet */}
-      {showSheet && (
-        <div onClick={() => setShowSheet(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#1a1a1a", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", width: "100%", maxWidth: 420 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 20 }}>Photo de profil</h3>
+      {/* Bottom sheet. Portee dans <body> : un ancetre en verre (backdrop-filter) deviendrait
+          sinon le bloc conteneur de ce position: fixed. Fermeture au clic sur le fond
+          seulement si mousedown ET mouseup y ont lieu. */}
+      {showSheet && createPortal(
+        <div
+          onMouseDown={(e) => { pressedOnBackdrop.current = e.target === e.currentTarget; }}
+          onClick={(e) => { if (e.target === e.currentTarget && pressedOnBackdrop.current) setShowSheet(false); }}
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="avatar-sheet-title"
+            className="glass-strong flex w-full max-w-[420px] flex-col gap-2.5 rounded-t-panel border-b-0 bg-glass-solid/85 px-5 pt-6 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:rounded-panel sm:border-b sm:pb-5"
+          >
+            <h3 id="avatar-sheet-title" className="mb-2 text-base font-semibold text-text-primary">Photo de profil</h3>
 
-            <button onClick={() => handleSource("camera")} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 16, background: "rgba(255,255,255,0.04)", borderRadius: 12, border: "none", cursor: "pointer", marginBottom: 10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" /></svg>
-              <span style={{ fontSize: 14, color: "#f0f0f0" }}>Prendre une photo</span>
+            <button type="button" onClick={() => handleSource("camera")} className={`${sheetRow} text-text-primary`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="shrink-0 text-lime" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" /></svg>
+              Prendre une photo
             </button>
 
-            <button onClick={() => handleSource("gallery")} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 16, background: "rgba(255,255,255,0.04)", borderRadius: 12, border: "none", cursor: "pointer", marginBottom: 10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
-              <span style={{ fontSize: 14, color: "#f0f0f0" }}>Choisir dans la galerie</span>
+            <button type="button" onClick={() => handleSource("gallery")} className={`${sheetRow} text-text-primary`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-lime" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+              Choisir dans la galerie
             </button>
 
             {currentAvatarUrl && (
-              <button onClick={handleDelete} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 16, background: "rgba(239,68,68,0.05)", borderRadius: 12, border: "none", cursor: "pointer", marginBottom: 10 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-                <span style={{ fontSize: 14, color: "#ef4444" }}>Supprimer la photo</span>
+              <button type="button" onClick={handleDelete} className={`${sheetRow} border-red-500/20! bg-red-500/5! text-red-400`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                Supprimer la photo
               </button>
             )}
 
-            <button onClick={() => setShowSheet(false)} style={{ width: "100%", padding: 14, background: "none", border: "none", color: "#555", fontSize: 14, cursor: "pointer", marginTop: 4 }}>Annuler</button>
+            <Button variant="glass" onClick={() => setShowSheet(false)} className="mt-1 w-full">
+              Annuler
+            </Button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Cropper fullscreen */}
-      {imageToCrop && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#000", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, position: "relative" }}>
+      {imageToCrop && createPortal(
+        <div className="fixed inset-0 z-[9999] flex flex-col bg-black">
+          <div className="relative flex-1">
             <Cropper
               image={imageToCrop}
               crop={crop}
@@ -210,44 +242,47 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
             />
           </div>
 
-          <div style={{ background: "rgba(0,0,0,0.8)", padding: "16px 20px 24px" }}>
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#555", marginBottom: 6, letterSpacing: "0.08em" }}>ZOOM</p>
+          <div className="glass-strong rounded-t-panel border-b-0 bg-glass-solid/85 px-5 pt-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))]">
+            <div className="mx-auto w-full max-w-[420px]">
+              <label htmlFor="avatar-zoom" className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary">ZOOM</label>
               <input
+                id="avatar-zoom"
                 type="range"
                 min={1}
                 max={3}
                 step={0.01}
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
-                style={{ width: "100%", accentColor: "#C8FF00" }}
+                className="mb-4 h-11 w-full accent-lime"
               />
-            </div>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => { setImageToCrop(null); setCrop({ x: 0, y: 0 }); setZoom(1); }}
-                style={{ flex: 1, padding: 13, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#f0f0f0", fontSize: 14, cursor: "pointer" }}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={applyCrop}
-                disabled={uploading}
-                style={{ flex: 1, padding: 13, background: "#C8FF00", color: "#0d0d0d", fontWeight: 600, fontSize: 14, borderRadius: 10, border: "none", cursor: "pointer", opacity: uploading ? 0.6 : 1 }}
-              >
-                {uploading ? "Upload..." : "Appliquer"}
-              </button>
+              <div className="flex gap-2.5">
+                <Button
+                  variant="glass"
+                  onClick={() => { setImageToCrop(null); setCrop({ x: 0, y: 0 }); setZoom(1); }}
+                  className="flex-1"
+                >
+                  Annuler
+                </Button>
+                <Button onClick={applyCrop} disabled={uploading} className="flex-1">
+                  {uploading ? "Upload..." : "Appliquer"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", top: 16, right: 16, zIndex: 50, padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
+      {/* Toast (sous l'en-tete d'AppShell) */}
+      {toast && createPortal(
+        <div
+          role="status"
+          className="glass-strong fixed right-4 top-[calc(68px+env(safe-area-inset-top,16px))] z-[10000] max-w-[calc(100vw-2rem)] rounded-card bg-glass-solid/80 px-4 py-2.5 text-[13px] text-text-primary shadow-2xl shadow-black/50"
+        >
           {toast}
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

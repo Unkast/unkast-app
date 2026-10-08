@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import Avatar from "@/components/Avatar";
+import { EnterItem, EnterList } from "@/components/motion";
+import Button from "@/components/ui/Button";
+import Field from "@/components/ui/Field";
+import GlassCard from "@/components/ui/GlassCard";
 
 interface Conversation {
   id: string;
@@ -14,6 +18,28 @@ interface Conversation {
   last_message: string;
   last_message_at: string;
   unread_count: number;
+}
+
+const PAGE = "mx-auto max-w-[600px] px-4 pt-5 pb-8";
+
+function BubbleIcon() {
+  return (
+    <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-pill border border-lime/25 bg-lime/10 text-lime shadow-[0_0_24px_rgba(200,255,0,0.18)]">
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+      </svg>
+    </div>
+  );
 }
 
 /* ── Boîte vide (compte gratuit) ── */
@@ -26,90 +52,58 @@ interface Conversation {
 // disponible.
 function EmptyInbox({ contactsLimit }: { contactsLimit: number }) {
   return (
-    <div style={{ padding: "48px 16px 120px", maxWidth: 600, margin: "0 auto" }}>
-      <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <svg
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#C8FF00"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ margin: "0 auto", opacity: 0.5 }}
-        >
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-        </svg>
-      </div>
+    <div className="mx-auto max-w-[600px] px-4 pt-12 pb-8">
+      <EnterList>
+        <EnterItem>
+          <GlassCard radius="panel" className="px-5 py-10 text-center">
+            <BubbleIcon />
+            <h1 className="text-sheen mb-2 text-[26px] font-semibold">Aucune conversation</h1>
+            <p className="mx-auto mb-7 max-w-[320px] text-sm leading-normal text-text-secondary">
+              Avec ton compte gratuit, tu peux contacter {contactsLimit} personnes et
+              répondre sans limite à celles qui t&apos;écrivent. Trouve quelqu&apos;un
+              et écris-lui depuis son profil.
+            </p>
+            <div className="mx-auto flex max-w-[320px] flex-col gap-2.5">
+              <Button href="/recherche" size="lg" className="w-full">
+                Explorer les profils
+              </Button>
+              <Button href="/pro" variant="glass" size="lg" className="w-full">
+                Contacts illimités avec Pro
+              </Button>
+            </div>
+          </GlassCard>
+        </EnterItem>
+      </EnterList>
+    </div>
+  );
+}
 
-      <h1
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color: "#f0f0f0",
-          textAlign: "center",
-          marginBottom: 8,
-        }}
-      >
-        Aucune conversation
-      </h1>
-      <p
-        style={{
-          fontSize: 14,
-          color: "#666",
-          textAlign: "center",
-          maxWidth: 320,
-          margin: "0 auto 28px",
-          lineHeight: 1.5,
-        }}
-      >
-        Avec ton compte gratuit, tu peux contacter {contactsLimit} personnes et
-        répondre sans limite à celles qui t&apos;écrivent. Trouve quelqu&apos;un
-        et écris-lui depuis son profil.
-      </p>
+/* ── Squelettes en verre ── */
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-        <Link
-          href="/recherche"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            maxWidth: 320,
-            padding: "14px 24px",
-            background: "#C8FF00",
-            color: "#0d0d0d",
-            fontWeight: 600,
-            fontSize: 15,
-            borderRadius: 12,
-            textDecoration: "none",
-          }}
-        >
-          Explorer les profils
-        </Link>
-        <Link
-          href="/pro"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            maxWidth: 320,
-            padding: "14px 24px",
-            background: "transparent",
-            color: "#f0f0f0",
-            fontWeight: 500,
-            fontSize: 14,
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.1)",
-            textDecoration: "none",
-          }}
-        >
-          Contacts illimités avec Pro
-        </Link>
-      </div>
+function RowsSkeleton() {
+  return (
+    <div role="status" className="space-y-2">
+      <span className="sr-only">Chargement...</span>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <GlassCard key={i} aria-hidden="true" className="flex items-center gap-3 p-3">
+          <div className="size-12 shrink-0 rounded-full bg-white/10 animate-pulse" />
+          <div className="min-w-0 flex-1">
+            <div className="h-3.5 w-32 rounded bg-white/10 animate-pulse" />
+            <div className="mt-2 h-3 w-48 max-w-full rounded bg-white/5 animate-pulse" />
+          </div>
+        </GlassCard>
+      ))}
+    </div>
+  );
+}
+
+// Tant que le statut du compte n'est pas connu : même gabarit que la liste.
+function PageSkeleton() {
+  return (
+    <div className={PAGE}>
+      <div aria-hidden="true" className="mb-4 h-9 w-40 rounded-card bg-white/10 animate-pulse" />
+      <div aria-hidden="true" className="glass mb-5 h-11 rounded-card" />
+      <RowsSkeleton />
     </div>
   );
 }
@@ -162,177 +156,109 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
     return <EmptyInbox contactsLimit={contactsLimit} />;
   }
 
-  return (
-    <div style={{ padding: "20px 16px 120px", maxWidth: 600, margin: "0 auto" }}>
-      {userPlan === "pro" && (
-        <p
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 10,
-            color: dailyCount >= 5 ? "#f97316" : "#555",
-            textAlign: "right",
-            padding: "8px 20px",
-          }}
-        >
-          {dailyCount} / 5 nouveaux contacts aujourd&apos;hui
-          {dailyCount >= 5 ? " · Limite atteinte" : ""}
-        </p>
-      )}
-      {/* Même emplacement, quota différent : personnes contactées à vie. */}
-      {userPlan === "free" && contactsUsed !== null && (
-        <p
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 10,
-            color: contactsUsed >= contactsLimit ? "#f97316" : "#555",
-            textAlign: "right",
-            padding: "8px 20px",
-          }}
-        >
-          {contactsUsed} / {contactsLimit} contacts gratuits
-          {contactsUsed >= contactsLimit ? " · Limite atteinte" : ""}
-        </p>
-      )}
-      <h1
-        style={{
-          fontSize: 22,
-          fontWeight: 600,
-          color: "#f0f0f0",
-          letterSpacing: "-0.5px",
-          marginBottom: 16,
-        }}
-      >
-        Messages
-      </h1>
+  // Même emplacement, quota différent : nouveaux contacts du jour (Pro) ou
+  // personnes contactées à vie (gratuit).
+  const quotaReached = userPlan === "pro" ? dailyCount >= 5 : contactsUsed !== null && contactsUsed >= contactsLimit;
 
-      {/* Search bar */}
-      <div style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher une conversation..."
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            background: "#1a1a1a",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 12,
-            fontSize: 14,
-            color: "#f0f0f0",
-            outline: "none",
-          }}
-        />
+  return (
+    <div className={PAGE}>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+        <h1 className="text-sheen text-[30px] font-semibold lg:text-[40px]" style={{ letterSpacing: "-0.5px" }}>
+          Messages
+        </h1>
+        {(userPlan === "pro" || contactsUsed !== null) && (
+          <p className={`pb-1.5 font-mono text-[10px] ${quotaReached ? "text-orange-400" : "text-text-secondary"}`}>
+            {userPlan === "pro" ? (
+              <>{dailyCount} / 5 nouveaux contacts aujourd&apos;hui</>
+            ) : (
+              <>{contactsUsed} / {contactsLimit} contacts gratuits</>
+            )}
+            {quotaReached ? " · Limite atteinte" : ""}
+          </p>
+        )}
       </div>
 
-      {loading && <p style={{ color: "#555", fontSize: 13 }}>Chargement...</p>}
+      {/* Search bar */}
+      <Field
+        className="mb-5"
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onClear={() => setSearch("")}
+        placeholder="Rechercher une conversation..."
+        aria-label="Rechercher une conversation"
+        icon={
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+        }
+      />
+
+      {loading && <RowsSkeleton />}
 
       {!loading && filtered.length === 0 && (
-        <div style={{ textAlign: "center", padding: "40px 0" }}>
-          <svg
-            style={{ margin: "0 auto 16px", opacity: 0.3 }}
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#C8FF00"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-            />
-          </svg>
-          <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", marginBottom: 6 }}>
-            Aucune conversation
-          </p>
-          <p style={{ fontSize: 13, color: "#555" }}>
+        <GlassCard radius="panel" className="px-5 py-10 text-center">
+          <BubbleIcon />
+          <p className="mb-1.5 text-[15px] font-medium text-text-primary">Aucune conversation</p>
+          <p className="text-[13px] text-text-secondary">
             Contacte un talent depuis son profil pour démarrer une conversation.
           </p>
-        </div>
+        </GlassCard>
       )}
 
-      {!loading &&
-        filtered.map((c) => {
-          const timeAgo = formatTimeAgo(c.last_message_at);
-          const isUnread = c.unread_count > 0;
-          return (
-            <Link
-              key={c.id}
-              href={`/messages/${c.id}`}
-              style={{
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "14px 0",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
-              }}
-            >
-              <Avatar
-                url={c.other_avatar}
-                name={c.other_name}
-                size={48}
-                style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
+      {!loading && filtered.length > 0 && (
+        <EnterList className="space-y-2">
+          {filtered.map((c) => {
+            const timeAgo = formatTimeAgo(c.last_message_at);
+            const isUnread = c.unread_count > 0;
+            return (
+              <EnterItem key={c.id}>
+                <Link
+                  href={`/messages/${c.id}`}
+                  className="group block rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
                 >
-                  <p
-                    style={{
-                      fontSize: 14,
-                      fontWeight: isUnread ? 700 : 400,
-                      color: "#f0f0f0",
-                    }}
+                  <GlassCard
+                    className={`flex items-center gap-3 p-3 transition-[border-color] duration-fast ease-glass group-hover:border-white/20 ${isUnread ? "border-lime/25" : ""}`}
                   >
-                    {c.other_name}
-                  </p>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#444",
-                      fontFamily: "JetBrains Mono, monospace",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {timeAgo}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: isUnread ? "#999" : "#555",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {c.last_message.slice(0, 45)}
-                    {c.last_message.length > 45 ? "..." : ""}
-                  </p>
-                  {isUnread && (
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "#C8FF00",
-                        flexShrink: 0,
-                      }}
+                    <Avatar
+                      url={c.other_avatar}
+                      name={c.other_name}
+                      size={48}
+                      style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }}
                     />
-                  )}
-                </div>
-              </div>
-            </Link>
-          );
-        })}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className={`truncate text-sm text-text-primary ${isUnread ? "font-bold" : "font-normal"}`}>
+                          {c.other_name}
+                        </p>
+                        <span className={`shrink-0 font-mono text-[11px] ${isUnread ? "text-lime" : "text-text-secondary"}`}>
+                          {timeAgo}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 flex items-center justify-between gap-3">
+                        <p className={`truncate text-[13px] ${isUnread ? "text-text-primary" : "text-text-secondary"}`}>
+                          {c.last_message.slice(0, 45)}
+                          {c.last_message.length > 45 ? "..." : ""}
+                        </p>
+                        {isUnread && (
+                          <span
+                            aria-label={`${c.unread_count} non lus`}
+                            className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-pill px-1.5 text-[11px] font-bold leading-none text-canvas shadow-[0_0_12px_rgba(200,255,0,0.45)]"
+                            style={{ background: "var(--accent-gradient)" }}
+                          >
+                            {c.unread_count > 99 ? "99+" : c.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </GlassCard>
+                </Link>
+              </EnterItem>
+            );
+          })}
+        </EnterList>
+      )}
     </div>
   );
 }
@@ -349,7 +275,7 @@ export default function MessagesPage() {
     }
   }, [userStatus, router]);
 
-  if (userStatus === null) return null;
+  if (userStatus === null) return <PageSkeleton />;
   if (userStatus === "anonymous") return null;
   return <ProConversationsList userPlan={userStatus} />;
 }

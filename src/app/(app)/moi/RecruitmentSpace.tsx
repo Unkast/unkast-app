@@ -3,7 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import Avatar from "@/components/Avatar";
+import { EnterList, EnterItem } from "@/components/motion";
+import Button from "@/components/ui/Button";
+import Chip from "@/components/ui/Chip";
+import Field from "@/components/ui/Field";
+import { SectionLabel, ListSkeleton } from "./parts";
 
 /* ---------- types ---------- */
 
@@ -38,9 +44,11 @@ interface Props {
 
 /* ---------- helpers ---------- */
 
-// Style local conservé (bordure blanche discrète, fond plein) pour ne pas
-// changer le rendu existant de l'espace recrutement.
-const recruitAvatarStyle = { background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)" } as const;
+// Avatar des candidats : bordure blanche discrete sur fond translucide (verre).
+const recruitAvatarStyle = { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" } as const;
+
+const nameCls = "text-sm font-semibold text-text-primary";
+const metaCls = "mt-0.5 text-xs text-text-secondary";
 
 /* ========================================================================== */
 
@@ -240,256 +248,268 @@ export default function RecruitmentSpace({ showToast }: Props) {
 
   /* ============================== RENDER ============================== */
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-6 h-6 border-2 border-[#C8FF00]/30 border-t-[#C8FF00] rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <ListSkeleton />;
 
   const totalCandidates = roleGroups.reduce((n, g) => n + g.candidates.length, 0);
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div className="flex flex-col gap-4">
       {/* Segmented control */}
-      <div style={{ display: "inline-flex", gap: 0, padding: 3, background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 20 }}>
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1">
         {([
           { key: "candidates", label: `Candidatures${totalCandidates ? ` (${totalCandidates})` : ""}` },
           { key: "folders", label: `Dossiers${folders.length ? ` (${folders.length})` : ""}` },
         ] as const).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => { setView(key); setOpenFolder(null); }}
-            style={{ padding: "7px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", cursor: "pointer", background: view === key ? "#C8FF00" : "transparent", color: view === key ? "#0d0d0d" : "#888" }}
-          >
+          <Chip key={key} selected={view === key} onClick={() => { setView(key); setOpenFolder(null); }}>
             {label}
-          </button>
+          </Chip>
         ))}
       </div>
 
       {/* ===================== VUE CANDIDATURES ===================== */}
       {view === "candidates" && (
-        <div>
+        <EnterList className="flex flex-col gap-6">
           {totalCandidates === 0 ? (
-            <div style={{ border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 12, padding: "28px 16px", textAlign: "center" }}>
-              <p style={{ fontSize: 14, color: "#888", margin: 0, marginBottom: 4 }}>Aucune candidature pour le moment.</p>
-              <p style={{ fontSize: 12, color: "#555", margin: 0 }}>Les talents qui se signalent « Disponible » sur ton profil apparaissent ici, par poste.</p>
-            </div>
+            <EnterItem className="glass rounded-panel border-dashed px-4 py-7 text-center">
+              <p className="text-sm text-text-primary">Aucune candidature pour le moment.</p>
+              <p className="mt-1 text-xs text-text-secondary">Les talents qui se signalent « Disponible » sur ton profil apparaissent ici, par poste.</p>
+            </EnterItem>
           ) : (
             roleGroups.map((g) => (
-              <div key={g.role} style={{ marginBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0", margin: 0 }}>{g.role}</h3>
-                  <span style={{ fontSize: 12, color: "#555" }}>{g.candidates.length}</span>
+              <div key={g.role}>
+                <div className="mb-2.5 flex items-center gap-2 px-1">
+                  <h3 className="text-[15px] font-semibold text-text-primary">{g.role}</h3>
+                  <span className="text-xs text-text-secondary">{g.candidates.length}</span>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="flex flex-col gap-2">
                   {g.candidates.map((c) => {
                     const key = `${c.talent_id}|${c.role}`;
                     const menuOpen = dispatchKey === key;
                     return (
-                      <div key={key} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <EnterItem key={key} className="glass rounded-card p-3">
+                        <div className="flex items-center gap-3">
                           <Avatar url={c.avatar_url} name={c.full_name} style={recruitAvatarStyle} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="min-w-0 flex-1">
                             {c.slug ? (
-                              <Link href={`/profil/${c.slug}`} style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", textDecoration: "none" }}>{c.full_name}</Link>
+                              <Link href={`/profil/${c.slug}`} className={nameCls}>{c.full_name}</Link>
                             ) : (
-                              <span style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0" }}>{c.full_name}</span>
+                              <span className={nameCls}>{c.full_name}</span>
                             )}
-                            {c.location && <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>{c.location}</p>}
+                            {c.location && <p className={metaCls}>{c.location}</p>}
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                          <button
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="glass"
+                            size="sm"
+                            aria-expanded={menuOpen}
                             onClick={() => setDispatchKey(menuOpen ? null : key)}
-                            style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", background: c.folders.length ? "rgba(200,255,0,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${c.folders.length ? "rgba(200,255,0,0.3)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: c.folders.length ? "#C8FF00" : "#aaa", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                            className={c.folders.length ? "border-lime/40! text-lime!" : ""}
                           >
                             {c.folders.length ? `Rangé (${c.folders.length})` : "Ranger"}
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-                          </button>
-                          <button
-                            onClick={() => dismiss(c)}
-                            style={{ padding: "7px 12px", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#888", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
-                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                          </Button>
+                          <Button variant="glass" size="sm" onClick={() => dismiss(c)} className="font-medium! text-text-secondary!">
                             Écarter
-                          </button>
+                          </Button>
                         </div>
 
                         {/* Menu de rangement */}
                         {menuOpen && (
-                          <div style={{ marginTop: 10, padding: 12, background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10 }}>
-                            <p style={{ fontSize: 11, color: "#555", margin: 0, marginBottom: 8, fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Ranger dans…</p>
-                            {folders.length === 0 && <p style={{ fontSize: 12, color: "#666", margin: "0 0 10px" }}>Aucun dossier. Crée-en un :</p>}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                          <div className="mt-3 rounded-card border border-white/10 bg-white/5 p-3">
+                            <SectionLabel className="mb-2">Ranger dans…</SectionLabel>
+                            {folders.length === 0 && <p className="mb-2.5 text-xs text-text-secondary">Aucun dossier. Crée-en un :</p>}
+                            <div className="mb-2.5 flex flex-col">
                               {folders.map((f) => {
                                 const inFolder = c.folders.includes(f.id);
                                 return (
-                                  <button key={f.id} onClick={() => toggleDispatch(c, f.id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", background: "none", border: "none", cursor: "pointer", textAlign: "left", borderRadius: 6 }}>
-                                    <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${inFolder ? "#C8FF00" : "#444"}`, background: inFolder ? "#C8FF00" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                      {inFolder && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                                  <button
+                                    key={f.id}
+                                    type="button"
+                                    role="checkbox"
+                                    aria-checked={inFolder}
+                                    onClick={() => toggleDispatch(c, f.id)}
+                                    className="flex min-h-11 items-center gap-2.5 rounded-media px-2 text-left hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-lime"
+                                  >
+                                    <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-md border-[1.5px] ${inFolder ? "border-lime bg-lime text-canvas" : "border-white/30"}`}>
+                                      {inFolder && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>}
                                     </span>
-                                    <span style={{ fontSize: 13, color: "#f0f0f0" }}>{f.name}</span>
+                                    <span className="text-[13px] text-text-primary">{f.name}</span>
                                   </button>
                                 );
                               })}
                             </div>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <input
+                            <div className="flex flex-wrap gap-2">
+                              <Field
+                                aria-label="Nouveau dossier"
                                 value={newFolderName}
                                 onChange={(e) => setNewFolderName(e.target.value)}
                                 placeholder="Nouveau dossier (ex. Film A)"
-                                style={{ flex: 1, padding: "8px 10px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#f0f0f0", fontSize: 13, outline: "none" }}
+                                className="min-w-40 flex-1"
                               />
-                              <button
+                              <Button
                                 disabled={creating || !newFolderName.trim()}
                                 onClick={async () => {
                                   const id = await createFolder(newFolderName);
                                   if (id) { setNewFolderName(""); await toggleDispatch(c, id); }
                                 }}
-                                style={{ padding: "8px 12px", background: "#C8FF00", color: "#0d0d0d", fontSize: 12.5, fontWeight: 600, border: "none", borderRadius: 8, cursor: "pointer", opacity: creating || !newFolderName.trim() ? 0.5 : 1 }}
+                                className="shrink-0"
                               >
                                 Créer + ranger
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         )}
-                      </div>
+                      </EnterItem>
                     );
                   })}
                 </div>
               </div>
             ))
           )}
-        </div>
+        </EnterList>
       )}
 
       {/* ===================== VUE DOSSIERS ===================== */}
       {view === "folders" && !openFolder && (
-        <div>
+        <EnterList className="flex flex-col gap-2">
           {/* Création */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            <input
+          <EnterItem className="mb-2 flex gap-2">
+            <Field
+              aria-label="Nouveau dossier-film"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               placeholder="Nouveau dossier-film (ex. Film A)"
-              style={{ flex: 1, padding: "10px 12px", background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, color: "#f0f0f0", fontSize: 14, outline: "none" }}
+              className="min-w-0 flex-1"
             />
-            <button
+            <Button
               disabled={creating || !newFolderName.trim()}
               onClick={async () => { const id = await createFolder(newFolderName); if (id) setNewFolderName(""); }}
-              style={{ padding: "10px 16px", background: "#C8FF00", color: "#0d0d0d", fontSize: 14, fontWeight: 600, border: "none", borderRadius: 10, cursor: "pointer", opacity: creating || !newFolderName.trim() ? 0.5 : 1 }}
+              className="shrink-0"
             >
               + Créer
-            </button>
-          </div>
+            </Button>
+          </EnterItem>
 
           {folders.length === 0 ? (
-            <div style={{ border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 12, padding: "24px 16px", textAlign: "center" }}>
-              <p style={{ fontSize: 13, color: "#666", margin: 0 }}>Crée un dossier par film en préparation pour y ranger tes candidats. Ces dossiers sont privés — invisibles des talents.</p>
-            </div>
+            <EnterItem className="glass rounded-panel border-dashed px-4 py-6 text-center">
+              <p className="text-[13px] leading-relaxed text-text-secondary">Crée un dossier par film en préparation pour y ranger tes candidats. Ces dossiers sont privés, invisibles des talents.</p>
+            </EnterItem>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {folders.map((f) => (
-                <div key={f.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                  {renamingId === f.id ? (
-                    <input
-                      autoFocus
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") renameFolder(f.id); }}
-                      style={{ flex: 1, padding: "6px 10px", background: "#0d0d0d", border: "1px solid rgba(200,255,0,0.4)", borderRadius: 8, color: "#f0f0f0", fontSize: 14, outline: "none" }}
-                    />
-                  ) : (
-                    <button onClick={() => openFolderDetail(f.id)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", textAlign: "left", minWidth: 0 }}>
-                      <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(200,255,0,0.08)", border: "1px solid rgba(200,255,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</p>
-                        <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>{f.count} candidat{f.count > 1 ? "s" : ""}</p>
-                      </div>
-                    </button>
-                  )}
+            folders.map((f) => (
+              <EnterItem key={f.id} className="glass flex items-center gap-2 rounded-card p-3">
+                {renamingId === f.id ? (
+                  <Field
+                    autoFocus
+                    aria-label="Nom du dossier"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") renameFolder(f.id); }}
+                    className="min-w-0 flex-1"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openFolderDetail(f.id)}
+                    className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-media text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+                  >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-media border border-lime/30 bg-lime/15 text-lime">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-text-primary">{f.name}</p>
+                      <p className={metaCls}>{f.count} candidat{f.count > 1 ? "s" : ""}</p>
+                    </div>
+                  </button>
+                )}
 
-                  {renamingId === f.id ? (
-                    <>
-                      <button onClick={() => renameFolder(f.id)} style={{ background: "none", border: "none", color: "#C8FF00", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>OK</button>
-                      <button onClick={() => { setRenamingId(null); setRenameValue(""); }} style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer" }}>Annuler</button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => { setRenamingId(f.id); setRenameValue(f.name); }} title="Renommer" style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                      </button>
-                      <button onClick={() => deleteFolder(f.id)} title="Supprimer" style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+                {renamingId === f.id ? (
+                  <>
+                    <Button size="sm" onClick={() => renameFolder(f.id)} className="shrink-0 px-3!">OK</Button>
+                    <Button variant="glass" size="sm" onClick={() => { setRenamingId(null); setRenameValue(""); }} className="shrink-0 px-3!">Annuler</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="icon" size="sm" aria-label="Renommer" title="Renommer" onClick={() => { setRenamingId(f.id); setRenameValue(f.name); }} className="shrink-0 text-text-secondary!">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    </Button>
+                    <Button variant="icon" size="sm" aria-label="Supprimer" title="Supprimer" onClick={() => deleteFolder(f.id)} className="shrink-0 text-text-secondary!">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                    </Button>
+                  </>
+                )}
+              </EnterItem>
+            ))
           )}
-        </div>
+        </EnterList>
       )}
 
       {/* ===================== DÉTAIL D'UN DOSSIER ===================== */}
       {view === "folders" && openFolder && (
-        <div>
-          <button onClick={() => setOpenFolder(null)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#888", fontSize: 13, cursor: "pointer", marginBottom: 14 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-            Tous les dossiers
-          </button>
-
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 4 }}>{openFolder.folder.name}</h3>
-          <p style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>Ton casting idéal pour ce film, par poste.</p>
+        <EnterList className="flex flex-col gap-5">
+          <EnterItem className="flex flex-col items-start gap-3">
+            <Button variant="glass" size="sm" onClick={() => setOpenFolder(null)} className="pl-3!">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+              Tous les dossiers
+            </Button>
+            <div className="px-1">
+              <h3 className="text-sheen break-words text-2xl font-semibold">{openFolder.folder.name}</h3>
+              <p className="mt-1 text-xs text-text-secondary">Ton casting idéal pour ce film, par poste.</p>
+            </div>
+          </EnterItem>
 
           {openFolder.roles.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#555" }}>Aucun candidat rangé dans ce dossier. Va dans « Candidatures » pour en ajouter.</p>
+            <EnterItem className="px-1">
+              <p className="text-[13px] text-text-secondary">Aucun candidat rangé dans ce dossier. Va dans « Candidatures » pour en ajouter.</p>
+            </EnterItem>
           ) : (
             openFolder.roles.map((g) => (
-              <div key={g.role} style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#f0f0f0", margin: 0, marginBottom: 8 }}>{g.role}</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div key={g.role}>
+                <p className="mb-2 px-1 text-[13px] font-semibold text-text-primary">{g.role}</p>
+                <div className="flex flex-col gap-2">
                   {g.candidates.map((c) => (
-                    <div key={`${c.talent_id}|${c.role}`} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                    <EnterItem key={`${c.talent_id}|${c.role}`} className="glass flex items-center gap-3 rounded-card p-3">
                       <Avatar url={c.avatar_url} name={c.full_name} size={36} style={recruitAvatarStyle} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="min-w-0 flex-1">
                         {c.slug ? (
-                          <Link href={`/profil/${c.slug}`} style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0", textDecoration: "none" }}>{c.full_name}</Link>
+                          <Link href={`/profil/${c.slug}`} className={nameCls}>{c.full_name}</Link>
                         ) : (
-                          <span style={{ fontSize: 14, fontWeight: 600, color: "#f0f0f0" }}>{c.full_name}</span>
+                          <span className={nameCls}>{c.full_name}</span>
                         )}
-                        {c.location && <p style={{ fontSize: 11, color: "#555", margin: 0, marginTop: 2 }}>{c.location}</p>}
+                        {c.location && <p className={metaCls}>{c.location}</p>}
                       </div>
-                      <button
-                        onClick={() => contact(c.talent_id)}
-                        disabled={contactingId === c.talent_id}
-                        style={{ padding: "7px 12px", background: "#C8FF00", color: "#0d0d0d", fontSize: 12.5, fontWeight: 600, border: "none", borderRadius: 8, cursor: "pointer", opacity: contactingId === c.talent_id ? 0.5 : 1 }}
-                      >
+                      <Button size="sm" onClick={() => contact(c.talent_id)} disabled={contactingId === c.talent_id} className="shrink-0 px-3!">
                         {contactingId === c.talent_id ? "…" : "Contacter"}
-                      </button>
-                      <button onClick={() => removeFromFolder(openFolder.folder.id, c)} title="Retirer du dossier" style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                      </button>
-                    </div>
+                      </Button>
+                      <Button variant="icon" size="sm" aria-label="Retirer du dossier" title="Retirer du dossier" onClick={() => removeFromFolder(openFolder.folder.id, c)} className="shrink-0 text-text-secondary!">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </Button>
+                    </EnterItem>
                   ))}
                 </div>
               </div>
             ))
           )}
-        </div>
+        </EnterList>
       )}
 
-      {/* Toast undo écartement */}
-      {undo && (
-        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 60, display: "flex", alignItems: "center", gap: 14, padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-          <span style={{ fontSize: 13, color: "#f0f0f0" }}>{undo.full_name} écarté</span>
-          <button onClick={cancelDismiss} style={{ background: "none", border: "none", color: "#C8FF00", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-        </div>
+      {/* Toast undo écartement. Porte dans <body> : un ancetre en verre ou en cours
+          d'animation deviendrait sinon son bloc conteneur. Pose 12 px au-dessus de la
+          navigation mobile : barre plate (56 px) en navigateur, dock (88 px) dans l'app
+          installee, rien en desktop. */}
+      {undo && createPortal(
+        <div
+          role="status"
+          className="glass-strong fixed left-1/2 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-pill bg-glass-solid/80 py-1.5 pl-5 pr-1.5 shadow-2xl shadow-black/50 bottom-[calc(68px+env(safe-area-inset-bottom,0px))] max-lg:[.app-installed_&]:bottom-[calc(100px+env(safe-area-inset-bottom,0px))] lg:bottom-6"
+        >
+          <span className="truncate text-[13px] text-text-primary">{undo.full_name} écarté</span>
+          <Button variant="glass" size="sm" onClick={cancelDismiss} className="shrink-0 text-lime!">
+            Annuler
+          </Button>
+        </div>,
+        document.body
       )}
     </div>
   );

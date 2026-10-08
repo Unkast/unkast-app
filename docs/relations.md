@@ -90,6 +90,25 @@
 | `GET /api/search` | [persiste dans] | `profile_roles` (lecture) |
 | `GET /api/search` | [persiste dans] | `projects` (lecture) |
 | --- | --- | --- |
+| `RechercheClient` | [depend de] | `ui/Field` (`autoFocus` a l'entree en mode Rechercher) |
+| --- | --- | --- |
+| **Refonte vague 2 (chantier 6, 08/10/2026)** | | |
+| `RejoindreClient` | [utilise] | `RoleSelector`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/ProgressSteps` |
+| `ConnexionClient`, `auth/confirm/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard` |
+| `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard` |
+| `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field` |
+| `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
+| `moi/parts.tsx` | [utilise] | `ui/Badge` |
+| `messages/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard`, `Avatar` |
+| `messages/[id]/page.tsx` | [utilise] | `ui/Button` |
+| `messages/[id]/page.tsx` | [depend de] | `globals.css` (`.lite`, `--accent-gradient`) |
+| `pro/page.tsx` | [utilise] | `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Field`, `ui/GlassCard` |
+| `pro/success`, `pro/cancel` | [utilise] | `motion.tsx`, `ui/Button`, `ui/GlassCard` |
+| `categories/[slug]/page.tsx` | [utilise] | `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/GlassCard` |
+| `RoleSelector` | [utilise] | `ui/Button`, `ui/Chip`, `ui/Field`, `constants.ts`, `react-dom` (createPortal) |
+| `ProfileClient`, `ProjetClient` | [utilise] | `RoleSelector` (singleSelect, dans une `ModalBackdrop`) |
+| `AvatarUpload` | [utilise] | `ui/Button`, `react-dom` (createPortal) |
+| --- | --- | --- |
 | **Inscription** | | |
 | `RejoindreClient` | [declenche] | `POST /api/signup` |
 | `RejoindreClient` | [utilise] | `constants.ts` |

@@ -1,23 +1,41 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId, type ComponentProps, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
 import { CATEGORY_LABELS, MAX_PROJECTS_FREE } from "@/lib/constants";
 import type { ProjectCategory, AccountType } from "@/types/database";
 import RoleSelector from "@/components/RoleSelector";
+import { EnterItem, EnterList } from "@/components/motion";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import Chip from "@/components/ui/Chip";
+import Field from "@/components/ui/Field";
+import GlassCard from "@/components/ui/GlassCard";
+import ProgressSteps from "@/components/ui/ProgressSteps";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
 const STEP_COUNT = 5;
 
-const slideVariants = {
-  enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+// Années proposées directement en Chip ; les plus anciennes derrière « Plus ancien ».
+const RECENT_YEARS = 5;
+
+// Glissement de 40 px + fondu, sens selon la direction. Reduced motion : fondu seul.
+type Slide = { dir: number; reduced: boolean };
+const stepVariants = {
+  enter: ({ dir, reduced }: Slide) => ({ x: reduced ? 0 : dir > 0 ? 40 : -40, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+  exit: ({ dir, reduced }: Slide) => ({ x: reduced ? 0 : dir > 0 ? -40 : 40, opacity: 0 }),
 };
+
+const TITLE = "text-sheen pb-0.5 text-[28px] font-bold tracking-tight sm:text-4xl";
+const SUBTITLE = "mt-1.5 mb-6 text-sm text-text-secondary";
+const LABEL = "text-sm font-medium text-text-secondary";
+const ACCOUNT_CARD =
+  "glass rounded-card text-left transition-[transform,opacity,border-color,box-shadow]! duration-fast! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime";
+const ACCOUNT_CARD_SELECTED = "border-lime/60 shadow-[0_0_24px_rgba(200,255,0,0.15)]";
 
 function passwordStrength(pw: string): { label: string; color: string; width: string } {
   if (pw.length < 6) return { label: "Trop court", color: "bg-red-500", width: "20%" };
@@ -46,6 +64,8 @@ export default function RejoindreClient() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [direction, setDirection] = useState(1);
+  const reduced = useReducedMotion();
+  const slide: Slide = { dir: direction, reduced: !!reduced };
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
@@ -86,6 +106,7 @@ export default function RejoindreClient() {
   const [projectUrl, setProjectUrl] = useState("");
   const [projectYear, setProjectYear] = useState(String(new Date().getFullYear()));
   const [projectCategory, setProjectCategory] = useState<ProjectCategory>("court-metrage");
+  const [showOlderYears, setShowOlderYears] = useState(false);
 
   // Step 4B (talent)
   const [searchQuery, setSearchQuery] = useState("");
@@ -301,642 +322,568 @@ export default function RejoindreClient() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
 
-  const inputClass =
-    "w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-base placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition";
-  const selectClass =
-    "w-full px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-text-primary text-base focus:outline-none focus:border-lime/50 transition";
+  const recentYears = years.slice(0, RECENT_YEARS);
+  const olderYears = years.slice(RECENT_YEARS);
+  const olderYearSelected = olderYears.includes(Number(projectYear));
+  const strength = passwordStrength(password);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-      <div>
-        <main className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
-          {/* Progress bar */}
-          {step < 5 && (
-            <div className="mb-8">
-              <div className="flex gap-1.5">
-                {Array.from({ length: STEP_COUNT }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                      i < step ? "bg-lime" : "bg-white/10"
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-text-tertiary mt-2">
-                Étape {step} sur {STEP_COUNT}
-              </p>
-            </div>
-          )}
+    <EnterList className="mx-auto w-full max-w-2xl overflow-x-clip px-4 py-4 sm:px-6 sm:py-8">
+      {/* Progression */}
+      {step < 5 && (
+        <EnterItem className="mb-6 flex items-center justify-between gap-4">
+          <ProgressSteps total={STEP_COUNT} current={step - 1} />
+          <p className="font-mono text-[11px] text-text-tertiary">
+            Étape {step} sur {STEP_COUNT}
+          </p>
+        </EnterItem>
+      )}
 
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={step}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              {/* ===== STEP 1 — Account type (3 cards) ===== */}
-              {step === 1 && (
-                <div style={{ paddingTop: 4 }}>
-                  <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.3px", color: "#f0f0f0", marginBottom: 6 }}>
-                    Comment vas-tu utiliser Unkast ?
-                  </h1>
-                  <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, marginBottom: 20 }}>
-                    Tu pourras modifier ça plus tard depuis ton profil.
-                  </p>
+      <EnterItem>
+        <AnimatePresence mode="wait" custom={slide}>
+          <motion.div
+            key={step}
+            custom={slide}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: reduced ? 0.15 : 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            {/* ===== STEP 1 — Account type (3 cards) ===== */}
+            {step === 1 && (
+              <div>
+                <h1 className={TITLE}>Comment vas-tu utiliser Unkast ?</h1>
+                <p className={SUBTITLE}>Tu pourras modifier ça plus tard depuis ton profil.</p>
 
-                  {/* Row 1 — 2 free cards side by side */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "stretch" }}>
-                    {/* TALENT card */}
-                    <button
-                      onClick={() => selectAccountType("talent")}
-                      style={{
-                        textAlign: "left", padding: 14, borderRadius: 14, cursor: "pointer", transition: "all 200ms",
-                        position: "relative", overflow: "hidden",
-                        display: "flex", flexDirection: "column", justifyContent: "space-between",
-                        background: accountType === "talent" ? "rgba(200,255,0,0.04)" : "linear-gradient(135deg, #141414 0%, #1a1410 100%)",
-                        border: accountType === "talent" ? "1.5px solid rgba(200,255,0,0.4)" : "1px solid rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      <div>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", letterSpacing: "-0.2px", marginTop: 10 }}>Je suis un talent</p>
-                        <p style={{ fontSize: 12, color: "#666", lineHeight: 1.4, marginTop: 4 }}>
-                          Comédien, technicien, monteur... Sois contacté par des pros.
-                        </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10 }}>
-                          {["Profil public complet", "Apparaître dans les crédits", "Recevoir des messages"].map((t) => (
-                            <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#777" }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 13l4 4L19 7" /></svg>
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <span style={{ display: "inline-flex", alignSelf: "flex-start", marginTop: 12, padding: "3px 10px", borderRadius: 20, fontFamily: "JetBrains Mono, monospace", fontSize: 10, fontWeight: 500, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>Gratuit</span>
-                    </button>
-
-                    {/* CREATOR card */}
-                    <button
-                      onClick={() => selectAccountType("creator")}
-                      style={{
-                        textAlign: "left", padding: 14, borderRadius: 14, cursor: "pointer", transition: "all 200ms",
-                        position: "relative", overflow: "hidden",
-                        display: "flex", flexDirection: "column", justifyContent: "space-between",
-                        background: accountType === "creator" ? "rgba(200,255,0,0.04)" : "linear-gradient(135deg, #141414 0%, #10141a 100%)",
-                        border: accountType === "creator" ? "1.5px solid rgba(200,255,0,0.4)" : "1px solid rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      <div>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="4" width="16" height="16" rx="2" />
-                          <path d="M22 7l-4 3v4l4 3V7z" />
-                          <line x1="6" y1="4" x2="6" y2="20" />
-                          <line x1="2" y1="8" x2="6" y2="8" />
-                          <line x1="2" y1="12" x2="6" y2="12" />
-                          <line x1="2" y1="16" x2="6" y2="16" />
-                        </svg>
-                        <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", letterSpacing: "-0.2px", marginTop: 10 }}>Je publie des œuvres</p>
-                        <p style={{ fontSize: 12, color: "#666", lineHeight: 1.4, marginTop: 4 }}>
-                          Réalisateur, producteur.<br />Mets tes films en ligne.
-                        </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10 }}>
-                          {[`${MAX_PROJECTS_FREE} films gratuits`, "Gérer ton équipe", "Recevoir des messages"].map((t) => (
-                            <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#777" }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 13l4 4L19 7" /></svg>
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <span style={{ display: "inline-flex", alignSelf: "flex-start", marginTop: 12, padding: "3px 10px", borderRadius: 20, fontFamily: "JetBrains Mono, monospace", fontSize: 10, fontWeight: 500, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>Gratuit</span>
-                    </button>
-                  </div>
-
-                  {/* Reassurance between free cards and Pro card */}
-                  <div style={{ margin: "8px 0 12px", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 13l4 4L19 7" /></svg>
-                    <span style={{ fontSize: 13, color: "#555" }}>Aucune carte bancaire requise pour les comptes gratuits</span>
-                  </div>
-
-                  {/* Row 2 — Pro recruiter card full width */}
+                {/* Row 1 — 2 free cards side by side */}
+                <div className="grid grid-cols-2 items-stretch gap-2.5">
+                  {/* TALENT card */}
                   <button
-                    onClick={() => selectAccountType("recruiter")}
-                    style={{
-                      width: "100%", textAlign: "left", padding: 18, borderRadius: 14, cursor: "pointer", transition: "all 200ms",
-                      position: "relative", overflow: "hidden", marginTop: 10,
-                      background: accountType === "recruiter" ? "rgba(200,255,0,0.06)" : "linear-gradient(135deg, #141414 0%, #1a1a10 100%)",
-                      border: accountType === "recruiter" ? "1.5px solid #C8FF00" : "1px solid rgba(200,255,0,0.15)",
-                      boxShadow: accountType === "recruiter" ? "0 0 20px rgba(200,255,0,0.08)" : "none",
-                    }}
+                    type="button"
+                    onClick={() => selectAccountType("talent")}
+                    aria-pressed={accountType === "talent"}
+                    className={`${ACCOUNT_CARD} flex flex-col justify-between p-3.5 ${accountType === "talent" ? ACCOUNT_CARD_SELECTED : "hover:border-white/20"}`}
                   >
-                    {/* Decorative circle */}
-                    <svg width="80" height="80" style={{ position: "absolute", top: -20, right: -20 }}>
-                      <circle cx="40" cy="40" r="36" stroke="rgba(200,255,0,0.06)" fill="none" strokeWidth={1.5} />
-                    </svg>
-
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                      {/* Left column */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            <path d="M10 8a2 2 0 114 0 2 2 0 01-4 0zM8 14a4 4 0 018 0" />
-                          </svg>
-                          <span style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0" }}>Je cherche des talents</span>
-                        </div>
-                        <p style={{ fontSize: 12, color: "#666", lineHeight: 1.5, marginBottom: 12 }}>
-                          Directeur de casting, producteur, réalisateur qui recrute.
-                        </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {["Accès à tous les profils", "Messagerie directe illimitée", "Profil recruteur vérifié"].map((t) => (
-                            <span key={t} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#888" }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 13l4 4L19 7" /></svg>
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Right column */}
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
-                        <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 9, padding: "4px 12px", borderRadius: 20, whiteSpace: "nowrap", background: "rgba(200,255,0,0.1)", color: "#C8FF00", border: "1px solid rgba(200,255,0,0.2)" }}>Pro requis</span>
-                        <div style={{ textAlign: "right" }}>
-                          <div>
-                            <span style={{ fontSize: 22, fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.5px" }}>9,99€</span>
-                            <span style={{ fontSize: 11, color: "#555" }}>/mois</span>
-                          </div>
-                          <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#C8FF00", marginTop: 2 }}>
-                            Découvrir →
-                          </p>
-                        </div>
-                      </div>
+                    <div>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <p className="mt-2.5 text-[15px] font-semibold text-text-primary">Je suis un talent</p>
+                      <p className="mt-1 text-xs leading-snug text-text-secondary">
+                        Comédien, technicien, monteur... Sois contacté par des pros.
+                      </p>
+                      <CheckList items={["Profil public complet", "Apparaître dans les crédits", "Recevoir des messages"]} />
                     </div>
-                  </button>
-                </div>
-              )}
-
-              {/* ===== STEP 2 — Personal info ===== */}
-              {step === 2 && (
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-text-primary mb-1">
-                    Tes informations
-                  </h1>
-                  <p className="text-sm text-text-secondary mb-6">
-                    Crée ton compte pour commencer.
-                  </p>
-
-                  {/* Google button */}
-                  <button
-                    onClick={handleGoogle}
-                    disabled={googleLoading}
-                    className="w-full flex items-center justify-center gap-3 py-3 bg-white text-[#1f1f1f] font-semibold text-sm rounded-lg hover:bg-gray-100 transition disabled:opacity-50 mb-4"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    {googleLoading ? "Redirection..." : "Continuer avec Google"}
+                    <Badge variant="available" className="mt-3 self-start">Gratuit</Badge>
                   </button>
 
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex-1 h-px bg-white/5" />
-                    <span className="text-[11px] text-text-tertiary">ou par email</span>
-                    <div className="flex-1 h-px bg-white/5" />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1.5">Prénom</label>
-                        <input
-                          type="text"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className={inputClass}
-                          placeholder="Lucas"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1.5">Nom</label>
-                        <input
-                          type="text"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className={inputClass}
-                          placeholder="Meriaux"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Email</label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className={inputClass}
-                        placeholder="lucas@example.com"
-                        readOnly={!!invitationToken}
-                        style={invitationToken ? { opacity: 0.7, cursor: "not-allowed" } : undefined}
-                      />
-                      {invitationContext && (
-                        <p className="text-xs mt-1.5" style={{ color: "#C8FF00" }}>
-                          Tu as été crédité·e comme {invitationContext.role}
-                          {invitationContext.projectTitle ? ` sur « ${invitationContext.projectTitle} »` : ""}.
-                          Cet email est lié à ton invitation.
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Mot de passe</label>
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className={inputClass}
-                        placeholder="Minimum 6 caractères"
-                      />
-                      {password.length > 0 && (
-                        <div className="mt-2">
-                          <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${passwordStrength(password).color} transition-all duration-300 rounded-full`}
-                              style={{ width: passwordStrength(password).width }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-text-tertiary mt-1">{passwordStrength(password).label}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ===== STEP 3 — Professional profile ===== */}
-              {step === 3 && (
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-text-primary mb-1">
-                    Ton profil pro
-                  </h1>
-                  <p className="text-sm text-text-secondary mb-6">
-                    Dis-nous ce que tu fais dans l&apos;audiovisuel.
-                  </p>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-2">Tes métiers * <span className="text-text-tertiary">(max 5)</span></label>
-                      <RoleSelector
-                        selectedRoles={selectedRoles}
-                        onChange={setSelectedRoles}
-                        maxSelection={5}
-                        placeholder="Rechercher ton métier..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Ville</label>
-                      <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        className={inputClass}
-                        placeholder="Paris, Lyon, Marseille..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                        Bio courte
-                        <span className="text-text-tertiary ml-1">({bio.length}/280)</span>
-                      </label>
-                      <textarea
-                        rows={3}
-                        maxLength={280}
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
-                        className={`${inputClass} resize-none`}
-                        placeholder="Parle de toi en quelques lignes..."
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ===== STEP 4A — Creator: first project ===== */}
-              {step === 4 && accountType === "creator" && (
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-text-primary mb-1">
-                    Ton premier film sur Unkast
-                  </h1>
-                  <p className="text-sm text-text-secondary mb-6">
-                    Optionnel — tu pourras le faire depuis ton dashboard.
-                  </p>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Titre du projet</label>
-                      <input
-                        type="text"
-                        value={projectTitle}
-                        onChange={(e) => setProjectTitle(e.target.value)}
-                        className={inputClass}
-                        placeholder="Le titre de ton film, clip, pub..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">URL YouTube ou Vimeo</label>
-                      <input
-                        type="url"
-                        value={projectUrl}
-                        onChange={(e) => setProjectUrl(e.target.value)}
-                        className={inputClass}
-                        placeholder="https://vimeo.com/... ou https://youtube.com/..."
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1.5">Annee</label>
-                        <select
-                          value={projectYear}
-                          onChange={(e) => setProjectYear(e.target.value)}
-                          className={selectClass}
-                        >
-                          {years.map((y) => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1.5">Catégorie</label>
-                        <select
-                          value={projectCategory}
-                          onChange={(e) => setProjectCategory(e.target.value as ProjectCategory)}
-                          className={selectClass}
-                        >
-                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                            <option key={key} value={key}>{label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex items-start gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                    <span className="text-text-tertiary text-xs mt-0.5">i</span>
-                    <p className="text-xs text-text-secondary leading-relaxed">
-                      Tu pourras publier {MAX_PROJECTS_FREE} films maximum en version gratuite. Chaque film publié te permet d&apos;inviter ton équipe.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* ===== STEP 4B — Talent: claim credit ===== */}
-              {step === 4 && accountType === "talent" && (
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-text-primary mb-1">
-                    Tu as travaille sur un film ?
-                  </h1>
-                  <p className="text-sm text-text-secondary mb-6">
-                    Recherche un projet déjà présent sur Unkast pour demander à y être crédité.
-                  </p>
-
-                  {!claimProjectId ? (
-                    <div>
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); }}
-                        className={inputClass}
-                        placeholder="Rechercher un projet..."
-                      />
-
-                      {searching && (
-                        <p className="text-xs text-text-tertiary mt-3">Recherche...</p>
-                      )}
-
-                      {searchResults.length > 0 && (
-                        <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
-                          {searchResults.map((p) => (
-                            <button
-                              key={p.id}
-                              onClick={() => {
-                                setClaimProjectId(p.id);
-                                setClaimProjectTitle(p.title);
-                                setClaimProjectOwner(p.owner_name || "");
-                                setSearchQuery("");
-                                setSearchResults([]);
-                              }}
-                              className="w-full text-left px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04] transition"
-                            >
-                              <p className="text-sm font-medium text-text-primary">{p.title}</p>
-                              <p className="text-xs text-text-tertiary">
-                                {p.owner_name && `par ${p.owner_name} · `}
-                                {CATEGORY_LABELS[p.category]} · {p.year}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                        <p className="text-xs text-text-tertiary mt-3">Aucun projet trouvé.</p>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="px-4 py-3 rounded-xl border border-lime/30 bg-lime/5 mb-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-text-primary">{claimProjectTitle}</p>
-                            {claimProjectOwner && (
-                              <p className="text-xs text-text-tertiary">par {claimProjectOwner}</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => { setClaimProjectId(null); setClaimProjectTitle(""); setClaimProjectOwner(""); setClaimRole(""); }}
-                            className="text-xs text-text-tertiary hover:text-text-primary transition"
-                          >
-                            Changer
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1.5">Ton rôle dans ce projet</label>
-                        <RoleSelector
-                          selectedRoles={claimRole ? [claimRole] : []}
-                          onChange={(roles) => setClaimRole(roles[0] || "")}
-                          maxSelection={1}
-                          singleSelect
-                          placeholder="Ton rôle dans ce projet..."
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-5 flex items-start gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                    <span className="text-text-tertiary text-xs mt-0.5">i</span>
-                    <p className="text-xs text-text-secondary leading-relaxed">
-                      Le réalisateur recevra ta demande et pourra l&apos;accepter ou la refuser.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* ===== STEP 4C — Recruiter profile ===== */}
-              {step === 4 && accountType === "recruiter" && (
-                <div>
-                  <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.5px", color: "#f0f0f0", marginBottom: 4 }}>
-                    Ton profil recruteur
-                  </h1>
-                  <p style={{ fontSize: 14, color: "#666", marginBottom: 24 }}>
-                    Ces informations seront vérifiées par l&apos;équipe Unkast avant activation.
-                  </p>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Société / Structure</label>
-                      <input type="text" value={recruiterCompany} onChange={(e) => setRecruiterCompany(e.target.value)} className={inputClass} placeholder="Nom de ta société de production" />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Ton poste</label>
-                      <select value={recruiterRole} onChange={(e) => setRecruiterRole(e.target.value)} className={selectClass}>
-                        <option value="">Sélectionne ton poste</option>
-                        {["Directeur de casting", "Producteur", "Réalisateur", "Chargé de production", "Agent artistique", "Autre"].map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">Site web ou lien pro</label>
-                      <input type="url" value={recruiterWebsite} onChange={(e) => setRecruiterWebsite(e.target.value)} className={inputClass} placeholder="https://..." />
-                    </div>
-
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 14 }}>
-                      <p style={{ fontSize: 13, color: "#666", lineHeight: 1.6 }}>
-                        Pour valider ton profil recruteur, envoie un justificatif a <span style={{ color: "#C8FF00" }}>pro@unkast.com</span> (carte de visite, extrait KBIS, lien LinkedIn pro).
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                        Ce que tu recherches <span className="text-text-tertiary">(optionnel · {isLookingFor.length}/200)</span>
-                      </label>
-                      <textarea rows={3} maxLength={200} value={isLookingFor} onChange={(e) => setIsLookingFor(e.target.value)} className={`${inputClass} resize-none`} placeholder="Ex: Comédiens 20-30 ans pour court-métrage..." />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ===== STEP 5 — Confirmation email (tous les comptes) ===== */}
-              {step === 5 && (
-                <div className="text-center py-12">
-                  <div style={{ width: 64, height: 64, borderRadius: 16, background: "rgba(200,255,0,0.1)", border: "1px solid rgba(200,255,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  </div>
-                  <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.5px", color: "#f0f0f0", marginBottom: 12 }}>
-                    Confirme ton email
-                  </h1>
-                  <p style={{ fontSize: 14, color: "#888", maxWidth: 340, margin: "0 auto 8px", lineHeight: 1.6 }}>
-                    On t&apos;a envoyé un email de confirmation à
-                  </p>
-                  <p style={{ fontSize: 15, color: "#C8FF00", fontWeight: 600, marginBottom: 16, wordBreak: "break-all" }}>{email}</p>
-                  <p style={{ fontSize: 14, color: "#888", maxWidth: 340, margin: "0 auto 28px", lineHeight: 1.6 }}>
-                    Clique sur le lien dans l&apos;email pour activer ton compte, puis tu seras connecté·e automatiquement.
-                  </p>
-
-                  {accountType === "recruiter" && (
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 18px", maxWidth: 360, margin: "0 auto 20px", textAlign: "left" }}>
-                      <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, margin: 0 }}>
-                        Ton profil recruteur sera ensuite vérifié manuellement (sous 48h). Envoie un justificatif à <span style={{ color: "#C8FF00" }}>pro@unkast.com</span>.
-                      </p>
-                    </div>
-                  )}
-
-                  {videoSkipped && (
-                    <div style={{ background: "rgba(255,180,0,0.08)", border: "1px solid rgba(255,180,0,0.3)", borderRadius: 12, padding: "14px 18px", maxWidth: 360, margin: "0 auto 20px", textAlign: "left" }}>
-                      <p style={{ fontSize: 13, color: "#e0b020", lineHeight: 1.6, margin: 0 }}>
-                        Note : cette vidéo était déjà référencée sur Unkast — ton film n&apos;a pas été ajouté. Tu pourras en ajouter un autre une fois connecté·e.
-                      </p>
-                    </div>
-                  )}
-
-                  {resendState === "sent" ? (
-                    <p style={{ fontSize: 13, color: "#C8FF00" }}>Email renvoyé ✓ Pense à vérifier tes spams.</p>
-                  ) : (
-                    <p style={{ fontSize: 13, color: "#666" }}>
-                      Pas reçu ?{" "}
-                      <button onClick={resendConfirmation} disabled={resendState === "sending"} style={{ background: "none", border: "none", color: "#C8FF00", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
-                        {resendState === "sending" ? "Envoi…" : "Renvoyer l'email"}
-                      </button>
-                    </p>
-                  )}
-
-                  <Link href="/connexion" style={{ display: "inline-block", marginTop: 24, fontSize: 13, color: "#666" }}>
-                    Aller à la connexion
-                  </Link>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Error */}
-          {error && (
-            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          )}
-
-          {/* Navigation buttons */}
-          {step >= 2 && step <= 4 && (
-            <div className="flex justify-between mt-8">
-              <button
-                onClick={prevStep}
-                className="px-5 py-3 border border-white/10 text-text-secondary text-sm rounded-lg hover:border-white/20 hover:text-text-primary transition"
-              >
-                Retour
-              </button>
-
-              <div className="flex gap-3">
-                {step === 4 && (
+                  {/* CREATOR card */}
                   <button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="px-5 py-3 border border-white/10 text-text-secondary text-sm rounded-lg hover:border-white/20 hover:text-text-primary transition disabled:opacity-40"
+                    type="button"
+                    onClick={() => selectAccountType("creator")}
+                    aria-pressed={accountType === "creator"}
+                    className={`${ACCOUNT_CARD} flex flex-col justify-between p-3.5 ${accountType === "creator" ? ACCOUNT_CARD_SELECTED : "hover:border-white/20"}`}
                   >
-                    {loading ? "Envoi..." : "Passer cette étape"}
+                    <div>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="16" height="16" rx="2" />
+                        <path d="M22 7l-4 3v4l4 3V7z" />
+                        <line x1="6" y1="4" x2="6" y2="20" />
+                        <line x1="2" y1="8" x2="6" y2="8" />
+                        <line x1="2" y1="12" x2="6" y2="12" />
+                        <line x1="2" y1="16" x2="6" y2="16" />
+                      </svg>
+                      <p className="mt-2.5 text-[15px] font-semibold text-text-primary">Je publie des œuvres</p>
+                      <p className="mt-1 text-xs leading-snug text-text-secondary">
+                        Réalisateur, producteur.<br />Mets tes films en ligne.
+                      </p>
+                      <CheckList items={[`${MAX_PROJECTS_FREE} films gratuits`, "Gérer ton équipe", "Recevoir des messages"]} />
+                    </div>
+                    <Badge variant="available" className="mt-3 self-start">Gratuit</Badge>
                   </button>
-                )}
+                </div>
+
+                {/* Reassurance between free cards and Pro card */}
+                <p className="my-3 flex items-center justify-center gap-1.5 text-center text-[13px] text-text-secondary">
+                  {CHECK_GREEN}
+                  Aucune carte bancaire requise pour les comptes gratuits
+                </p>
+
+                {/* Row 2 — Pro recruiter card full width */}
                 <button
-                  onClick={nextStep}
-                  disabled={!canProceed() || loading}
-                  className="px-6 py-3 bg-lime text-[#0d0d0d] font-bold text-sm rounded-lg hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  type="button"
+                  onClick={() => selectAccountType("recruiter")}
+                  aria-pressed={accountType === "recruiter"}
+                  className={`${ACCOUNT_CARD} w-full p-4 sm:p-5 ${accountType === "recruiter" ? ACCOUNT_CARD_SELECTED : "border-lime/20 hover:border-lime/40"}`}
                 >
-                  {loading
-                    ? "Envoi..."
-                    : step === 4
-                      ? "Créer mon profil"
-                      : "Continuer"}
+                  <div className="flex items-start gap-3.5">
+                    {/* Left column */}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex items-center gap-2.5">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+                          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          <path d="M10 8a2 2 0 114 0 2 2 0 01-4 0zM8 14a4 4 0 018 0" />
+                        </svg>
+                        <span className="text-[15px] font-semibold text-text-primary">Je cherche des talents</span>
+                      </div>
+                      <p className="mb-3 text-xs leading-normal text-text-secondary">
+                        Directeur de casting, producteur, réalisateur qui recrute.
+                      </p>
+                      <CheckList lime items={["Accès à tous les profils", "Messagerie directe illimitée", "Profil recruteur vérifié"]} />
+                    </div>
+
+                    {/* Right column */}
+                    <div className="flex shrink-0 flex-col items-end justify-between gap-3 self-stretch">
+                      <Badge variant="pro">Pro requis</Badge>
+                      <div className="text-right">
+                        <div>
+                          <span className="text-[22px] font-bold tracking-tight text-text-primary">9,99€</span>
+                          <span className="text-[11px] text-text-secondary">/mois</span>
+                        </div>
+                        <p className="mt-0.5 font-mono text-[11px] text-lime">Découvrir →</p>
+                      </div>
+                    </div>
+                  </div>
                 </button>
               </div>
-            </div>
-          )}
-        </main>
+            )}
+
+            {/* ===== STEP 2 — Personal info ===== */}
+            {step === 2 && (
+              <GlassCard radius="panel" className="p-5 sm:p-8">
+                <h1 className={TITLE}>Tes informations</h1>
+                <p className={SUBTITLE}>Crée ton compte pour commencer.</p>
+
+                {/* Google button */}
+                <Button variant="light" onClick={handleGoogle} disabled={googleLoading} className="w-full">
+                  {GOOGLE_LOGO}
+                  {googleLoading ? "Redirection..." : "Continuer avec Google"}
+                </Button>
+
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="text-[11px] text-text-tertiary">ou par email</span>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
+                    <Field label="Prénom" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Lucas" />
+                    <Field label="Nom" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Meriaux" />
+                  </div>
+
+                  <div>
+                    <Field
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="lucas@example.com"
+                      readOnly={!!invitationToken}
+                      className={invitationToken ? "opacity-70 [&_input]:cursor-not-allowed" : ""}
+                    />
+                    {invitationContext && (
+                      <p className="mt-2 text-xs text-lime">
+                        Tu as été crédité·e comme {invitationContext.role}
+                        {invitationContext.projectTitle ? ` sur « ${invitationContext.projectTitle} »` : ""}.
+                        Cet email est lié à ton invitation.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Field
+                      label="Mot de passe"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Minimum 6 caractères"
+                    />
+                    {password.length > 0 && (
+                      <div className="mt-2.5">
+                        <div className="h-1.5 overflow-hidden rounded-pill bg-white/10">
+                          <div
+                            className={`h-full rounded-pill transition-[width,background-color] duration-slow ease-glass ${strength.color}`}
+                            style={{ width: strength.width }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-text-secondary">{strength.label}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </GlassCard>
+            )}
+
+            {/* ===== STEP 3 — Professional profile ===== */}
+            {step === 3 && (
+              <GlassCard radius="panel" className="p-5 sm:p-8">
+                <h1 className={TITLE}>Ton profil pro</h1>
+                <p className={SUBTITLE}>Dis-nous ce que tu fais dans l&apos;audiovisuel.</p>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className={`${LABEL} mb-2`}>Tes métiers * <span className="text-text-tertiary">(max 5)</span></p>
+                    <RoleSelector
+                      selectedRoles={selectedRoles}
+                      onChange={setSelectedRoles}
+                      maxSelection={5}
+                      placeholder="Rechercher ton métier..."
+                    />
+                  </div>
+
+                  <Field label="Ville" type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Paris, Lyon, Marseille..." />
+
+                  <Field
+                    multiline
+                    rows={3}
+                    maxLength={280}
+                    label={<>Bio courte <span className="ml-1 text-text-tertiary">({bio.length}/280)</span></>}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Parle de toi en quelques lignes..."
+                  />
+                </div>
+              </GlassCard>
+            )}
+
+            {/* ===== STEP 4A — Creator: first project ===== */}
+            {step === 4 && accountType === "creator" && (
+              <GlassCard radius="panel" className="p-5 sm:p-8">
+                <h1 className={TITLE}>Ton premier film sur Unkast</h1>
+                <p className={SUBTITLE}>Optionnel : tu pourras le faire depuis ton dashboard.</p>
+
+                <div className="space-y-4">
+                  <Field label="Titre du projet" type="text" value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="Le titre de ton film, clip, pub..." />
+
+                  <Field label="URL YouTube ou Vimeo" type="url" value={projectUrl} onChange={(e) => setProjectUrl(e.target.value)} placeholder="https://vimeo.com/... ou https://youtube.com/..." />
+
+                  {/* Année : 5 dernières années en Chip, les plus anciennes sur demande.
+                      Même liste et même valeur (chaîne) que l'ancien <select>. */}
+                  <div role="group" aria-labelledby="project-year-label">
+                    <p id="project-year-label" className={`${LABEL} mb-2`}>Année</p>
+                    <div className="flex flex-wrap gap-2">
+                      {recentYears.map((y) => (
+                        <Chip
+                          key={y}
+                          selected={projectYear === String(y)}
+                          onClick={() => { setProjectYear(String(y)); setShowOlderYears(false); }}
+                        >
+                          {y}
+                        </Chip>
+                      ))}
+                      <Chip
+                        selected={olderYearSelected}
+                        aria-expanded={showOlderYears}
+                        onClick={() => setShowOlderYears((v) => !v)}
+                      >
+                        {olderYearSelected ? `Plus ancien · ${projectYear}` : "Plus ancien"}
+                      </Chip>
+                    </div>
+                    {showOlderYears && (
+                      <div className="mt-2.5 flex max-h-44 flex-wrap gap-2 overflow-y-auto rounded-card border border-white/10 bg-white/5 p-3">
+                        {olderYears.map((y) => (
+                          <Chip key={y} selected={projectYear === String(y)} onClick={() => setProjectYear(String(y))}>
+                            {y}
+                          </Chip>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <GlassSelect label="Catégorie" value={projectCategory} onChange={(e) => setProjectCategory(e.target.value as ProjectCategory)}>
+                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </GlassSelect>
+                </div>
+
+                <InfoNote>
+                  Tu pourras publier {MAX_PROJECTS_FREE} films maximum en version gratuite. Chaque film publié te permet d&apos;inviter ton équipe.
+                </InfoNote>
+              </GlassCard>
+            )}
+
+            {/* ===== STEP 4B — Talent: claim credit ===== */}
+            {step === 4 && accountType === "talent" && (
+              <GlassCard radius="panel" className="p-5 sm:p-8">
+                <h1 className={TITLE}>Tu as travaille sur un film ?</h1>
+                <p className={SUBTITLE}>
+                  Recherche un projet déjà présent sur Unkast pour demander à y être crédité.
+                </p>
+
+                {!claimProjectId ? (
+                  <div>
+                    <Field
+                      aria-label="Rechercher un projet"
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => { setSearchQuery(e.target.value); }}
+                      onClear={() => setSearchQuery("")}
+                      placeholder="Rechercher un projet..."
+                      icon={
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                        </svg>
+                      }
+                    />
+
+                    {searching && (
+                      <div className="mt-3 space-y-2" role="status">
+                        <span className="sr-only">Recherche...</span>
+                        <div className="h-[62px] animate-pulse rounded-card border border-white/10 bg-white/5" />
+                        <div className="h-[62px] animate-pulse rounded-card border border-white/10 bg-white/5" />
+                      </div>
+                    )}
+
+                    {searchResults.length > 0 && (
+                      <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                        {searchResults.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setClaimProjectId(p.id);
+                              setClaimProjectTitle(p.title);
+                              setClaimProjectOwner(p.owner_name || "");
+                              setSearchQuery("");
+                              setSearchResults([]);
+                            }}
+                            className="w-full rounded-card border border-white/10 bg-white/5 px-4 py-3 text-left hover:border-white/20 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+                          >
+                            <p className="text-sm font-medium text-text-primary">{p.title}</p>
+                            <p className="text-xs text-text-secondary">
+                              {p.owner_name && `par ${p.owner_name} · `}
+                              {CATEGORY_LABELS[p.category]} · {p.year}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+                      <p className="mt-3 text-xs text-text-secondary">Aucun projet trouvé.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="mb-4 flex items-center justify-between gap-3 rounded-card border border-lime/30 bg-lime/5 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-text-primary">{claimProjectTitle}</p>
+                        {claimProjectOwner && (
+                          <p className="truncate text-xs text-text-secondary">par {claimProjectOwner}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="glass"
+                        size="sm"
+                        onClick={() => { setClaimProjectId(null); setClaimProjectTitle(""); setClaimProjectOwner(""); setClaimRole(""); }}
+                      >
+                        Changer
+                      </Button>
+                    </div>
+
+                    <div>
+                      <p className={`${LABEL} mb-2`}>Ton rôle dans ce projet</p>
+                      <RoleSelector
+                        selectedRoles={claimRole ? [claimRole] : []}
+                        onChange={(roles) => setClaimRole(roles[0] || "")}
+                        maxSelection={1}
+                        singleSelect
+                        placeholder="Ton rôle dans ce projet..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <InfoNote>
+                  Le réalisateur recevra ta demande et pourra l&apos;accepter ou la refuser.
+                </InfoNote>
+              </GlassCard>
+            )}
+
+            {/* ===== STEP 4C — Recruiter profile ===== */}
+            {step === 4 && accountType === "recruiter" && (
+              <GlassCard radius="panel" className="p-5 sm:p-8">
+                <h1 className={TITLE}>Ton profil recruteur</h1>
+                <p className={SUBTITLE}>
+                  Ces informations seront vérifiées par l&apos;équipe Unkast avant activation.
+                </p>
+
+                <div className="space-y-4">
+                  <Field label="Société / Structure" type="text" value={recruiterCompany} onChange={(e) => setRecruiterCompany(e.target.value)} placeholder="Nom de ta société de production" />
+
+                  <GlassSelect label="Ton poste" value={recruiterRole} onChange={(e) => setRecruiterRole(e.target.value)}>
+                    <option value="">Sélectionne ton poste</option>
+                    {["Directeur de casting", "Producteur", "Réalisateur", "Chargé de production", "Agent artistique", "Autre"].map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </GlassSelect>
+
+                  <Field label="Site web ou lien pro" type="url" value={recruiterWebsite} onChange={(e) => setRecruiterWebsite(e.target.value)} placeholder="https://..." />
+
+                  <div className="rounded-card border border-white/10 bg-white/5 p-3.5">
+                    <p className="text-[13px] leading-relaxed text-text-secondary">
+                      Pour valider ton profil recruteur, envoie un justificatif a <span className="text-lime">pro@unkast.com</span> (carte de visite, extrait KBIS, lien LinkedIn pro).
+                    </p>
+                  </div>
+
+                  <Field
+                    multiline
+                    rows={3}
+                    maxLength={200}
+                    label={<>Ce que tu recherches <span className="text-text-tertiary">(optionnel · {isLookingFor.length}/200)</span></>}
+                    value={isLookingFor}
+                    onChange={(e) => setIsLookingFor(e.target.value)}
+                    placeholder="Ex: Comédiens 20-30 ans pour court-métrage..."
+                  />
+                </div>
+              </GlassCard>
+            )}
+
+            {/* ===== STEP 5 — Confirmation email (tous les comptes) ===== */}
+            {step === 5 && (
+              <GlassCard radius="panel" className="px-5 py-10 text-center sm:px-8 sm:py-12">
+                <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-card border border-lime/30 bg-lime/10 shadow-[0_0_24px_rgba(200,255,0,0.2)]">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                </div>
+                <h1 className={`${TITLE} mb-3`}>Confirme ton email</h1>
+                <p className="mx-auto mb-2 max-w-[340px] text-sm leading-relaxed text-text-secondary">
+                  On t&apos;a envoyé un email de confirmation à
+                </p>
+                <p className="mb-4 break-all text-[15px] font-semibold text-lime">{email}</p>
+                <p className="mx-auto mb-7 max-w-[340px] text-sm leading-relaxed text-text-secondary">
+                  Clique sur le lien dans l&apos;email pour activer ton compte, puis tu seras connecté·e automatiquement.
+                </p>
+
+                {accountType === "recruiter" && (
+                  <div className="mx-auto mb-5 max-w-[360px] rounded-card border border-white/10 bg-white/5 px-4 py-3.5 text-left">
+                    <p className="text-[13px] leading-relaxed text-text-secondary">
+                      Ton profil recruteur sera ensuite vérifié manuellement (sous 48h). Envoie un justificatif à <span className="text-lime">pro@unkast.com</span>.
+                    </p>
+                  </div>
+                )}
+
+                {videoSkipped && (
+                  <div className="mx-auto mb-5 max-w-[360px] rounded-card border border-yellow-500/30 bg-yellow-500/10 px-4 py-3.5 text-left">
+                    <p className="text-[13px] leading-relaxed text-yellow-400">
+                      Note : cette vidéo était déjà référencée sur Unkast, ton film n&apos;a pas été ajouté. Tu pourras en ajouter un autre une fois connecté·e.
+                    </p>
+                  </div>
+                )}
+
+                {resendState === "sent" ? (
+                  <p className="text-[13px] text-lime" role="status">Email renvoyé ✓ Pense à vérifier tes spams.</p>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+                    <span className="text-[13px] text-text-secondary">Pas reçu ?</span>
+                    <Button variant="glass" size="sm" onClick={resendConfirmation} disabled={resendState === "sending"}>
+                      {resendState === "sending" ? "Envoi…" : "Renvoyer l'email"}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="mt-6">
+                  <Button variant="glass" href="/connexion">Aller à la connexion</Button>
+                </div>
+              </GlassCard>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Error */}
+        {error && (
+          <div role="alert" className="mt-4 rounded-card border border-red-500/30 bg-red-500/10 p-3">
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
+
+        {/* Navigation buttons */}
+        {step >= 2 && step <= 4 && (
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Button variant="glass" onClick={prevStep}>Retour</Button>
+            <div className="flex-1" />
+            {step === 4 && (
+              <Button variant="glass" onClick={handleSubmit} disabled={loading} className="order-last w-full sm:order-none sm:w-auto">
+                {loading ? "Envoi..." : "Passer cette étape"}
+              </Button>
+            )}
+            <Button onClick={nextStep} disabled={!canProceed() || loading} className="disabled:cursor-not-allowed">
+              {loading
+                ? "Envoi..."
+                : step === 4
+                  ? "Créer mon profil"
+                  : "Continuer"}
+            </Button>
+          </div>
+        )}
+      </EnterItem>
+    </EnterList>
+  );
+}
+
+/* ============= Habillage local ============= */
+
+const CHECK_GREEN = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0"><path d="M5 13l4 4L19 7" /></svg>
+);
+
+const CHECK_LIME = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0"><path d="M5 13l4 4L19 7" /></svg>
+);
+
+const GOOGLE_LOGO = (
+  <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+  </svg>
+);
+
+function CheckList({ items, lime = false }: { items: string[]; lime?: boolean }) {
+  return (
+    <ul className="mt-2.5 flex flex-col gap-1.5">
+      {items.map((t) => (
+        <li key={t} className="flex items-start gap-1.5 text-xs leading-snug text-text-secondary">
+          {lime ? CHECK_LIME : CHECK_GREEN}
+          {t}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function InfoNote({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-5 flex items-start gap-2.5 rounded-card border border-white/10 bg-white/5 p-3">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true" className="mt-0.5 shrink-0 text-text-secondary">
+        <circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5v.01" />
+      </svg>
+      <p className="text-xs leading-relaxed text-text-secondary">{children}</p>
+    </div>
+  );
+}
+
+// <select> natif habillé comme Field (taille md). Options et valeurs inchangées.
+function GlassSelect({ label, children, ...props }: ComponentProps<"select"> & { label: string }) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className={LABEL}>{label}</label>
+      <div className="relative">
+        <select
+          id={id}
+          className="min-h-11 w-full appearance-none rounded-card border border-white/10 bg-white/5 pl-4 pr-11 text-base text-text-primary outline-none scheme-dark transition-[border-color,box-shadow]! duration-fast! focus:ring-3 focus:ring-lime/30 [&>option]:bg-glass-solid [&>option]:text-text-primary"
+          {...props}
+        >
+          {children}
+        </select>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </div>
-    </motion.div>
+    </div>
   );
 }
