@@ -107,7 +107,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                 {/* Description : 2 lignes reservees, meme sans texte */}
                 <p className="line-clamp-2 h-[3.1em] max-w-[440px] text-[17px] leading-[1.55] text-text-primary/85">{active.description}</p>
                 {/* Ligne equipe : toujours presente, vide si personne n'est au generique */}
-                <div className="flex h-[30px] items-center gap-2.5 text-[13px] text-text-secondary">
+                <div className="flex h-9 items-center gap-2.5 text-[13px] text-text-secondary">
                   {active.team_size > 0 && (
                     <>
                       <div className="flex">
@@ -116,8 +116,9 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                             key={i}
                             url={member.avatar_url}
                             name={member.name}
-                            size={30}
-                            style={{ marginLeft: i === 0 ? 0 : -10, boxShadow: "0 0 0 2px #0f0f13", background: "var(--color-glass-solid)", fontSize: 11 }}
+                            size={36}
+                            // Chevauchement court : les initiales de l'avatar precedent restent entieres
+                            style={{ marginLeft: i === 0 ? 0 : -8, boxShadow: "0 0 0 2px #0f0f13", background: "var(--color-glass-solid)" }}
                           />
                         ))}
                       </div>

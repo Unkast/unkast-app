@@ -153,3 +153,13 @@ Composants / modules utilises par 3+ features.
 - **Role** : Source unique de verite pour tous les types TypeScript et le schema Supabase
 - **Consommateurs** : Tous les fichiers du projet
 - **Risque si modifie** : **CRITIQUE** — casse potentiellement tout le typage de l'app
+
+## Familles de metiers et roles d'un credit (10/2026)
+
+- **Fichier** : `src/lib/constants.ts` (`ROLE_FAMILIES`, `roleFamily`, `creditRoles`)
+- **Role** : 8 familles avec une couleur chacune, chaque metier officiel rattache a une famille (categorie du selecteur, puis exceptions `ROLE_FAMILY_OVERRIDES`). `creditRoles` ramene un credit saisi librement (« Scenariste & Comedienne ») aux metiers officiels.
+- **Consommateur** : `ProfileClient` (filtres par role tenu, ligne resume sous le nom, point de couleur des pastilles).
+
+## AppShell : attente de session (`sessionHint`, 10/2026)
+
+- `(app)/layout.tsx` passe `sessionHint` quand le compte n'a pas pu etre resolu cote serveur alors qu'un cookie de session existe. AppShell n'affiche alors ni le mode visiteur ni le compte tant que le navigateur n'a pas tranche (`authChecked`). Meme attente entre une connexion et l'arrivee du profil. L'etat `user` suit aussi `initialUser` apres un `router.refresh()`.

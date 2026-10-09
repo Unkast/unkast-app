@@ -188,10 +188,14 @@ export default function AppShell({
   initialUser = null,
   initialUnread = 0,
   needsTerms = false,
+  sessionHint = false,
 }: {
   children: React.ReactNode;
   initialUser?: UserProfile | null;
   initialUnread?: number;
+  // Vrai si le serveur n'a pas pu resoudre le compte alors qu'un cookie de session
+  // existe : la navigation attend le navigateur au lieu d'afficher le mode visiteur.
+  sessionHint?: boolean;
   // Vrai si le membre connecte n'a pas accepte la version en vigueur des CGU
   // (calcule cote serveur par (app)/layout.tsx).
   needsTerms?: boolean;
@@ -202,8 +206,17 @@ export default function AppShell({
   const menuRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0 });
   const [user, setUser] = useState<UserProfile | null>(initialUser);
-  // L'auth est déjà résolue côté serveur (layout RSC) → pas de flash d'attente.
-  const [authChecked] = useState(true);
+  // Apres une connexion, router.refresh() rend le layout avec le compte : l'etat suit.
+  const [seenInitialUser, setSeenInitialUser] = useState(initialUser);
+  if (initialUser !== seenInitialUser) {
+    setSeenInitialUser(initialUser);
+    if (initialUser) setUser(initialUser);
+  }
+  // L'auth est resolue cote serveur (layout RSC). Reste un cas d'attente : une session
+  // existe mais le profil n'est pas encore la (connexion en cours, ou serveur qui n'a
+  // pas pu lire le compte). On n'affiche alors NI le mode visiteur NI le compte.
+  const [authPending, setAuthPending] = useState(sessionHint);
+  const authChecked = !!user || !authPending;
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnread);
@@ -331,6 +344,8 @@ export default function AppShell({
       }
     } catch {
       // silently fail
+    } finally {
+      setAuthPending(false);
     }
   }, []);
 
@@ -339,11 +354,16 @@ export default function AppShell({
     // On écoute seulement les changements d'auth (login/logout/refresh de token).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // INITIAL_SESSION est déjà couvert par les props serveur — on l'ignore pour
-      // ne pas refaire un fetch profil inutile au montage.
-      if (event === "INITIAL_SESSION") return;
+      // ne pas refaire un fetch profil inutile au montage. Sauf si le serveur n'a
+      // pas fourni le compte : c'est alors le navigateur qui tranche.
+      if (event === "INITIAL_SESSION" && initialUser) return;
       if (session?.user) {
+        // En attente jusqu'au profil : pas de barre « visiteur » sur une session ouverte.
+        setAuthPending(true);
         fetchUserProfile(session.user.id);
       } else {
+        setAuthPending(false);
+        if (event === "INITIAL_SESSION") return;
         setUser(null);
         resetTerms();
       }
@@ -634,7 +654,7 @@ export default function AppShell({
               </svg>
             </button>
           </div>
-        ) : (
+        ) : !authChecked ? null : (
           <div className="p-3 border-t border-white/5 space-y-2">
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Link

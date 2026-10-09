@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import AppShell from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -60,8 +61,12 @@ export default async function AppLayout({
     needsTerms = !!adminRow && adminRow.terms_version !== TERMS_VERSION;
   }
 
+  // Compte non resolu alors qu'un cookie de session existe (lecture en echec, jeton a
+  // renouveler) : AppShell attend le navigateur au lieu d'afficher le mode visiteur.
+  const sessionHint = !initialUser && (await cookies()).getAll().some((c) => /^sb-.+-auth-token/.test(c.name));
+
   return (
-    <AppShell initialUser={initialUser} initialUnread={initialUnread} needsTerms={needsTerms}>
+    <AppShell initialUser={initialUser} initialUnread={initialUnread} needsTerms={needsTerms} sessionHint={sessionHint}>
       {children}
     </AppShell>
   );
