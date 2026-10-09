@@ -461,7 +461,7 @@ export default function ProfileClient({
                 <p className="text-[13px] text-[#444]">Aucun film pour le moment</p>
               </div>
             ) : (
-              // Même carte que les rangées du feed : affiche au format réel, hauteur
+              // Même carte que les rangées du feed : affiche en cadre 16:9, taille
               // identique pour toutes, grille qui passe à la ligne. Toute la carte mène
               // à la page du film (transition partagée). Ni lecteur, ni description, ni équipe.
               <EnterList className="flex flex-wrap gap-x-4 gap-y-7">

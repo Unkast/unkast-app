@@ -18,8 +18,8 @@ Composants / modules utilises par 3+ features.
 ## FilmPoster / FilmLink (lot 7, 09/10/2026)
 
 - **Fichiers** : `src/components/FilmPoster.tsx`, `src/components/FilmLink.tsx`, `src/lib/film-transition.ts`
-- **Role** : affiche d'un film toujours entiere, a son format reel, sans bande ni fond ; lien de film avec transition partagee vers le lecteur
-- **Regle** : jamais de texte ni de badge dans `FilmPoster` (seulement bouton lecture ou cadenas), jamais d'image de film hors de `FilmPoster` (c'est lui qui garantit le format reel)
+- **Role** : affiche d'un film dans un cadre toujours 16:9 (image 16:9 : remplit ; autre format : entiere sur fond de la meme image floutee et assombrie, jamais rognee) ; lien de film avec transition partagee vers le lecteur
+- **Regle** : jamais de texte ni de badge dans `FilmPoster` (seulement bouton lecture ou cadenas), jamais d'image de film hors de `FilmPoster` (c'est lui qui garantit le cadre 16:9 et l'image jamais rognee)
 - **Consommateurs** : feed (`HeroCarousel`, `FilmRow`), `ProjetClient`, `RechercheClient`, `categories/[slug]/page`, `VideoFacade` (profil, admin), `moi/parts` (`FilmThumb`), `skeletons/ProjectSkeleton`
 - **Risque si modifie** : **ELEVE** — toutes les vignettes de film. Un seul element de la page peut porter le nom de transition `film-poster` : ne pas nommer une vignette autrement que par `FilmPoster` (`shareKey`)
 

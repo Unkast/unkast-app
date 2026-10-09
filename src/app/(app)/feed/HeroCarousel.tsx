@@ -41,7 +41,7 @@ const two = (n: number) => String(n).padStart(2, "0");
 // puis les films à la une en vignettes. Rien n'est posé sur une affiche.
 // La hauteur du bloc ne change jamais d'un film à l'autre : chaque élément du texte a
 // une hauteur réservée (titre et description sur 2 lignes, ligne équipe toujours
-// présente) et l'affiche tient, à son format réel, dans un cadre fixe en 16:9.
+// présente) et l'affiche tient entière dans un cadre fixe en 16:9.
 export default function HeroCarousel({ projects }: HeroCarouselProps) {
   const reduced = useReducedMotion();
   const films = projects.slice(0, 5);
@@ -151,7 +151,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
             </div>
           </div>
 
-          {/* Cadre fixe en 16:9 (en haut sur mobile) : l'affiche y tient a son format reel.
+          {/* Cadre fixe en 16:9 (en haut sur mobile) : l'affiche y tient entiere.
               Glisser du doigt pour changer de film. */}
           <div
             className="relative aspect-video max-xl:order-first"
@@ -193,7 +193,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
           </div>
         </div>
 
-        {/* Les films a la une : chaque affiche a son format reel dans un cadre 16:9, barre de
+        {/* Les films a la une : chaque affiche dans un cadre 16:9, barre de
             progression sur le film en cours */}
         {count > 1 && (
           <div className="mt-6 grid grid-cols-2 gap-3.5 border-t border-white/[0.08] pt-[22px] sm:grid-cols-3 lg:grid-cols-5 xl:mt-[34px]">
@@ -211,7 +211,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                   <span className="block h-[3px] w-full overflow-hidden rounded-sm bg-white/[0.14]">
                     {isActive && <span key={activeIndex} className="hero-progress block h-full bg-lime shadow-[0_0_10px_var(--color-lime)]" />}
                   </span>
-                  <FilmPoster src={image(p)} alt="" framed align="start" sizes="(max-width: 1024px) 50vw, 220px" className="rounded-[10px]" />
+                  <FilmPoster src={image(p)} alt="" framed sizes="(max-width: 1024px) 50vw, 220px" className="rounded-[10px]" />
                   <span className="w-full min-w-0">
                     <span className="block truncate text-[13px] font-semibold text-text-primary">{p.title}</span>
                     <span className="block truncate text-xs text-text-secondary">{CATEGORY_LABELS[p.category]}</span>

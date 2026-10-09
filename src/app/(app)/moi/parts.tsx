@@ -40,7 +40,7 @@ export function Note({ tone = "error", children }: { tone?: "error" | "ok"; chil
 
 export function FilmThumb({ url }: { url: string | null | undefined }) {
   return (
-    // Hauteur fixe, largeur au format réel de l'image
+    // Cadre 16:9 de hauteur fixe
     <FilmPoster src={url} alt="" sizes="110px" className="h-12 rounded-lg border border-white/10" />
   );
 }

@@ -275,7 +275,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             Retour
           </button>
 
-          {/* Cadre fixe en 16:9 : l'affiche y tient à son format réel, la vidéo le remplit */}
+          {/* Cadre fixe en 16:9 : l'affiche y tient entière, la vidéo le remplit */}
           <div ref={playerRef}>
             {playingInline ? (
               <FilmPlayerFrame>
@@ -447,7 +447,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
               <h2 className={SECTION_TITLE}>Films liés</h2>
               <span className="text-sm text-text-secondary">Mêmes talents</span>
             </div>
-            {/* Même hauteur pour toutes les affiches, largeur au format réel de l'image */}
+            {/* Même taille pour toutes les affiches (cadre 16:9) */}
             <div className="flex flex-wrap gap-4">
               {relatedProjects.slice(0, 4).map((rp) => (
                 <FilmLink key={rp.id} slug={rp.slug} className="group flex w-fit max-w-full flex-col items-start gap-2.5">

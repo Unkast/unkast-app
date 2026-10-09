@@ -31,7 +31,7 @@ export default function VideoFacade({ url, title, poster, className = "" }: Prop
       aria-label={`Lire la vidéo : ${title}`}
       className={`block w-full cursor-pointer overflow-hidden ${className}`}
     >
-      {/* Cadre 16:9 (celui du lecteur) : affiche à son format réel, voile + bouton lecture en verre */}
+      {/* Cadre 16:9 (celui du lecteur) : affiche entière, voile + bouton lecture en verre */}
       <FilmPoster src={poster} alt={title} sizes="(max-width: 768px) 100vw, 700px" framed>
         <span className="absolute inset-0 bg-black/25" />
         <span className="glass-strong absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill text-lime">

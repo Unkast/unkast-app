@@ -28,7 +28,7 @@ interface Props {
 
 // Rangee de films du feed : fleches a cote de « Tout voir », fondu sombre sur le bord
 // droit tant qu'il reste des films a faire defiler. Toutes les affiches ont la meme
-// hauteur ; la largeur de chaque carte suit le format reel de son image.
+// hauteur ; toutes les cartes ont la meme taille (cadre 16:9).
 export default function FilmRow({ title, href, items }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
