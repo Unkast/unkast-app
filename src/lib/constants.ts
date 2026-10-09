@@ -161,6 +161,74 @@ export function isActingRole(role: string): boolean {
   return ACTING_ROLES.includes(baseRole(role));
 }
 
+// ---- Familles de metiers ------------------------------------------------------
+// 8 familles, une couleur chacune (point de couleur des pastilles de role sur une fiche).
+// Couleurs distinctes en teinte ET en luminosite, pour rester lisibles sans la couleur.
+export const ROLE_FAMILIES = [
+  { id: "interpretation", label: "Interprétation", color: "#FF8FA3" },
+  { id: "realisation", label: "Réalisation & écriture", color: "#F4E4BC" },
+  { id: "image", label: "Image", color: "#3B82F6" },
+  { id: "son", label: "Son", color: "#7DD3FC" },
+  { id: "montage", label: "Montage & post-production", color: "#A78BFA" },
+  { id: "production", label: "Production", color: "#F97316" },
+  { id: "decor", label: "Décor, costume, maquillage", color: "#BE185D" },
+  { id: "musique", label: "Musique", color: "#14B8A6" },
+] as const;
+export type RoleFamilyId = (typeof ROLE_FAMILIES)[number]["id"];
+
+// Famille de chaque categorie du selecteur, puis les metiers ranges ailleurs que leur categorie.
+const CATEGORY_FAMILY: Record<string, RoleFamilyId> = {
+  "Réalisation": "realisation",
+  "Écriture": "realisation",
+  "Image": "image",
+  "Son": "son",
+  "Montage & Post-production": "montage",
+  "Production": "production",
+  "Distribution & Communication": "production",
+  "Décors & Costumes": "decor",
+  "Interprétation": "interpretation",
+  "Technique spécialisé": "production",
+  "Autres": "production",
+};
+const ROLE_FAMILY_OVERRIDES: Record<string, RoleFamilyId> = {
+  "Compositeur": "musique",
+  "Superviseur musical": "musique",
+  "Étalonneur": "montage",
+  "Chef opérateur son": "son",
+  "Technicien HF": "son",
+  "Concepteur sonore": "son",
+  "Vidéo assist": "image",
+  "Coordinateur post-production": "montage",
+  "Superviseur post-production": "montage",
+  "Producteur de post-production": "montage",
+  "Chef monteur publicité": "montage",
+  "Animateur": "montage",
+  "Illustrateur": "decor",
+  "Directeur artistique": "decor",
+};
+const ROLE_FAMILY: Record<string, RoleFamilyId> = Object.fromEntries(
+  Object.entries(ROLES_BY_CATEGORY).flatMap(([category, roles]) =>
+    roles.map((role) => [role, ROLE_FAMILY_OVERRIDES[role] ?? CATEGORY_FAMILY[category]])
+  )
+);
+/** Famille d'un metier officiel (forme masculine ou feminine), null pour un libelle hors liste. */
+export function roleFamily(role: string) {
+  const id = ROLE_FAMILY[baseRole(role)];
+  return ROLE_FAMILIES.find((f) => f.id === id) ?? null;
+}
+
+// Roles d'un credit, ramenes aux metiers officiels quand c'est possible. Un credit saisi
+// librement (« Scenariste & Comedienne », sans accents) est decoupe et corrige ; si un
+// morceau n'est pas un metier officiel, le libelle est garde tel quel.
+const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const ROLE_BY_FOLDED = new Map(ALL_ROLE_FORMS.map((role) => [fold(role), role]));
+export function creditRoles(label: string): string[] {
+  const whole = ROLE_BY_FOLDED.get(fold(label));
+  if (whole) return [whole];
+  const parts = label.split(/\s*(?:&|\/|,|\bet\b)\s*/).map((part) => ROLE_BY_FOLDED.get(fold(part)));
+  return parts.length > 1 && parts.every(Boolean) ? (parts as string[]) : [label];
+}
+
 // ---- Champs facultatifs du profil (lot 8) -----------------------------------
 // Listes FERMEES, alignees sur les CHECK de la migration
 // 20261016_profile_casting_fields.sql : toute valeur ajoutee ici doit l'etre la-bas.

@@ -18,7 +18,7 @@ import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { directorNames } from "@/lib/credits";
-import { CAREER_KINDS } from "@/lib/constants";
+import { CAREER_KINDS, baseRole, creditRoles, roleFamily } from "@/lib/constants";
 import CastingSummary from "@/components/CastingSummary";
 import ShareButton from "@/components/ShareButton";
 
@@ -45,15 +45,8 @@ type ProfileData = Omit<Profile, "first_name" | "last_name" | "stage_name" | "di
   locked_films: LockedFilm[];
 };
 
-// Filtre de la liste « Films » : publiés par la personne (elle en est
-// Responsable) ou films où elle est créditée.
-type FilmFilter = "all" | "published" | "credited";
-const FILM_FILTERS: { value: FilmFilter; label: string }[] = [
-  { value: "all", label: "Tous" },
-  { value: "published", label: "Publiés" },
-  { value: "credited", label: "Crédité" },
-];
-
+// Filtre de la liste « Films » : "all", "published" (films dont la personne est
+// Responsable) ou "role:<métier>" (films où elle a tenu ce rôle).
 interface Props {
   profile: ProfileData;
 }
@@ -62,7 +55,7 @@ export default function ProfileClient({
   profile,
 }: Props) {
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState<FilmFilter>("all");
+  const [activeFilter, setActiveFilter] = useState("all");
   const [contacting, setContacting] = useState(false);
   // Cible du signalement : le profil, ou une entrée de son Parcours.
   const [reportTarget, setReportTarget] = useState<{ type: "profile" | "career_entry"; id: string } | null>(null);
@@ -112,10 +105,35 @@ export default function ProfileClient({
     })),
     ...profile.locked_films.map((film) => ({ locked: true as const, published: film.published, year: film.year, film })),
   ].sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
-  const filmItems =
-    activeFilter === "all" ? allFilmItems : allFilmItems.filter((item) => item.published === (activeFilter === "published"));
-  // Le filtre n'a de sens que si la fiche mêle les deux sortes de films.
-  const showFilmFilter = allFilmItems.some((i) => i.published) && allFilmItems.some((i) => !i.published);
+  // Rôles tenus, calculés depuis ses crédits : un film à plusieurs rôles compte dans
+  // chacun. Les deux formes d'un métier (Comédien, Comédienne) ne font qu'un rôle,
+  // affiché sous la forme la plus créditée. Triés par nombre de films.
+  const ownRolesOf = (project: ProjectWithCredits) => [
+    ...new Set(project.credits.filter((c) => c.profile_id === profile.id).flatMap((c) => creditRoles(c.role_on_project))),
+  ];
+  const roleStats = [
+    ...profile.projects
+      .reduce((stats, project) => {
+        const roles = ownRolesOf(project);
+        for (const role of new Set(roles.map(baseRole))) {
+          const stat = stats.get(role) ?? { key: role, count: 0, forms: new Map<string, number>() };
+          stat.count += 1;
+          for (const form of roles.filter((r) => baseRole(r) === role)) stat.forms.set(form, (stat.forms.get(form) ?? 0) + 1);
+          stats.set(role, stat);
+        }
+        return stats;
+      }, new Map<string, { key: string; count: number; forms: Map<string, number> }>())
+      .values(),
+  ]
+    .map((s) => ({ key: s.key, count: s.count, label: [...s.forms].sort((a, b) => b[1] - a[1])[0][0] }))
+    .sort((a, b) => b.count - a.count);
+  const hasPublished = allFilmItems.some((i) => i.published);
+  const filmItems = allFilmItems.filter((item) => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "published") return item.published;
+    return !item.locked && ownRolesOf(item.project).some((r) => `role:${baseRole(r)}` === activeFilter);
+  });
+  const showFilmFilter = roleStats.length > 0 || hasPublished;
 
   // Contact unifie : un Pro ouvre directement une conversation (messagerie),
   // sans re-saisir nom/email. Plus d'ancien formulaire contact_requests.
@@ -281,6 +299,13 @@ export default function ProfileClient({
               {profile.is_available && <Badge variant="available" />}
             </div>
 
+            {/* Résumé des rôles tenus dans ses films (3 au plus) */}
+            {roleStats.length > 0 && (
+              <p className="mb-3 text-sm text-text-secondary">
+                {roleStats.slice(0, 3).map((r) => `${r.label} · ${r.count} ${r.count > 1 ? "films" : "film"}`).join(", ")}
+              </p>
+            )}
+
             {/* Roles */}
             <div className="flex flex-wrap gap-2 mb-4">
               {profile.roles.map((role) => (
@@ -443,14 +468,18 @@ export default function ProfileClient({
               </span>
             </h2>
 
-            {/* Filtre : tous, publiés par la personne, films où elle est créditée */}
+            {/* Filtres : tous, un par rôle tenu (avec le nombre de films), puis publiés */}
             {showFilmFilter && (
               <div className="flex flex-wrap gap-2 mb-5">
-                {FILM_FILTERS.map((f) => (
-                  <Chip key={f.value} selected={activeFilter === f.value} onClick={() => setActiveFilter(f.value)}>
-                    {f.label}
+                <Chip selected={activeFilter === "all"} onClick={() => setActiveFilter("all")}>Tous</Chip>
+                {roleStats.map((r) => (
+                  <Chip key={r.key} selected={activeFilter === `role:${r.key}`} onClick={() => setActiveFilter(`role:${r.key}`)}>
+                    {r.label} <span className="opacity-60">{r.count}</span>
                   </Chip>
                 ))}
+                {hasPublished && (
+                  <Chip selected={activeFilter === "published"} onClick={() => setActiveFilter("published")}>Publiés</Chip>
+                )}
               </div>
             )}
             </EnterItem>
@@ -477,7 +506,7 @@ export default function ProfileClient({
                   }
                   const project = item.project;
                   // Rôle(s) de la personne sur ce film, publié par elle ou non.
-                  const ownRoles = [...new Set(project.credits.filter((c) => c.profile_id === profile.id).map((c) => c.role_on_project))];
+                  const ownRoles = ownRolesOf(project);
                   // Réalisateur : crédits de réalisation du film, pas son Responsable.
                   const directors = directorNames(
                     project.credits.map((c) => ({ role_on_project: c.role_on_project, name: c.profile?.full_name ?? c.ghost_name }))
@@ -506,11 +535,16 @@ export default function ProfileClient({
                           {/* Rôle(s) de la personne sur ce film : sous l'affiche, jamais dessus */}
                           {ownRoles.length > 0 && (
                             <div className="mb-2 flex flex-wrap gap-1.5">
-                              {ownRoles.map((role) => (
-                                <span key={role} className="rounded-pill border border-lime/30 bg-lime/[0.12] px-2.5 py-1 text-xs font-semibold leading-none text-lime">
-                                  {role}
-                                </span>
-                              ))}
+                              {ownRoles.map((role) => {
+                                // Fond lime, point de la couleur de la famille du métier
+                                const family = roleFamily(role);
+                                return (
+                                  <span key={role} title={family?.label} className="inline-flex items-center gap-1.5 rounded-pill border border-lime/30 bg-lime/[0.12] px-2.5 py-1 text-xs font-semibold leading-none text-lime">
+                                    {family && <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full" style={{ background: family.color }} />}
+                                    {role}
+                                  </span>
+                                );
+                              })}
                             </div>
                           )}
                           <h3 className="truncate text-[13px] font-semibold leading-tight text-text-primary transition-colors duration-300 group-hover:text-lime lg:text-[15px]">
