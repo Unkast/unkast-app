@@ -88,7 +88,9 @@ export async function GET(request: NextRequest) {
     if (q) {
       const term = sanitizeSearchTerm(q);
       if (term) {
-        query = query.or(`full_name.ilike.%${term}%,bio.ilike.%${term}%`);
+        // Nom d'affichage uniquement : le vrai nom d'une personne qui affiche un
+        // nom de scene ne la fait pas remonter (colonne fermee aux clients).
+        query = query.or(`display_name.ilike.%${term}%,bio.ilike.%${term}%`);
       }
     }
     if (location) {
@@ -98,7 +100,7 @@ export async function GET(request: NextRequest) {
     if (sort === "date") {
       query = query.order("created_at", { ascending: false });
     } else {
-      query = query.order("full_name", { ascending: true });
+      query = query.order("display_name", { ascending: true });
     }
     // Coup de pouce Pro : critere SECONDAIRE uniquement (departage a rang egal,
     // jamais "Pro d'abord"). nullsFirst:false => plan null (legacy) en dernier.

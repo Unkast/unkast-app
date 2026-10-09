@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { safeNextPath } from "@/lib/utils";
 import FinaliserClient from "./FinaliserClient";
 
@@ -26,7 +27,9 @@ export default async function FinaliserPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/connexion");
 
-  const { data, error } = await supabase
+  // Son propre vrai nom : ces colonnes sont fermees au client utilisateur, elles
+  // se lisent par le client de confiance, limite a la ligne de l'appelant.
+  const { data, error } = await createAdminClient()
     .from("profiles")
     .select("full_name, first_name, last_name, stage_name, account_type, profile_roles ( id )")
     .eq("id", user.id)

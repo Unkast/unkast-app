@@ -13,6 +13,11 @@ interface ProfileLike {
   show_real_name_to?: string | null;
 }
 
+// Nom d'affichage calcule a partir des colonnes de nom brutes. Ces colonnes ne
+// sont lisibles que par la personne elle-meme (route /api/dashboard/profile) et
+// par l'admin : cette fonction ne sert donc qu'a SON PROPRE profil. Pour le nom
+// de quelqu'un d'autre, lire la colonne `display_name` (DISPLAY_NAME_COLUMNS),
+// calculee par la base avec la meme regle (migration 20261014).
 export function getDisplayName(profile: ProfileLike): string {
   if (profile.display_name_preference === "stage_name" && profile.stage_name) {
     return profile.stage_name;
@@ -21,34 +26,32 @@ export function getDisplayName(profile: ProfileLike): string {
   return parts.join(" ") || profile.full_name || "Utilisateur";
 }
 
-// Nom d'affichage cote serveur. Toute lecture d'un nom montre a quelqu'un d'autre
-// selectionne DISPLAY_NAME_COLUMNS puis reduit la ligne a UN nom avant de
-// repondre : les colonnes brutes ne partent jamais au navigateur (le vrai nom
-// d'une personne qui affiche son nom de scene ne doit pas fuiter).
-export const DISPLAY_NAME_COLUMNS = "full_name, first_name, last_name, stage_name, display_name_preference";
+// Nom d'affichage d'une personne. `display_name` est la SEULE colonne de nom
+// lisible avec la cle publique : full_name, first_name, last_name, stage_name et
+// display_name_preference sont fermees a anon et authenticated. Toute lecture
+// d'un nom montre a quelqu'un d'autre selectionne DISPLAY_NAME_COLUMNS ; une
+// requete du client utilisateur qui nommerait une colonne fermee est refusee
+// en entier par la base (permission denied).
+export const DISPLAY_NAME_COLUMNS = "display_name";
 
 export type DisplayNameRow = {
-  full_name: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  stage_name?: string | null;
-  display_name_preference?: string | null;
+  display_name: string | null;
 };
 
 /** Nom d'affichage d'une ligne `profiles` ; null si la ligne est absente. */
 export function displayNameOf(row: DisplayNameRow | null | undefined): string | null {
-  return row ? getDisplayName({ ...row, full_name: row.full_name ?? "" }) : null;
+  return row ? row.display_name || "Utilisateur" : null;
 }
 
 /**
- * Remplace les colonnes de nom d'une ligne par le seul nom d'affichage, range
- * dans `full_name` (le champ que les clients lisent deja).
+ * Range le nom d'affichage d'une ligne dans `full_name` (le champ que les
+ * clients lisent deja) et retire `display_name`.
  */
 export function withDisplayName<T extends DisplayNameRow>(
   row: T
 ): Omit<T, keyof DisplayNameRow> & { full_name: string } {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { full_name, first_name, last_name, stage_name, display_name_preference, ...rest } = row;
+  const { display_name, ...rest } = row;
   return { ...rest, full_name: displayNameOf(row) as string };
 }
 

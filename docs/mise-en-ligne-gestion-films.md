@@ -243,12 +243,34 @@ A tester sur la fiche d'une personne creditee sur le film de quelqu'un d'autre :
 - [ ] **Film en attente, refuse ou depublie** ou elle est creditee : absent de sa fiche.
 - [ ] **Demande de credit en attente** : le film n'apparait pas tant qu'elle n'est pas acceptee.
 
+## 4 octies. Lot « vrais noms fermes » (deux etapes, ORDRE STRICT)
+
+- [ ] **1. Migration A** `supabase/migrations/20261014_profile_display_name.sql`. Compatible avec
+      le code en ligne. Le nouveau code ne fonctionne PAS sans elle.
+- [ ] **2. Deploiement du nouveau code**, puis les tests ci-dessous.
+- [ ] **3. Requete de controle** (fonctions, vues et policies de prod qui liraient encore un vrai
+      nom), puis **etape B** (retrait des droits). B n'est pas encore ecrite : la demander.
+      **Ne jamais lancer B avant que le nouveau code soit en production** : toutes les pages qui
+      lisent un profil repondraient « permission refusee ».
+A tester apres le deploiement (etape A seule), puis de nouveau apres B :
+- [ ] Feed, recherche, fiche d'une personne, page d'un film, messages, espace recruteur, « Mes
+      films » (co-gestionnaires) : les noms s'affichent partout.
+- [ ] Une personne sous nom de scene : son vrai nom n'apparait nulle part, et la recherche de
+      son vrai nom ne la trouve pas ; la recherche de son nom de scene la trouve.
+- [ ] /moi : le formulaire s'ouvre avec le prenom et le nom de la personne ; l'enregistrement
+      fonctionne.
+- [ ] Finalisation d'un compte Google : prenom et nom pre-remplis.
+- [ ] **Passage au nom de scene** depuis /moi : l'adresse de la fiche change, l'ancienne repond
+      « introuvable ». Retour au vrai nom, ou changement de nom de scene : l'adresse ne bouge pas.
+- [ ] **Admin, « Verifier les adresses de profil »** (onglet Films, en bas) : la liste montre les
+      personnes concernees ; confirmer change leurs adresses. Prevenir ces personnes : les liens
+      qu'elles ont deja partages ne fonctionnent plus.
+- [ ] Apres B, avec la cle publique : `select full_name from profiles` est refuse.
+
 ## Avant le lancement public (lot separe, non fait)
 
-- [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
-      sont lisibles directement avec la cle publique pour tout profil approuve, meme quand la
-      personne affiche un nom de scene. L'app ne les montre plus, mais la base les donne.
-      A traiter : droits par colonne et nom d'affichage calcule en base.
+- [ ] **Noms reels : etape B a executer** (voir « 4 octies »). Tant qu'elle n'est pas passee,
+      les vrais noms restent lisibles en base avec la cle publique.
 - [ ] Refuser une demande de credit sur un film non visible.
 - [ ] **Bouton « Supprimer mon compte ».** Pendant la beta, la suppression se demande par email
       (CGU et politique de confidentialite). Un bouton dans l'app est a faire avant le lancement
@@ -273,14 +295,6 @@ A tester sur la fiche d'une personne creditee sur le film de quelqu'un d'autre :
 - [ ] **Centre de notifications dans l'app.** Aujourd'hui une personne est prevenue par email et
       par notification du telephone, et retrouve l'information dans « Mes films ». Il n'existe pas
       de liste de notifications dans l'app. A faire dans un lot separe si besoin.
-- [ ] **Recherche sur le nom d'affichage.** `/api/search` filtre et trie encore sur `full_name` :
-      chercher le vrai nom d'une personne la fait remonter sous son nom de scene, et on ne la
-      trouve pas par son nom de scene. La recherche doit porter sur le nom d'affichage, jamais
-      sur le vrai nom.
-- [ ] **Adresse du profil issue du nom d'affichage.** Le `slug` (`/profil/<slug>`) est derive du
-      vrai nom a l'inscription. Il doit venir du nom d'affichage, avec une solution pour les
-      adresses existantes qui contiennent un vrai nom (nouvelle adresse et redirection de
-      l'ancienne, ou autre : a decider).
 
 ## 5. En cas de probleme
 

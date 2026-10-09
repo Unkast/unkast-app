@@ -43,7 +43,7 @@ export async function getActiveUser(
   const admin = createAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select(`id, is_suspended, plan, account_type, ${DISPLAY_NAME_COLUMNS}`)
+    .select(`id, is_suspended, plan, account_type, full_name, ${DISPLAY_NAME_COLUMNS}`)
     .eq("id", user.id)
     .single();
 

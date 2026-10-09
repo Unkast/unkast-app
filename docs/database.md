@@ -103,6 +103,7 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `last_name` | TEXT | oui | |
 | `stage_name` | TEXT | oui | |
 | `display_name_preference` | TEXT libre | oui | defaut `real_name` — ⚠️ non contraint |
+| `display_name` | TEXT, **colonne générée** | non | nom d'affichage calculé par la base (migration `20261014`) : nom de scène si `display_name_preference = 'stage_name'` et rempli, sinon prénom + nom, sinon `full_name`, sinon « Utilisateur ». Jamais écrite. **Seule colonne de nom lisible par anon / authenticated** |
 | `contact_email` | TEXT | oui | |
 | `contact_phone` | TEXT | oui | |
 | `instagram_url` | TEXT | oui | |
@@ -267,9 +268,17 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
   (les colonnes ajoutées à `profiles` n'héritent d'aucun GRANT) : écrites par le service role à
   l'inscription (`/api/signup`) et par `/api/terms/accept`. La version en vigueur est
   `TERMS_VERSION` dans `src/lib/legal.ts` ; la changer redemande l'acceptation à tous les membres.
-- **Noms réels** : `full_name`, `first_name`, `last_name` restent lisibles en base avec la clé
-  publique pour tout profil approuvé. L'app n'affiche que le nom d'affichage (`getDisplayName`),
-  mais la fermeture en base est un **lot séparé, à faire avant le lancement public**.
+- **Noms réels fermés (lot du 09/10/2026, en deux étapes)**. Le vrai nom n'est lisible que par
+  la personne elle-même (route `/api/dashboard/profile`, client de confiance) et par l'admin.
+  - Étape A, migration `20261014_profile_display_name.sql` : colonne générée `display_name`,
+    lisible par anon et authenticated, index trigram `idx_profiles_display_name_trgm`. Rien
+    n'est retiré.
+  - Étape B, **pas encore écrite ni exécutée** : retrait du SELECT sur `full_name`,
+    `first_name`, `last_name`, `stage_name`, `display_name_preference` pour anon et
+    authenticated. À lancer seulement quand le code qui lit `display_name` est en production.
+  Tant que B n'est pas passée, ces colonnes restent lisibles avec la clé publique. Après B, une
+  requête du client utilisateur qui nomme une de ces colonnes (select, filtre ou tri) est refusée
+  en entier. L'écriture par la personne (UPDATE par colonne) n'est pas concernée.
 
 ### Colonnes ajoutées à `projects`
 

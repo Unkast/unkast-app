@@ -260,6 +260,10 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
   const [orphanFilms, setOrphanFilms] = useState<OrphanFilm[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [backfilling, setBackfilling] = useState(false);
+  // Adresses de profil qui contiennent un vrai nom alors que la personne affiche
+  // un nom de scene : null = pas encore verifie, sinon la liste a confirmer.
+  const [slugFixes, setSlugFixes] = useState<{ id: string; display_name: string; real_name: string; slug: string }[] | null>(null);
+  const [slugFixBusy, setSlugFixBusy] = useState(false);
 
   // Modal "Attribuer un Responsable" : recherche d'un membre par nom
   // (GET tab=users&q=), puis assign_project_owner avec son id.
@@ -426,6 +430,26 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
     if (failure) showToast(`${failure} (${summary})`, 7000);
     else showToast(remaining ? `${summary}. Relance pour continuer.` : summary, 7000);
     if (filled > 0) loadTab("films");
+  }
+
+  // Rattrapage des adresses de profil (fix_profile_slugs) : sans `ids`, la route
+  // liste sans rien changer ; avec `ids`, elle applique a ces profils seulement.
+  async function fixProfileSlugs(ids?: string[]) {
+    setSlugFixBusy(true);
+    const res = await fetch("/api/admin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "fix_profile_slugs", ...(ids ? { ids } : {}) }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
+    setSlugFixBusy(false);
+    if (!res?.ok || !data) { showToast(data?.error || "Erreur inconnue", 7000); return; }
+    if (ids) {
+      setSlugFixes(null);
+      showToast(`${data.changed ?? 0} adresse(s) changée(s)`, 7000);
+    } else {
+      setSlugFixes(data.candidates ?? []);
+    }
   }
 
   const filmsCount = films.length + editedFilms.length + orphanFilms.length;
@@ -724,6 +748,36 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
             <button onClick={backfillPosters} disabled={backfilling} style={{ ...btnNeutral, padding: "6px 12px", fontSize: 12, fontWeight: 500, opacity: backfilling ? 0.5 : 1, cursor: backfilling ? "default" : "pointer" }}>
               {backfilling ? "Récupération en cours..." : "Récupérer les images manquantes"}
             </button>
+          </div>
+          {/* Rattrapage : adresses de profil qui contiennent un vrai nom */}
+          <div style={{ marginTop: 16 }}>
+            <button onClick={() => fixProfileSlugs()} disabled={slugFixBusy} style={{ ...btnNeutral, padding: "6px 12px", fontSize: 12, fontWeight: 500, opacity: slugFixBusy ? 0.5 : 1, cursor: slugFixBusy ? "default" : "pointer" }}>
+              Vérifier les adresses de profil
+            </button>
+            {slugFixes && slugFixes.length === 0 && (
+              <p style={{ marginTop: 10, fontSize: 12, color: "#888" }}>Aucune adresse ne contient un vrai nom masqué.</p>
+            )}
+            {slugFixes && slugFixes.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontSize: 12, color: "#aaa", marginBottom: 8 }}>
+                  Ces personnes affichent un nom de scène, mais leur adresse contient leur vrai nom. Confirmer leur donne une
+                  nouvelle adresse ; l&apos;ancienne ne fonctionnera plus (page introuvable, sans redirection).
+                </p>
+                {slugFixes.map((p) => (
+                  <p key={p.id} style={{ fontSize: 12, color: "#f0f0f0", overflowWrap: "anywhere", marginBottom: 4 }}>
+                    {p.display_name} <span style={{ color: "#666" }}>({p.real_name})</span> · /profil/{p.slug}
+                  </p>
+                ))}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                  <button onClick={() => fixProfileSlugs(slugFixes.map((p) => p.id))} disabled={slugFixBusy} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12 }}>
+                    Changer {slugFixes.length} adresse(s)
+                  </button>
+                  <button onClick={() => setSlugFixes(null)} disabled={slugFixBusy} style={{ ...btnNeutral, padding: "6px 12px", fontSize: 12 }}>
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

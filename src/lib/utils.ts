@@ -7,6 +7,14 @@ export function slugify(text: string): string {
     .replace(/(^-|-$)+/g, "");
 }
 
+// Nouvelle adresse de profil (slug) a partir d'un nom d'affichage, avec un
+// suffixe aleatoire : rien ne la relie a l'adresse precedente. Sert quand une
+// personne passe de son vrai nom a un nom de scene (l'ancienne adresse, qui
+// contient son vrai nom, cesse d'exister).
+export function newProfileSlug(displayName: string): string {
+  return (slugify(displayName) || "profil") + "-" + crypto.randomUUID().slice(0, 6);
+}
+
 // -----------------------------------------------------------------------------
 // Identifiant canonique d'une vid\u00e9o (anti-vol d'\u0153uvre, chantier 9)
 // -----------------------------------------------------------------------------

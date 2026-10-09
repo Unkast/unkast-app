@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminId } from "@/lib/adminGuard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { slugify, newProfileSlug } from "@/lib/utils";
 import { recomputePlan, isProGrantType, ADMIN_GRANTABLE_TYPES, validateGrantExpiry } from "@/lib/pro-plan";
 
 // GET: fetch admin dashboard data
@@ -285,6 +286,47 @@ export async function PATCH(request: NextRequest) {
       remaining: (films ?? []).length > BATCH,
       next_offset: offset + batch.length - filled,
     });
+  }
+
+  // Rattrapage des adresses de profil : personnes qui affichent un nom de scene
+  // et dont l'adresse contient encore leur vrai nom (adresses creees avant que
+  // le passage au nom de scene n'en donne une nouvelle). Deux temps :
+  //   - sans `ids` : renvoie la liste, ne change rien ;
+  //   - avec `ids` : donne une nouvelle adresse a ceux de la liste qui y figurent.
+  // L'ancienne adresse cesse d'exister (404, pas de redirection).
+  if (action === "fix_profile_slugs") {
+    const { data: rows, error } = await admin.from("profiles")
+      .select("id, slug, full_name, first_name, last_name, stage_name, display_name")
+      .eq("display_name_preference", "stage_name").not("stage_name", "is", null).neq("stage_name", "");
+    if (error) return NextResponse.json({ error: "Lecture des profils impossible." }, { status: 500 });
+    const candidates = (rows ?? []).filter((p) => {
+      // Adresse = nom transforme + « - » + 6 caracteres : on compare la partie nom.
+      const base = (p.slug as string).replace(/-[a-z0-9]{6}$/, "");
+      const parts = base.split("-");
+      const lastNameParts = slugify(p.last_name ?? "").split("-").filter((t) => t.length >= 2);
+      return (
+        base === slugify(p.full_name ?? "") ||
+        base === slugify(`${p.first_name ?? ""} ${p.last_name ?? ""}`) ||
+        (lastNameParts.length > 0 && lastNameParts.every((t) => parts.includes(t)))
+      );
+    });
+    if (!Array.isArray(body.ids)) {
+      return NextResponse.json({
+        success: true,
+        candidates: candidates.map((p) => ({ id: p.id, display_name: p.display_name, real_name: p.full_name, slug: p.slug })),
+      });
+    }
+    const changed: { id: string; old_slug: string; new_slug: string }[] = [];
+    for (const p of candidates.filter((c) => (body.ids as unknown[]).includes(c.id))) {
+      const newSlug = newProfileSlug(p.display_name as string);
+      const { error: writeError } = await admin.from("profiles").update({ slug: newSlug }).eq("id", p.id).eq("slug", p.slug);
+      if (!writeError) changed.push({ id: p.id, old_slug: p.slug, new_slug: newSlug });
+    }
+    await admin.from("admin_logs").insert({
+      admin_id: adminId, action: "fix_profile_slugs", target_type: "profile", target_id: adminId,
+      details: { changed },
+    });
+    return NextResponse.json({ success: true, changed: changed.length });
   }
 
   // Auto-protection : refuse les actions qui, appliquees a soi-meme, sortiraient

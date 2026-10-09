@@ -172,6 +172,9 @@ export interface Profile {
   last_name: string | null
   stage_name: string | null
   display_name_preference: DisplayNamePreference | null  // defaut 'real_name'
+  // Nom d'affichage, CALCULE PAR LA BASE (colonne generee, migration 20261014) :
+  // seule colonne de nom lisible par anon / authenticated. Jamais ecrite.
+  display_name: string
 
   // --- Contact ---
   contact_email: string | null

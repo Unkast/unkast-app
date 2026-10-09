@@ -8,6 +8,7 @@ import { ALL_ROLES, CONTACT_REFUSED_MESSAGE } from "@/lib/constants";
 import { detectContact } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { newProfileSlug } from "@/lib/utils";
 
 // recruiting_roles arrive librement du client : on ne garde que des roles
 // connus (ALL_ROLES), dedoublonnes, plafonnes a 20 entrees.
@@ -29,13 +30,12 @@ function sanitizeRecruitingRoles(input: unknown): string[] {
 // Toute colonne nouvellement revoquee doit MIGRER de OWN_COLUMNS vers
 // PRIVILEGED_COLUMNS : sinon PostgREST refusera la lecture (permission denied).
 const OWN_COLUMNS = [
-  "id", "full_name", "slug", "bio", "avatar_url", "location", "is_available",
+  "id", "slug", "bio", "avatar_url", "location", "is_available",
   "status", "created_at", "updated_at",
   "account_type", "plan", "pro_since",
   "recruiter_company", "recruiter_role", "recruiter_website",
   "recruiter_verified", "recruiter_verified_at",
   "is_suspended",
-  "first_name", "last_name", "stage_name", "display_name_preference",
   "instagram_url", "website_url",
   "show_contact_email_to", "show_phone_to", "show_real_name_to",
   "is_recruiting", "recruiting_roles", "is_looking_for",
@@ -50,7 +50,10 @@ const OWN_COLUMNS = [
 // d'audit admin (qui a accorde, quand un rappel est parti), pas des
 // informations que l'utilisateur doit lire sur son propre profil — l'objet
 // renvoye ne porte donc plus les 51 colonnes de `profiles`, seulement 48.)
+// + les 5 colonnes de nom (lot « vrais noms fermes ») : la personne lit son
+// propre vrai nom ICI, par le client de confiance, et nulle part ailleurs.
 const PRIVILEGED_COLUMNS = [
+  "full_name", "first_name", "last_name", "stage_name", "display_name_preference",
   "is_admin",
   "contact_email", "contact_phone",
   "recruiter_status", "recruiter_document_url", "recruiter_review_status", "bio_pending",
@@ -181,8 +184,29 @@ export async function PATCH(request: NextRequest) {
   if (full_name !== undefined) updates.full_name = full_name;
   if (first_name !== undefined) updates.first_name = first_name.trim();
   if (last_name !== undefined) updates.last_name = last_name;
-  if (stage_name !== undefined) updates.stage_name = stage_name;
+  const cleanStageName = typeof stage_name === "string" ? stage_name.trim() || null : null;
+  if (stage_name !== undefined) updates.stage_name = cleanStageName;
   if (display_name_preference !== undefined) updates.display_name_preference = display_name_preference;
+
+  // Adresse du profil : elle ne change que lorsque la personne passe de son
+  // vrai nom a un nom de scene. L'ancienne adresse contient son vrai nom : elle
+  // cesse d'exister (404, pas de redirection) et la nouvelle part du nom de
+  // scene. Dans tous les autres cas, l'adresse reste la meme.
+  let newSlug: string | null = null;
+  if (stage_name !== undefined || display_name_preference !== undefined) {
+    const { data: nameRow } = await createAdminClient()
+      .from("profiles")
+      .select("stage_name, display_name_preference")
+      .eq("id", user.id)
+      .single();
+    const nextStageName = stage_name !== undefined ? cleanStageName : (nameRow?.stage_name as string | null) ?? null;
+    const nextPreference = display_name_preference !== undefined ? display_name_preference : nameRow?.display_name_preference;
+    const showedStageName = nameRow?.display_name_preference === "stage_name" && !!nameRow?.stage_name;
+    if (!showedStageName && nextPreference === "stage_name" && nextStageName) {
+      newSlug = newProfileSlug(nextStageName);
+      systemUpdates.slug = newSlug;
+    }
+  }
   // Description pro d'un recruteur = champ SENSIBLE : toute modif part en attente
   // de validation admin (bio_pending), le public continue de voir `bio` validee.
   // Pour les autres comptes (talent/creator), publication directe comme avant.
@@ -335,5 +359,6 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, pendingReview });
+  // `slug` : present seulement si l'adresse du profil vient de changer.
+  return NextResponse.json({ success: true, pendingReview, ...(newSlug ? { slug: newSlug } : {}) });
 }

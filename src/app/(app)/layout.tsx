@@ -1,7 +1,7 @@
 import AppShell from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DISPLAY_NAME_COLUMNS, getDisplayName } from "@/lib/profile";
+import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { TERMS_VERSION } from "@/lib/legal";
 
 // On résout l'utilisateur + son profil + le compteur de non-lus CÔTÉ SERVEUR,
@@ -48,7 +48,7 @@ export default async function AppLayout({
 
     if (profile) {
       initialUser = {
-        full_name: getDisplayName(profile),
+        full_name: displayNameOf(profile) as string,
         slug: profile.slug,
         account_type: profile.account_type || "talent",
         avatar_url: profile.avatar_url,
