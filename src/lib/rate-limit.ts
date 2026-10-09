@@ -33,6 +33,9 @@ export async function checkRateLimit(
   max: number,
   windowSeconds: number
 ): Promise<boolean> {
+  // Journaux : seulement le prefixe de la cle ("signup", "search"), jamais la partie
+  // identifiante (adresse IP, identifiant de compte, cle derivee d'un email).
+  const keyLabel = key.split(":")[0];
   try {
     const admin = createAdminClient();
     const { data, error } = await admin.rpc("check_rate_limit", {
@@ -42,15 +45,15 @@ export async function checkRateLimit(
     });
     if (error) {
       if (MISSING_FUNCTION_CODES.has(error.code ?? "") && process.env.NODE_ENV !== "production") {
-        console.warn(`[rate-limit] RPC check_rate_limit absente (migration non exécutée) — autorisé hors production (clé "${key}").`);
+        console.warn(`[rate-limit] RPC check_rate_limit absente (migration non exécutée) — autorisé hors production (clé "${keyLabel}").`);
         return true;
       }
-      console.error(`[rate-limit] RPC check_rate_limit en erreur (clé "${key}") — requête refusée (fail-closed) :`, error);
+      console.error(`[rate-limit] RPC check_rate_limit en erreur (clé "${keyLabel}") — requête refusée (fail-closed) :`, error);
       return false;
     }
     return data === true;
   } catch (err) {
-    console.error(`[rate-limit] Échec inattendu (clé "${key}") — requête refusée (fail-closed) :`, err);
+    console.error(`[rate-limit] Échec inattendu (clé "${keyLabel}") — requête refusée (fail-closed) :`, err);
     return false;
   }
 }

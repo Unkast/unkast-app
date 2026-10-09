@@ -1,3 +1,4 @@
+import "server-only";
 import Stripe from "stripe";
 
 // Client Stripe SERVEUR uniquement (clé secrète via env, JAMAIS dans le code).

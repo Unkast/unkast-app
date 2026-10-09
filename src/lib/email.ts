@@ -1,3 +1,4 @@
+import "server-only";
 import { Resend } from "resend";
 import { siteUrl } from "@/lib/stripe";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";

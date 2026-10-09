@@ -1,3 +1,4 @@
+import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";

@@ -1,3 +1,4 @@
+import "server-only";
 import admin from "firebase-admin";
 
 // Initialize Firebase Admin SDK (singleton)

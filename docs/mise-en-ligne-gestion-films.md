@@ -276,6 +276,10 @@ A tester apres le deploiement (etape A seule), puis de nouveau apres B :
       Leclerc, Mehdi Kaci, Camille Roux). Bannis depuis le 09/10/2026 (`banned_until = infinity`),
       jamais connectes ; leurs profils, films et credits restent visibles sur le site. Voir
       `docs/audits/2026-10-09-secrets.md` (constat C1).
+- [ ] **Verifier la restriction de la cle Firebase Android** (Maxime, console Google Cloud). La cle
+      de `android/app/google-services.json` est dans un depot public : elle doit etre restreinte
+      a l'application (nom de paquet et empreinte SHA-1) et aux seules API utilisees. Voir
+      `docs/audits/2026-10-09-secrets.md` (constat M1).
 - [ ] **Noms reels : etape B a executer** (voir « 4 octies »). Tant qu'elle n'est pas passee,
       les vrais noms restent lisibles en base avec la cle publique.
 - [ ] Refuser une demande de credit sur un film non visible.
