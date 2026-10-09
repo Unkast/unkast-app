@@ -187,6 +187,12 @@ FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server
   Tous / Publies / Credite en Chip (affiche seulement si la fiche mele les deux), qui remplace
   le filtre par categorie. Chaque carte montre le role de la personne. Visibilite : public pour
   tous, membres pour les connectes, carte verrouillee (avec le role) pour un visiteur.
+  Cartes de la liste (09/10/2026) : la meme carte que les rangees du feed (FilmPoster au format
+  reel, hauteur fixe, grille qui passe a la ligne). Sous l'affiche : le ou les roles de la personne
+  en pastilles lime, puis le titre et FilmMeta. Toute la carte mene a la page du film (transition
+  partagee, defilement de la fiche restaure au retour). Plus de lecteur, de mention cookies, de
+  description ni de depliant Equipe sur la fiche. Bouton « Partager » : ShareButton (coche et
+  « Lien copie » sur ordinateur, partage natif sur telephone et dans l'app, copie en repli).
 
 FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server + ProjetClient]
   Lot 7 (09/10/2026) : « Retour », lecteur 16:9 (max 1080 px, affiche entiere, aucun texte dessus,

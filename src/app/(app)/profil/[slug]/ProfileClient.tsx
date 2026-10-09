@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { EnterList, EnterItem, enterUp, enterFade, cardSpring } from "@/components/motion";
@@ -10,7 +9,8 @@ import Chip from "@/components/ui/Chip";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
-import VideoFacade from "@/components/VideoFacade";
+import FilmLink, { RestoreFilmScroll } from "@/components/FilmLink";
+import FilmPoster from "@/components/FilmPoster";
 import Avatar from "@/components/Avatar";
 import LockedFilmCard, { type LockedFilm } from "@/components/LockedFilmCard";
 import FilmMeta from "@/components/FilmMeta";
@@ -63,7 +63,6 @@ export default function ProfileClient({
 }: Props) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilmFilter>("all");
-  const [expandedCredits, setExpandedCredits] = useState<Set<string>>(new Set());
   const [contacting, setContacting] = useState(false);
   // Cible du signalement : le profil, ou une entrée de son Parcours.
   const [reportTarget, setReportTarget] = useState<{ type: "profile" | "career_entry"; id: string } | null>(null);
@@ -117,16 +116,6 @@ export default function ProfileClient({
     activeFilter === "all" ? allFilmItems : allFilmItems.filter((item) => item.published === (activeFilter === "published"));
   // Le filtre n'a de sens que si la fiche mêle les deux sortes de films.
   const showFilmFilter = allFilmItems.some((i) => i.published) && allFilmItems.some((i) => !i.published);
-
-  function toggleCredits(projectId: string) {
-    setExpandedCredits((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) next.delete(projectId);
-      else next.add(projectId);
-      return next;
-    });
-  }
-
 
   // Contact unifie : un Pro ouvre directement une conversation (messagerie),
   // sans re-saisir nom/email. Plus d'ancien formulaire contact_requests.
@@ -443,6 +432,8 @@ export default function ProfileClient({
 
         {/* Right column — projects */}
         <div className="flex-1 min-w-0">
+          {/* Au retour d'un film, la fiche retrouve sa position de défilement */}
+          <RestoreFilmScroll />
           <section>
             <EnterItem>
             <h2 className="text-xl font-bold text-text-primary mb-4">
@@ -470,136 +461,65 @@ export default function ProfileClient({
                 <p className="text-[13px] text-[#444]">Aucun film pour le moment</p>
               </div>
             ) : (
-              <EnterList className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+              // Même carte que les rangées du feed : affiche au format réel, hauteur
+              // identique pour toutes, grille qui passe à la ligne. Toute la carte mène
+              // à la page du film (transition partagée). Ni lecteur, ni description, ni équipe.
+              <EnterList className="flex flex-wrap gap-x-4 gap-y-7">
                 {filmItems.map((item) => {
                   // Film « membres seulement », visiteur non connecté : carte
                   // verrouillée, sans lecteur ni équipe. Le titre mène à la page du film.
                   if (item.locked) {
                     return (
-                      <motion.div key={item.film.id} variants={reduced ? enterFade : enterUp}>
+                      <motion.div key={item.film.id} variants={reduced ? enterFade : enterUp} className="w-60 sm:w-72 lg:w-80">
                         <LockedFilmCard film={item.film} href={`/projet/${item.film.slug}`} />
                       </motion.div>
                     );
                   }
                   const project = item.project;
                   // Rôle(s) de la personne sur ce film, publié par elle ou non.
-                  const ownRole = project.credits
-                    .filter((c) => c.profile_id === profile.id)
-                    .map((c) => c.role_on_project)
-                    .join(", ");
-                  const isExpanded = expandedCredits.has(project.id);
+                  const ownRoles = [...new Set(project.credits.filter((c) => c.profile_id === profile.id).map((c) => c.role_on_project))];
                   // Réalisateur : crédits de réalisation du film, pas son Responsable.
                   const directors = directorNames(
                     project.credits.map((c) => ({ role_on_project: c.role_on_project, name: c.profile?.full_name ?? c.ghost_name }))
                   );
+                  const shareKey = `fiche:${project.id}`;
 
                   return (
-                    <motion.article
+                    <motion.div
                       key={project.id}
                       variants={reduced ? enterFade : enterUp}
                       whileHover={reduced ? undefined : { y: -4 }}
+                      whileTap={reduced ? undefined : { scale: 0.96 }}
                       transition={cardSpring}
-                      className="glass rounded-media overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_50px_rgba(0,0,0,0.5)] hover:border-white/20 transition-[border-color]! duration-base!"
+                      className="max-w-full"
                     >
-                      {/* Façade vidéo : poster + play, lecteur monté au clic seulement */}
-                      <VideoFacade
-                        url={project.video_url}
-                        title={project.title}
-                        poster={project.poster_url || project.preview_url}
-                      />
-
-                      {/* Project info */}
-                      <div className="p-5 sm:p-6">
-                        <Link
-                          href={`/projet/${project.slug}`}
-                          className="text-lg font-bold text-text-primary hover:text-lime transition"
-                        >
-                          {project.title}
-                        </Link>
-                        {/* Infos : catégorie, réalisation (crédits de réalisation), année */}
-                        <FilmMeta category={project.category} author={directors} year={project.year} className="mt-1 mb-3 text-xs" />
-
-                        {/* Role on project */}
-                        {ownRole && (
-                          <p className="text-sm text-text-secondary mb-2">
-                            <span className="text-text-tertiary">Rôle :</span>{" "}
-                            {ownRole}
-                          </p>
-                        )}
-
-                        {/* Description */}
-                        {project.description && (
-                          <p className="text-sm text-text-secondary leading-relaxed mb-4">
-                            {project.description}
-                          </p>
-                        )}
-
-                        {/* Credits toggle */}
-                        {project.credits.length > 0 && (
-                          <div>
-                            <button
-                              onClick={() => toggleCredits(project.id)}
-                              className="flex items-center gap-2 text-xs text-text-tertiary hover:text-text-secondary transition"
-                            >
-                              <svg
-                                className={`w-3.5 h-3.5 transition-transform ${
-                                  isExpanded ? "rotate-90" : ""
-                                }`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
-                              Équipe ({project.credits.length})
-                            </button>
-
-                            {isExpanded && (
-                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {project.credits.map((credit) => (
-                                  <div
-                                    key={credit.id}
-                                    className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.04] border border-white/5"
-                                  >
-                                    {/* Avatar */}
-                                    <Avatar
-                                      url={credit.profile?.avatar_url}
-                                      name={credit.profile?.full_name ?? credit.ghost_name ?? "?"}
-                                      size={32}
-                                      shape="rounded"
-                                      style={{ borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)" }}
-                                    />
-
-                                    <div className="min-w-0">
-                                      {credit.profile ? (
-                                        <Link
-                                          href={`/profil/${credit.profile.slug}`}
-                                          className="text-sm font-semibold text-text-primary hover:text-lime transition truncate block"
-                                        >
-                                          {credit.profile.full_name}
-                                        </Link>
-                                      ) : (
-                                        <span className="text-sm font-semibold text-text-secondary truncate block">
-                                          {credit.ghost_name}
-                                        </span>
-                                      )}
-                                      <span className="text-xs text-text-tertiary">
-                                        {credit.role_on_project}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </motion.article>
+                      <FilmLink slug={project.slug} shareKey={shareKey} className="press-spring group flex w-fit max-w-full flex-col items-start">
+                        <FilmPoster
+                          src={project.preview_url || project.poster_url}
+                          alt={project.title}
+                          shareKey={shareKey}
+                          sizes="(max-width: 640px) 240px, (max-width: 1024px) 288px, 320px"
+                          className="h-[135px] rounded-media border border-white/[0.11] shadow-xl shadow-black/50 transition-[border-color,box-shadow] duration-base ease-glass group-hover:border-white/20 group-hover:shadow-2xl group-hover:shadow-black/70 sm:h-[162px] lg:h-[180px]"
+                        />
+                        {/* w-0 min-w-full : le texte ne fixe pas la largeur de la carte, c'est l'affiche */}
+                        <div className="mt-2.5 w-0 min-w-full px-0.5">
+                          {/* Rôle(s) de la personne sur ce film : sous l'affiche, jamais dessus */}
+                          {ownRoles.length > 0 && (
+                            <div className="mb-2 flex flex-wrap gap-1.5">
+                              {ownRoles.map((role) => (
+                                <span key={role} className="rounded-pill border border-lime/30 bg-lime/[0.12] px-2.5 py-1 text-xs font-semibold leading-none text-lime">
+                                  {role}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <h3 className="truncate text-[13px] font-semibold leading-tight text-text-primary transition-colors duration-300 group-hover:text-lime lg:text-[15px]">
+                            {project.title}
+                          </h3>
+                          <FilmMeta category={project.category} author={directors} year={project.year} className="mt-1" />
+                        </div>
+                      </FilmLink>
+                    </motion.div>
                   );
                 })}
               </EnterList>
