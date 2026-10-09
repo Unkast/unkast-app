@@ -106,29 +106,25 @@ export default async function CategoryPage({ params }: Props) {
           {/* Featured project */}
           {featured && (
             <EnterItem className="px-4 lg:px-1">
+              {/* Film en tête : affiche entière dans son cadre 16:9, titre et infos à côté
+                  (dessous sur mobile). Jamais de texte sur l'affiche, jamais d'image rognée. */}
               <Link
                 href={`/projet/${featured.slug}`}
-                className="glass group relative mb-4 block aspect-video overflow-hidden rounded-panel shadow-[0_18px_40px_rgba(0,0,0,0.55)] transition-[border-color] duration-base ease-glass hover:border-white/20 lg:mb-6 lg:aspect-[21/9]"
+                className="group mb-4 grid gap-3 lg:mb-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-center lg:gap-8"
               >
-                {featured.preview_url ? (
-                  <img
-                    src={featured.preview_url}
-                    alt={featured.title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="glass-strong flex size-14 items-center justify-center rounded-pill" aria-hidden="true">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
-                    </span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-canvas/90 via-transparent to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-4 lg:p-6">
-                  <p className="truncate text-lg lg:text-2xl font-semibold text-white group-hover:text-lime transition-colors duration-base" style={{ letterSpacing: "-0.3px" }}>
+                <FilmPoster
+                  src={featured.preview_url || featured.poster_url}
+                  alt={featured.title}
+                  sizes="(max-width: 1024px) 100vw, 700px"
+                  framed
+                  priority
+                  className="rounded-panel border border-white/[0.11] shadow-[0_18px_40px_rgba(0,0,0,0.55)] transition-[border-color] duration-base ease-glass group-hover:border-white/20"
+                />
+                <div className="min-w-0 px-1">
+                  <p className="truncate text-lg font-semibold text-text-primary transition-colors duration-base group-hover:text-lime lg:text-3xl lg:whitespace-normal" style={{ letterSpacing: "-0.3px" }}>
                     {featured.title}
                   </p>
-                  <p className="truncate text-xs lg:text-sm text-white/70">{featured.director_name && `${featured.director_name} · `}{featured.year}</p>
+                  <p className="mt-1 truncate text-xs text-text-secondary lg:text-sm">{featured.director_name && `${featured.director_name} · `}{featured.year}</p>
                 </div>
               </Link>
             </EnterItem>
