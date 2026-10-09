@@ -58,7 +58,14 @@
 | `FilmPoster` | [depend de] | `lib/film-transition` (vignette cliquee), `next/image` |
 | `VideoFacade`, `RechercheClient`, `categories/[slug]/page.tsx`, `moi/parts.tsx` | [utilise] | `FilmPoster` |
 | `FilmPoster`, `HeroCarousel`, `ProjetClient` | [depend de] | `globals.css` (`.film-ambient`, `.hero-progress`, regles `::view-transition-*`) |
-| `AppShell` (champ de recherche desktop) | [declenche] | `/recherche?q=` → `recherche/page.tsx` → `RechercheClient` (`initialQuery`) |
+| `AppShell` (champ de recherche desktop, loupe mobile, Ctrl K) | [utilise] | `SearchAssistant` (chargement a la demande) |
+| `SearchAssistant` | [declenche] | `POST /api/search` (seule source de donnees), `/recherche?q=` (« Chercher dans Explorer ») |
+| `SearchAssistant` | [utilise] | `lib/assistant.ts`, `constants.ts` (listes fermees), `Avatar`, `FilmPoster` |
+| `/api/search` | [utilise] | `lib/assistant.ts` (`withFeminine`), `constants.ts` (validation des filtres) |
+| `/api/search` | [persiste dans] | `profiles.playing_ages`, `role_type`, `languages` (lecture, migration `20261016`) |
+| `MoiClient`, `rejoindre/finaliser/FinaliserClient` | [utilise] | `CastingFieldsForm` → `PATCH /api/dashboard/profile` |
+| `MoiClient`, `ProfileClient` | [utilise] | `CastingSummary` |
+| `RechercheClient` | [depend de] | `recherche/page.tsx` (`initialQuery`, lu dans `?q=`) |
 | `lib/film-team.ts` | [persiste dans] | `profiles.avatar_url` (lecture, `team_preview` du bloc a la une) |
 | `ConversionBanner` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`, defilement du `<main>`) |
 | `AppShell` (`<main>`) | [depend de] | `globals.css` (`.pb-tabbar` : reserve de la navigation mobile pour toutes les pages) |

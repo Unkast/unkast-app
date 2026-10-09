@@ -1,4 +1,4 @@
-import { checkProfileRoles } from "@/lib/constants";
+import { checkCastingFields, checkProfileRoles } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -64,6 +64,13 @@ const PRIVILEGED_COLUMNS = [
   "pro_grant_type", "pro_grant_expires_at",
 ].join(", ");
 
+// Champs facultatifs du lot 8 (migration 20261016). Lus et ecrits A PART : tant que
+// la migration n'est pas executee, ces colonnes n'existent pas, et les nommer dans
+// OWN_COLUMNS ou dans l'update principal ferait echouer tout le profil.
+const CASTING_COLUMNS = "playing_ages, role_type, languages";
+// 42703 = Postgres : colonne inconnue. PGRST204 = PostgREST : colonne absente du cache.
+const MISSING_COLUMN_CODES = new Set(["42703", "PGRST204"]);
+
 // GET: fetch current user's profile with roles
 export async function GET() {
   const supabase = await createClient();
@@ -108,9 +115,16 @@ export async function GET() {
 
   // Cast : le parseur de types de supabase-js ne sait pas inferer une liste de
   // colonnes construite dynamiquement (OWN_COLUMNS / PRIVILEGED_COLUMNS).
+  // Champs facultatifs : absents (null) si la migration n'est pas passee.
+  const { data: casting } = await supabase.from("profiles").select(CASTING_COLUMNS).eq("id", user.id).maybeSingle();
+
   const merged = {
     ...(profile as unknown as Record<string, unknown>),
     ...(privileged as unknown as Record<string, unknown>),
+    playing_ages: null,
+    role_type: null,
+    languages: null,
+    ...((casting as unknown as Record<string, unknown> | null) ?? {}),
   };
 
   return NextResponse.json({ profile: merged, roles: roles ?? [] });
@@ -135,6 +149,13 @@ export async function PATCH(request: NextRequest) {
   // casserait toutes les pages qui montrent la personne).
   if (first_name !== undefined && (typeof first_name !== "string" || !first_name.trim())) {
     return NextResponse.json({ code: "first_name_required", error: "Indique ton prénom." }, { status: 400 });
+  }
+
+  // Champs facultatifs (age de jeu, type de roles, langues) : listes fermees,
+  // controlees AVANT toute ecriture.
+  const casting = checkCastingFields(body);
+  if (!casting.ok) {
+    return NextResponse.json({ code: "casting_invalid", error: casting.error }, { status: 400 });
   }
 
   // Metiers : 5 au plus, pris dans la liste officielle. Controle AVANT toute
@@ -289,6 +310,16 @@ export async function PATCH(request: NextRequest) {
       .eq("id", user.id);
 
     if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  // Champs facultatifs : client utilisateur (GRANT UPDATE par colonne), update
+  // separe. Colonnes absentes (migration pas encore passee) : ignore, le reste du
+  // profil est enregistre.
+  if (Object.keys(casting.fields).length > 0) {
+    const { error } = await supabase.from("profiles").update(casting.fields).eq("id", user.id);
+    if (error && !MISSING_COLUMN_CODES.has(error.code ?? "")) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
   }

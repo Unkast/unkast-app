@@ -72,6 +72,15 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
 
   if (!profile) return null;
 
+  // Champs facultatifs du lot 8 (âge de jeu, type de rôles, langues), publics
+  // s'ils sont remplis. Lus à part : tant que la migration 20261016 n'est pas
+  // passée, les colonnes n'existent pas et la requête principale échouerait.
+  const { data: casting } = await supabase
+    .from("profiles")
+    .select("playing_ages, role_type, languages")
+    .eq("id", profile.id)
+    .maybeSingle();
+
   const roles = (profile.profile_roles ?? []) as ProfileRole[];
   type RawProject = Project & {
     project_credits: (ProjectCredit & {
@@ -182,6 +191,9 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
 
   return {
     ...publicColumns,
+    playing_ages: casting?.playing_ages ?? null,
+    role_type: casting?.role_type ?? null,
+    languages: casting?.languages ?? null,
     profile_roles: undefined,
     roles,
     show_verified_badge: profile.recruiter_verified === true && plan === "pro",

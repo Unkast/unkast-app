@@ -4,6 +4,8 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import RoleSelector from "@/components/RoleSelector";
+import CastingFieldsForm from "@/components/CastingFieldsForm";
+import { ACTING_ROLES, type CastingFields } from "@/lib/constants";
 import { EnterItem, EnterList } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
@@ -67,6 +69,9 @@ export default function FinaliserClient({
   const [showStageName, setShowStageName] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [city, setCity] = useState("");
+  // Champs facultatifs (lot 8) : âge de jeu, type de rôles, langues.
+  const [casting, setCasting] = useState<CastingFields>({ playing_ages: null, role_type: null, languages: null });
+  const isActor = selectedRoles.some((r) => ACTING_ROLES.includes(r));
   const [loading, setLoading] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState("");
@@ -102,6 +107,9 @@ export default function FinaliserClient({
           display_name_preference: stage && showStageName ? "stage_name" : "real_name",
           location: city.trim() || null,
           roles: selectedRoles,
+          playing_ages: isActor ? casting.playing_ages : null,
+          role_type: isActor ? casting.role_type : null,
+          languages: casting.languages,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -236,6 +244,9 @@ export default function FinaliserClient({
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="Paris, Lyon, Marseille..."
               />
+
+              {/* 6. Champs facultatifs : âge de jeu et type de rôles (comédiens), langues */}
+              <CastingFieldsForm value={casting} onChange={setCasting} showActing={isActor} />
             </div>
 
             {error && (

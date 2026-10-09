@@ -28,7 +28,7 @@
 | Route | Methodes | Tables lues | Tables ecrites |
 |---|---|---|---|
 | `/api/me` | GET | `profiles` (service role) | — |
-| `/api/dashboard/profile` | GET, PATCH | `profiles`, `profile_roles` | `profiles`, `profile_roles` |
+| `/api/dashboard/profile` | GET, PATCH | `profiles`, `profile_roles` | `profiles`, `profile_roles` | lot 8 : `playing_ages` (2 au plus), `role_type`, `languages`, validés par `checkCastingFields`, lus et écrits à part (tolère l'absence des colonnes avant la migration `20261016`) |
 | `/api/dashboard/projects` | GET, POST, PATCH, DELETE | `projects`, `project_credits`, `project_managers`, `project_rights_declarations`, `project_manager_requests` | `projects` (RPC `publish_project`), `project_rights_declarations` |
 | `/api/projects/[id]/managers` | GET, POST, PATCH, DELETE | `projects`, `project_managers`, `project_manager_requests`, `project_credits`, `profiles` | `project_managers`, `project_manager_requests` (RPC) |
 | `/api/projects/[id]/transfer` | POST | `projects`, `project_managers` | `projects`, `project_managers` (RPC `transfer_project`) |
@@ -71,7 +71,12 @@
 
 ## Detail des routes notables
 
-### GET /api/search
+### GET et POST /api/search
+**POST (lot 8, 09/10/2026)** : mêmes paramètres dans le corps JSON, réponse `no-store`. Utilisé par l'assistant de recherche, pour que ce qui est tapé ne figure dans aucune adresse. Le GET reste celui de la page Explorer (`/recherche?q=`, adresse partageable).
+**Paramètres ajoutés au lot 8**, tous validés contre une liste fermée ou un entier borné (aucun n'est du texte libre mis dans un filtre) : `roles` (métiers exacts de `ALL_ROLES`, liste ou chaîne séparée par des virgules ; le profil en a au moins un, féminin du métier compris, par jointure interne sur un second alias de `profile_roles`), `playing_age`, `role_type` (`femme` / `homme`), `language`, `year`, `since_days` (films publiés depuis N jours). Une valeur hors liste répond 400.
+**Type de rôles** : un profil correspond s'il l'a déclaré, s'il a déclaré « sans précision », ou, quand il n'a rien déclaré, si son métier le dit (Comédienne / Comédien). Filtre appliqué après lecture (200 profils lus au plus).
+**Avant la migration `20261016`** : `playing_age`, `role_type` et `language` répondent 503 « Ce filtre n'est pas encore disponible ». Le reste fonctionne.
+**Limite de requêtes** : 5 par seconde et 60 par minute, par IP (`checkRateLimit`, deux clés). La réponse des films contient maintenant `poster_url` et `preview_url`.
 **Nom** : le filtre `q` et le tri par nom portent sur `display_name` (nom d'affichage), jamais sur le vrai nom : chercher le vrai nom d'une personne qui affiche un nom de scène ne la trouve pas.
 Recherche unifiee talents + projets. Params : `q`, `type` (`all`/`talents`/`projets`), `category`, `location`, `role`, `sort` (`pertinence`/`date`/`projets`). Filtre `status='approved'`, limite 50/type.
 **Performance** : utilise des **joins Supabase** (`profile_roles(...)`, `projects(id)`, `profiles!fk(...)`) — **2 requetes au total**, enrichissement en `.map()`. (L'ancienne note « pattern N+1 ~150 requetes » etait fausse — corrigee.) Indexes trigram via migration `20260610_search_trgm_indexes.sql`.

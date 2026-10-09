@@ -11,6 +11,9 @@ import AvatarUpload from "@/components/AvatarUpload";
 import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram, getDisplayName as profileDisplayName } from "@/lib/profile";
 import RoleSelector from "@/components/RoleSelector";
+import CastingFieldsForm from "@/components/CastingFieldsForm";
+import CastingSummary from "@/components/CastingSummary";
+import { ACTING_ROLES, type CastingFields } from "@/lib/constants";
 import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
 import { isGrantValid } from "@/lib/pro-plan";
@@ -69,6 +72,8 @@ export default function MoiClient() {
   const [editLocation, setEditLocation] = useState("");
   const [editAvailable, setEditAvailable] = useState(false);
   const [editRoles, setEditRoles] = useState<string[]>([]);
+  // Champs facultatifs (lot 8) : âge de jeu, type de rôles, langues.
+  const [editCasting, setEditCasting] = useState<CastingFields>({ playing_ages: null, role_type: null, languages: null });
   const [editContactEmail, setEditContactEmail] = useState("");
   const [editContactPhone, setEditContactPhone] = useState("");
   const [editPhonePrefix, setEditPhonePrefix] = useState("+33");
@@ -223,6 +228,11 @@ export default function MoiClient() {
     setEditLocation(profile.location ?? "");
     setEditAvailable(profile.is_available ?? false);
     setEditRoles(roles.map((r) => r.role_name));
+    setEditCasting({
+      playing_ages: profile.playing_ages,
+      role_type: profile.role_type,
+      languages: profile.languages,
+    } as CastingFields);
     setEditContactEmail((profile as any).contact_email || "");
     const rawPhone = (profile as any).contact_phone || "";
     const prefixMatch = rawPhone.match(/^(\+\d{1,3})\s?(.*)$/);
@@ -243,6 +253,8 @@ export default function MoiClient() {
     setIsEditing(true);
   }
 
+  const editIsActor = editRoles.some((r) => ACTING_ROLES.includes(r));
+
   async function saveProfile() {
     setSaving(true);
     const res = await fetch("/api/dashboard/profile", {
@@ -257,6 +269,11 @@ export default function MoiClient() {
         location: editLocation || null,
         is_available: editAvailable,
         roles: editRoles,
+        // Âge de jeu et type de rôles n'ont de sens que pour un métier d'interprétation :
+        // sans un tel métier, ils sont effacés.
+        playing_ages: editIsActor ? editCasting.playing_ages : null,
+        role_type: editIsActor ? editCasting.role_type : null,
+        languages: editCasting.languages,
         contact_email: editContactEmail || null,
         contact_phone: editContactPhone ? `${editPhonePrefix} ${editContactPhone}` : null,
         instagram_url: editInstagram || null,
@@ -433,6 +450,7 @@ export default function MoiClient() {
                 />
               </div>
               <Field label="Ville" type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Paris, Lyon..." />
+              <CastingFieldsForm value={editCasting} onChange={setEditCasting} showActing={editIsActor} />
               <div>
                 <Field
                   multiline
@@ -716,6 +734,9 @@ export default function MoiClient() {
                   {profile.location}
                 </p>
               )}
+
+              {/* Âge de jeu, type de rôles, langues : seulement s'ils sont remplis */}
+              <CastingSummary playingAges={profile.playing_ages} roleType={profile.role_type} languages={profile.languages} />
 
               {/* Bio */}
               {profile.bio && <p className="text-sm leading-relaxed text-text-secondary">{profile.bio}</p>}

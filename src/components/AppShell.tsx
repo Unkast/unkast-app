@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useSyncExternalStore, type ReactNode } from "react";
@@ -13,6 +14,9 @@ import MobileTabBar from "@/components/MobileTabBar";
 import Button from "@/components/ui/Button";
 import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
 import { LEGAL_LINKS } from "@/lib/legal";
+
+// Assistant de recherche (lot 8) : charge seulement a sa premiere ouverture.
+const SearchAssistant = dynamic(() => import("@/components/SearchAssistant"), { ssr: false });
 
 // Pages ou l'ecran « Les CGU ont ete mises a jour » ne s'affiche pas : les trois
 // pages legales (pour pouvoir les lire) et les deux pages de compte bloque.
@@ -284,14 +288,14 @@ export default function AppShell({
   }, [keyboardOpen]);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Champ de recherche de l'en-tete desktop : Ctrl K (ou Cmd K) y place le curseur.
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [headerQuery, setHeaderQuery] = useState("");
+  // Assistant de recherche : ouvert par le champ de l'en-tete desktop, la loupe de
+  // l'en-tete mobile, ou Ctrl K / Cmd K depuis n'importe quelle page.
+  const [assistantOpen, setAssistantOpen] = useState(false);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && searchRef.current) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        searchRef.current.focus();
+        setAssistantOpen((open) => !open);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -681,37 +685,42 @@ export default function AppShell({
               </Link>
             )}
           </div>
-          {/* Desktop : champ de recherche centre (Ctrl K). Absent sur /recherche, qui a le sien. */}
+          {/* Desktop : champ de recherche centre. C'est un bouton : il ouvre l'assistant de
+              recherche (Ctrl K). Absent sur /recherche, qui a son propre champ. */}
           {pathname === "/recherche" ? (
             <span className="hidden lg:block" />
           ) : (
-            <form
-              role="search"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const q = headerQuery.trim();
-                router.push(q ? `/recherche?q=${encodeURIComponent(q)}` : "/recherche");
-                setHeaderQuery("");
-                searchRef.current?.blur();
-              }}
-              className="glass mx-auto hidden min-h-11 flex-[0_1_460px] items-center gap-2.5 rounded-pill pl-4 pr-2 text-text-secondary transition-colors duration-fast focus-within:border-lime/40 lg:flex"
+            <button
+              type="button"
+              onClick={() => setAssistantOpen(true)}
+              aria-label="Rechercher"
+              aria-haspopup="dialog"
+              className="glass mx-auto hidden min-h-11 flex-[0_1_460px] items-center gap-2.5 rounded-pill pl-4 pr-2 text-left text-sm text-text-secondary transition-colors duration-fast hover:border-white/20 lg:flex"
             >
               <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 21l-4.5-4.5M18 11a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input
-                ref={searchRef}
-                type="search"
-                value={headerQuery}
-                onChange={(e) => setHeaderQuery(e.target.value)}
-                placeholder="Un film, un talent, un métier"
-                aria-label="Rechercher"
-                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary"
-              />
+              <span className="min-w-0 flex-1 truncate">Un film, un talent, un métier</span>
               <kbd className="rounded-lg bg-white/[0.07] px-2 py-1 font-sans text-[11px] font-semibold text-text-secondary">Ctrl K</kbd>
-            </form>
+            </button>
           )}
           <div className="flex items-center gap-3">
+            {/* Mobile : loupe, ouvre l'assistant en plein ecran. Pour un visiteur, masquee sous
+                400 px : elle ne tient pas a cote de « Se connecter » et « Rejoindre » (l'onglet
+                Recherche reste la). */}
+            {pathname !== "/recherche" && (
+              <button
+                type="button"
+                onClick={() => setAssistantOpen(true)}
+                aria-label="Rechercher"
+                aria-haspopup="dialog"
+                className={`-mr-1 flex size-11 items-center justify-center rounded-full text-text-primary active:bg-white/5 lg:hidden ${authChecked && !user ? "max-[399px]:hidden" : ""}`}
+              >
+                <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 21l-4.5-4.5M18 11a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            )}
             {authChecked && !user && (
               <div className="flex items-center gap-2 lg:hidden">
                 <Link
@@ -774,6 +783,8 @@ export default function AppShell({
         </>
       )}
     </div>
+
+    {assistantOpen && <SearchAssistant onClose={() => setAssistantOpen(false)} isLoggedIn={!!user} />}
 
     {/* Ecran bloquant : aucune fermeture au clic sur le fond ni avec Echap. Seules
         issues : accepter ou se deconnecter. Au-dessus de tout (Toast = 10000). */}

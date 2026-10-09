@@ -51,6 +51,104 @@ export const ROLES_BY_CATEGORY: Record<string, string[]> = {
 
 export const ALL_ROLES = Object.values(ROLES_BY_CATEGORY).flat();
 
+// Metiers d'interpretation : seuls ces profils declarent un age de jeu et un type de roles.
+export const ACTING_ROLES = ROLES_BY_CATEGORY["Interprétation"];
+
+// ---- Champs facultatifs du profil (lot 8) -----------------------------------
+// Listes FERMEES, alignees sur les CHECK de la migration
+// 20261016_profile_casting_fields.sql : toute valeur ajoutee ici doit l'etre la-bas.
+
+// Age de jeu : des tranches, jamais de date de naissance. 2 tranches au plus.
+export const PLAYING_AGES = ["18-25", "25-35", "35-50", "50+"] as const;
+export type PlayingAge = (typeof PLAYING_AGES)[number];
+export const MAX_PLAYING_AGES = 2;
+export const PLAYING_AGE_LABELS: Record<PlayingAge, string> = {
+  "18-25": "18 à 25 ans",
+  "25-35": "25 à 35 ans",
+  "35-50": "35 à 50 ans",
+  "50+": "50 ans et plus",
+};
+
+// Type de roles joues.
+export const ROLE_TYPES = ["femme", "homme", "sans_precision"] as const;
+export type RoleType = (typeof ROLE_TYPES)[number];
+export const ROLE_TYPE_LABELS: Record<RoleType, string> = {
+  femme: "Femme",
+  homme: "Homme",
+  sans_precision: "Sans précision",
+};
+
+// Langues parlees.
+export const LANGUAGES = [
+  "fr", "en", "es", "it", "de", "pt", "nl", "pl", "ro", "ru", "tr",
+  "ar", "he", "zh", "ja", "ko", "lsf", "lsfb",
+] as const;
+export type Language = (typeof LANGUAGES)[number];
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  fr: "Français",
+  en: "Anglais",
+  es: "Espagnol",
+  it: "Italien",
+  de: "Allemand",
+  pt: "Portugais",
+  nl: "Néerlandais",
+  pl: "Polonais",
+  ro: "Roumain",
+  ru: "Russe",
+  tr: "Turc",
+  ar: "Arabe",
+  he: "Hébreu",
+  zh: "Mandarin",
+  ja: "Japonais",
+  ko: "Coréen",
+  lsf: "Langue des signes française",
+  lsfb: "Langue des signes de Belgique francophone",
+};
+
+export type CastingFields = {
+  playing_ages: PlayingAge[] | null;
+  role_type: RoleType | null;
+  languages: Language[] | null;
+};
+
+/**
+ * Controle serveur des champs facultatifs. Chaque champ est independant : absent
+ * (undefined) = non modifie, null ou liste vide = efface. Une valeur hors liste
+ * est refusee, jamais corrigee en silence.
+ */
+export function checkCastingFields(
+  input: { playing_ages?: unknown; role_type?: unknown; languages?: unknown }
+): { ok: true; fields: Partial<CastingFields> } | { ok: false; error: string } {
+  const fields: Partial<CastingFields> = {};
+  const list = <T extends string>(value: unknown, allowed: readonly T[]): T[] | null | "invalid" => {
+    if (value === null) return null;
+    if (!Array.isArray(value) || value.some((v) => !allowed.includes(v as T))) return "invalid";
+    const clean = allowed.filter((a) => value.includes(a)); // dedoublonne, ordre de la liste
+    return clean.length > 0 ? clean : null;
+  };
+
+  if (input.playing_ages !== undefined) {
+    const ages = list(input.playing_ages, PLAYING_AGES);
+    if (ages === "invalid") return { ok: false, error: "Âge de jeu invalide." };
+    if (ages && ages.length > MAX_PLAYING_AGES) {
+      return { ok: false, error: `Tu peux choisir ${MAX_PLAYING_AGES} tranches d'âge de jeu au maximum.` };
+    }
+    fields.playing_ages = ages;
+  }
+  if (input.role_type !== undefined) {
+    if (input.role_type !== null && !ROLE_TYPES.includes(input.role_type as RoleType)) {
+      return { ok: false, error: "Type de rôles invalide." };
+    }
+    fields.role_type = input.role_type as RoleType | null;
+  }
+  if (input.languages !== undefined) {
+    const languages = list(input.languages, LANGUAGES);
+    if (languages === "invalid") return { ok: false, error: "Langue invalide." };
+    fields.languages = languages;
+  }
+  return { ok: true, fields };
+}
+
 // Metiers d'un profil : 5 au plus, pris dans la liste officielle (ALL_ROLES).
 export const MAX_PROFILE_ROLES = 5;
 

@@ -19,6 +19,7 @@ import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { directorNames } from "@/lib/credits";
 import { CAREER_KINDS } from "@/lib/constants";
+import CastingSummary from "@/components/CastingSummary";
 
 type CreditWithProfile = ProjectCredit & {
   profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
@@ -393,6 +394,9 @@ export default function ProfileClient({
                 {profile.location}
               </p>
             )}
+
+            {/* Âge de jeu, type de rôles, langues : seulement s'ils sont remplis */}
+            <CastingSummary playingAges={profile.playing_ages} roleType={profile.role_type} languages={profile.languages} className="mb-3" />
 
             {/* Bio */}
             {profile.bio && (

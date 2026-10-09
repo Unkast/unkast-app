@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Assistant de recherche</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./unkast.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0A0C}
+.as{position:relative;width:1440px;height:1040px;overflow:hidden;padding:56px 64px;box-sizing:border-box}
+.as-bg{position:absolute;inset:0;background:radial-gradient(700px 400px at 30% 30%,rgba(242,179,92,.18),transparent 60%),radial-gradient(700px 500px at 80% 70%,rgba(110,130,255,.16),transparent 60%)}
+.as-head{position:relative;display:flex;align-items:baseline;justify-content:space-between;margin-bottom:28px}
+.cols{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px}
+.st{display:flex;flex-direction:column;gap:12px}
+.st-l{font-size:13px;color:var(--dim);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.pal{border-radius:28px;background:linear-gradient(180deg,rgba(28,28,34,.92),rgba(16,16,20,.92));border:1px solid rgba(255,255,255,.14);box-shadow:var(--hi),0 40px 120px rgba(0,0,0,.7);backdrop-filter:blur(30px) saturate(170%);overflow:hidden}
+.q{display:flex;align-items:center;gap:12px;min-height:64px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08);font-size:18px}
+.q .ph2{color:var(--dim)}
+.q .cur{display:inline-block;width:2px;height:22px;background:var(--ac);margin-left:2px;vertical-align:middle;animation:k-blink 1s steps(1) infinite}
+@keyframes k-blink{50%{opacity:0}}
+.q kbd{margin-left:auto;font:600 11px var(--f-b);color:var(--mu);padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.07)}
+.sec{padding:16px 12px 8px}
+.sec-t{padding:0 10px 8px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.it{display:flex;align-items:center;gap:14px;min-height:52px;padding:0 10px;border-radius:14px;font-size:15px;color:var(--tx);width:100%;background:none;border:0;text-align:left;font-family:inherit;cursor:pointer}
+.it .ico{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.07);color:var(--mu);flex:0 0 34px}
+.it .s{font-size:13px;color:var(--dim)}
+.it .go{margin-left:auto;color:var(--dim);font-size:12px}
+.it.on{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));box-shadow:var(--hi)}
+.it.on .ico{background:var(--ac);color:var(--acink)}
+.crumb{display:flex;align-items:center;gap:8px;padding:14px 20px 0;font-size:13px;color:var(--mu)}
+.crumb b{color:var(--tx);font-weight:600}
+.ask{padding:14px 20px 4px;font:700 20px var(--f-d);letter-spacing:-.02em}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:10px 20px 16px}
+.chips .chip{min-height:40px}
+.res{display:flex;align-items:center;gap:14px;min-height:64px;padding:0 10px;border-radius:14px}
+.res .av{width:42px;height:42px;font-size:14px}
+.res .n{font-weight:600}
+.res .m{font-size:13px;color:var(--mu)}
+.foot{display:flex;gap:18px;padding:12px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:var(--dim)}
+.foot kbd{font:600 11px var(--f-b);color:var(--mu);padding:3px 6px;border-radius:6px;background:rgba(255,255,255,.07);margin-right:6px}
+.faq{margin:4px 20px 16px;padding:16px 18px;border-radius:18px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);font-size:14px;line-height:1.55;color:#d9d6cf}
+.faq b{display:block;color:var(--tx);margin-bottom:6px;font-size:15px}
+</style>
+</helmet>
+<div class="u as">
+  <div class="as-bg"></div>
+  <div class="as-head">
+    <div><div class="lbl">Barre de recherche, Ctrl K</div><h1 class="d gt" style="margin:8px 0 0;font-size:44px;font-weight:800">Assistant de recherche</h1></div>
+    <div class="mu" style="font-size:14px;max-width:420px;text-align:right">Sans IA : raccourcis, parcours guidés et réponses toutes faites. Il ne lit que la recherche publique.</div>
+  </div>
+
+  <div class="cols">
+    <div class="st">
+      <div class="st-l">1. À l'ouverture</div>
+      <div class="pal" role="dialog" aria-label="Assistant de recherche">
+        <div class="q"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span class="ph2">Un film, un talent, un métier<span class="cur"></span></span><kbd>Échap</kbd></div>
+        <div class="sec">
+          <div class="sec-t">Je cherche</div>
+          <button class="it on"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span><span>Un comédien ou une comédienne<br><span class="s">Par ville, âge, langue</span></span><span class="go">Entrée</span></button>
+          <button class="it"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="M16 10l5-3v10l-5-3"></path></svg></span><span>Un technicien<br><span class="s">Image, son, montage, déco…</span></span></button>
+          <button class="it"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"></path></svg></span><span>Les nouveautés<br><span class="s">Films publiés cette semaine</span></span></button>
+        </div>
+        <div class="sec" style="padding-top:4px">
+          <div class="sec-t">Je veux</div>
+          <button class="it"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg></span><span>Publier mon film</span></button>
+          <button class="it"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"></path></svg></span><span>Comprendre comment marche Unkast</span></button>
+        </div>
+        <div class="foot"><span><kbd>↑↓</kbd>Naviguer</span><span><kbd>Entrée</kbd>Choisir</span><span><kbd>Échap</kbd>Fermer</span></div>
+      </div>
+    </div>
+
+    <div class="st">
+      <div class="st-l">2. Parcours guidé : un comédien</div>
+      <div class="pal" role="dialog" aria-label="Assistant de recherche, comédien">
+        <div class="q"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>comédienne lyon<span class="cur"></span></span><kbd>Échap</kbd></div>
+        <div class="crumb"><span>Je cherche</span><span>›</span><b>Comédienne</b><span>›</span><b>Lyon</b></div>
+        <div class="ask">Quel âge de jeu ?</div>
+        <div class="chips"><button class="chip">18 à 25 ans</button><button class="chip on">25 à 35 ans</button><button class="chip">35 à 50 ans</button><button class="chip">50 ans et plus</button><button class="chip">Peu importe</button></div>
+        <div class="sec" style="padding-top:0">
+          <div class="sec-t">12 profils</div>
+          <sc-for list="{{res}}" as="r" hint-placeholder-count="3">
+            <a class="res" href="Profil.dc.html"><span class="av" style="background:{{r.col}}">{{r.ini}}</span><span><span class="n" style="display:block">{{r.name}}</span><span class="m">{{r.meta}}</span></span><span class="go mu" style="margin-left:auto;font-size:12px">{{r.films}}</span></a>
+          </sc-for>
+          <a class="it" href="Recherche.dc.html"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span><span>Voir les 12 profils</span></a>
+        </div>
+        <div class="faq"><b>Comment contacter une comédienne ?</b>Ouvre son profil puis "Envoyer un message". Les coordonnées s'échangent ensuite dans la conversation.</div>
+        <div class="foot"><span><kbd>Retour</kbd>Étape précédente</span><span><kbd>Entrée</kbd>Choisir</span><span><kbd>Échap</kbd>Fermer</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { res: [
+      { ini: 'LM', col: '#C79BFF', name: 'Léa Marchand', meta: 'Comédienne · Lyon · 28 ans de jeu', films: '4 films' },
+      { ini: 'IN', col: '#F28CB1', name: 'Inès Naceri', meta: 'Comédienne, voix · Lyon', films: '6 films' },
+      { ini: 'CB', col: '#7FD6B0', name: 'Clara Bonnet', meta: 'Comédienne · Villeurbanne', films: '2 films' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

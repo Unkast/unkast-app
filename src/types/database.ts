@@ -191,6 +191,12 @@ export interface Profile {
   is_recruiting: boolean | null      // defaut false
   recruiting_roles: string[] | null  // defaut '{}' (text[])
   is_looking_for: string | null
+
+  // --- Champs facultatifs (lot 8, migration 20261016) : publics s'ils sont
+  // remplis, listes fermees de src/lib/constants.ts. Jamais de date de naissance. ---
+  playing_ages: string[] | null   // tranches d'age de jeu, 1 ou 2 (text[])
+  role_type: string | null        // femme | homme | sans_precision
+  languages: string[] | null      // codes de langue (text[])
 }
 
 // -----------------------------------------------------------------------------

@@ -25,7 +25,7 @@ Composants / modules utilises par 3+ features.
 
 ## AppShell : champ de recherche de l'en-tete (lot 7, 09/10/2026)
 
-- En-tete desktop : champ centre (Ctrl K), Entree → `/recherche?q=`. Masque sur `/recherche`. Rien ne change en mobile.
+- En-tete desktop : champ centre, qui est un bouton ouvrant l'assistant de recherche (`SearchAssistant`, lot 8). Ctrl K l'ouvre depuis toute page. Masque sur `/recherche`. En mobile : loupe dans l'en-tete (assistant en plein ecran), masquee pour un visiteur sous 400 px.
 - En-tete desktop sans barre : transparent et pose par-dessus le contenu (`.app-header`, globals.css), `<main>` en `lg:pt-14`. Une colonne `lg:sticky` d'une page doit compter 56 px de plus dans son `top`, sinon elle passe sous le champ de recherche.
 
 ## Avatar
