@@ -12,23 +12,24 @@ export const TERMS_DATE_LABEL = "8 octobre 2026";
 
 export const AGE_MINIMUM = 18;
 
-// Informations de la societe. A REMPLIR avant le lancement : toute valeur entre
-// crochets s'affiche surlignee sur les pages legales, pour ne pas etre oubliee.
+// Informations de la societe, fournies par Maxime le 09/10/2026. Une valeur
+// remise entre crochets s'affiche surlignee sur les pages legales (a completer).
 export const LEGAL = {
-  company: "[NOM SOCIÉTÉ]",
-  legalForm: "[FORME JURIDIQUE]",
-  capital: "[CAPITAL SOCIAL]",
-  address: "[ADRESSE]",
-  registration: "[NUMÉRO D'IMMATRICULATION]",
-  publisher: "[DIRECTEUR DE LA PUBLICATION]",
-  contactEmail: "[EMAIL CONTACT]",
+  company: "JMB Vision FZCO",
+  legalForm: "Free Zone Company (FZCO), société de droit émirien",
+  capital: "Sans objet",
+  address: "IFZA Properties, Dubai Silicon Oasis, Dubaï, Émirats arabes unis",
+  registration: "Licence n° 50784, délivrée par l'IFZA (International Free Zone Authority), Dubaï",
+  publisher: "Maxime Benak, General Director",
+  contactEmail: "contact@unkast.com",
   // Region d'hebergement de la base Supabase : decide du paragraphe sur les
   // transferts hors Union europeenne.
-  hostingRegion: "[RÉGION D'HÉBERGEMENT]",
+  hostingRegion: "Union européenne (Paris, France)",
   // Droit applicable et tribunaux competents (CGU).
-  governingLaw: "[DROIT APPLICABLE ET TRIBUNAUX COMPÉTENTS]",
+  governingLaw:
+    "Ces conditions sont soumises au droit des Émirats arabes unis, avec compétence des tribunaux de Dubaï. Si tu es consommateur, tu gardes la protection des règles impératives de ton pays de résidence et tu peux saisir le tribunal de ton lieu de résidence.",
   // Representant dans l'Union europeenne (RGPD, article 27), s'il en faut un.
-  euRepresentative: "[REPRÉSENTANT DANS L'UNION EUROPÉENNE, SI NÉCESSAIRE]",
+  euRepresentative: "En cours de désignation. En attendant, écris à contact@unkast.com.",
 } as const;
 
 /** Vrai si une information legale n'a pas encore ete remplie. */

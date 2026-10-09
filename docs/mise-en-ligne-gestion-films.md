@@ -180,14 +180,14 @@ A tester, sur telephone :
 
 Avant de deployer :
 - [ ] Executer `20261012_terms_acceptance.sql`, puis ses verifications 1 et 2.
-- [ ] **Remplir les informations de la societe** dans `src/lib/legal.ts` (nom, forme juridique,
-      capital, adresse, immatriculation, directeur de la publication, email de contact, region
-      d'hebergement Supabase, droit applicable). Tant qu'un champ est entre crochets, il s'affiche
-      surligne en jaune sur les trois pages : aucune page ne doit en montrer avant la mise en ligne.
-- [ ] Relire les trois textes. Trois regles y ont ete ajoutees par proposition et sont a valider :
-      contenus sexuels explicites interdits, interdiction de demander de l'argent pour un casting
-      ou une mise en relation, Pro offert jusqu'au **1er fevrier 2027** (annee deduite).
-- [ ] Verifier l'adresse de l'hebergeur (Vercel) dans les mentions legales.
+- [x] **Informations de la societe** remplies dans `src/lib/legal.ts` le 09/10/2026 (JMB Vision
+      FZCO). Plus aucun champ entre crochets sur les trois pages.
+- [x] Textes relus : Pro offert jusqu'au 1er fevrier 2027 confirme ; adresse de Vercel verifiee
+      sur vercel.com le 09/10/2026. Les pages s'adressent a des membres du monde entier.
+- [ ] Deux regles ajoutees par proposition restent a valider : contenus sexuels explicites
+      interdits, interdiction de demander de l'argent pour un casting ou une mise en relation.
+- [ ] Creer la boite `contact@unkast.com` et verifier qu'elle est relevee : les demandes de
+      suppression de compte y arrivent, avec un delai de 30 jours annonce.
 
 A tester :
 - [ ] Les trois pages s'ouvrent sans etre connecte, depuis le pied de page de l'accueil, de la

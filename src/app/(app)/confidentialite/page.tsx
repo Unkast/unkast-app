@@ -132,9 +132,12 @@ export default function ConfidentialitePage() {
           </li>
         </ul>
         <p>
-          Certains de ces prestataires sont établis aux États-Unis. Quand des données sortent de
-          l&apos;Union européenne, le transfert est encadré par les garanties prévues par le règlement
-          européen (clauses contractuelles types ou décision d&apos;adéquation).
+          Unkast s&apos;adresse à des membres du monde entier. Tes données sont hébergées dans l&apos;Union
+          européenne, mais l&apos;éditeur est établi aux Émirats arabes unis et certains prestataires aux
+          États-Unis : des données peuvent donc être traitées hors de ton pays. Quand des données de
+          personnes situées dans l&apos;Union européenne en sortent, le transfert est encadré par les
+          garanties prévues par le règlement européen (clauses contractuelles types ou décision
+          d&apos;adéquation).
         </p>
       </Section>
 
@@ -172,7 +175,7 @@ export default function ConfidentialitePage() {
       </Section>
 
       <Section title="7. Tes droits">
-        <p>Tu peux à tout moment :</p>
+        <p>Où que tu vives, tu peux à tout moment :</p>
         <ul>
           <li>accéder à tes données et en recevoir une copie ;</li>
           <li>les corriger (la plupart se modifient directement dans ton espace) ;</li>
@@ -185,11 +188,8 @@ export default function ConfidentialitePage() {
         </ul>
         <p>
           Écris-nous à <Info value={LEGAL.contactEmail} /> : nous répondons dans un délai d&apos;un mois. Si
-          la réponse ne te convient pas, tu peux saisir la CNIL (
-          <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">
-            cnil.fr
-          </a>
-          ) ou l&apos;autorité de protection des données de ton pays.
+          la réponse ne te convient pas, tu peux saisir l&apos;autorité de protection des données de ton pays de
+          résidence.
         </p>
         <p>
           Représentant dans l&apos;Union européenne : <Info value={LEGAL.euRepresentative} />.
