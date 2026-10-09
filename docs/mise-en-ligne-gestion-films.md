@@ -249,7 +249,9 @@ A tester sur la fiche d'une personne creditee sur le film de quelqu'un d'autre :
       le code en ligne. Le nouveau code ne fonctionne PAS sans elle.
 - [ ] **2. Deploiement du nouveau code**, puis les tests ci-dessous.
 - [ ] **3. Requete de controle** (fonctions, vues et policies de prod qui liraient encore un vrai
-      nom), puis **etape B** (retrait des droits). B n'est pas encore ecrite : la demander.
+      nom), puis **etape B** : `supabase/migrations/20261015_profile_real_names_closed.sql`.
+      Controle fait le 09/10/2026 (rien a signaler). En cas d'erreur « permission denied » sur
+      une page : lancer tout de suite son rollback, qui retablit la lecture sans perte.
       **Ne jamais lancer B avant que le nouveau code soit en production** : toutes les pages qui
       lisent un profil repondraient « permission refusee ».
 A tester apres le deploiement (etape A seule), puis de nouveau apres B :

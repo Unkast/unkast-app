@@ -273,7 +273,9 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
   - Étape A, migration `20261014_profile_display_name.sql` : colonne générée `display_name`,
     lisible par anon et authenticated, index trigram `idx_profiles_display_name_trgm`. Rien
     n'est retiré.
-  - Étape B, **pas encore écrite ni exécutée** : retrait du SELECT sur `full_name`,
+  - Étape B, migration `20261015_profile_real_names_closed.sql` (**à exécuter**, contrôle de la
+    prod fait le 09/10/2026 : aucune vue ni policy ne nomme ces colonnes, deux fonctions
+    seulement, toutes deux SECURITY DEFINER) : retrait du SELECT sur `full_name`,
     `first_name`, `last_name`, `stage_name`, `display_name_preference` pour anon et
     authenticated. À lancer seulement quand le code qui lit `display_name` est en production.
   Tant que B n'est pas passée, ces colonnes restent lisibles avec la clé publique. Après B, une
