@@ -334,6 +334,19 @@ export default function MoiClient() {
     showToast(status === "accepted" ? "Crédit accepté" : "Demande refusée");
   }
 
+  // Retirer soi-meme un credit a son nom (le film reste, seul le credit disparait).
+  async function removeMyCredit(id: string, title: string) {
+    if (!window.confirm(`Retirer ton nom du générique de « ${title} » ?`)) return;
+    const res = await fetch(`/api/dashboard/credits?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      showToast(data?.error || "Retrait impossible, réessaie.");
+      return;
+    }
+    await fetchCreditRequests();
+    showToast("Crédit retiré");
+  }
+
   async function cancelMyCreditRequest(id: string) {
     await fetch(`/api/credits/${id}`, { method: "DELETE" });
     await fetchCreditRequests();
@@ -800,11 +813,16 @@ export default function MoiClient() {
                         <p className={rowTitleCls}>{credit.project_title || "Projet"}</p>
                         <p className={rowMetaCls}>{credit.role_on_project}</p>
                       </div>
-                      {credit.project_slug && (
-                        <Button variant="glass" size="sm" href={`/projet/${credit.project_slug}`} className="shrink-0">
-                          Voir
+                      <div className="flex shrink-0 items-center gap-2">
+                        {credit.project_slug && (
+                          <Button variant="glass" size="sm" href={`/projet/${credit.project_slug}`}>
+                            Voir
+                          </Button>
+                        )}
+                        <Button variant="glass" size="sm" onClick={() => removeMyCredit(credit.id, credit.project_title || "ce film")}>
+                          Retirer
                         </Button>
-                      )}
+                      </div>
                     </EnterItem>
                   ))
                 )}

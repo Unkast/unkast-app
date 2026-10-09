@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { markProjectEdited } from "@/lib/project-edit";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
@@ -44,12 +46,20 @@ export async function PATCH(
   }
 
   if (status === "accepted") {
-    // Insert into project_credits
-    await supabase.from("project_credits").insert({
+    // Aucun client n'a le droit d'inserer un credit (migration 20261020) : la route
+    // l'ecrit en service role, APRES avoir verifie ci-dessus que l'appelant gere le
+    // film et que la demande vient bien de la personne creditee.
+    const admin = createAdminClient();
+    const { error: creditError } = await admin.from("project_credits").insert({
       project_id: creditReq.project_id,
       profile_id: creditReq.requester_id,
       role_on_project: creditReq.role,
     });
+    if (creditError) {
+      console.error("[credits] insertion du credit impossible :", creditError);
+      return NextResponse.json({ error: "Crédit impossible à enregistrer, réessaie." }, { status: 500 });
+    }
+    await markProjectEdited(admin, creditReq.project_id, guard.user.id);
   }
 
   // Update credit request status

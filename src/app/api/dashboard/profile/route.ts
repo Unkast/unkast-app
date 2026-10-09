@@ -367,7 +367,11 @@ export async function PATCH(request: NextRequest) {
 
   // Update roles if provided
   if (cleanRoles) {
-    const { error: deleteError } = await supabase
+    // Aucun client n'ecrit profile_roles (migration 20261020) : la liste fermee des
+    // metiers et le maximum sont controles ici (checkProfileRoles), puis l'ecriture
+    // se fait en service role, toujours limitee au compte de la session.
+    const rolesClient = createAdminClient();
+    const { error: deleteError } = await rolesClient
       .from("profile_roles")
       .delete()
       .eq("profile_id", user.id);
@@ -377,7 +381,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (cleanRoles.length > 0) {
-      const { error: insertError } = await supabase.from("profile_roles").insert(
+      const { error: insertError } = await rolesClient.from("profile_roles").insert(
         cleanRoles.map((role_name) => ({ profile_id: user.id, role_name }))
       );
 
