@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { sendPushToUser } from "@/lib/push";
-import { ALL_ROLES, CONTACT_REFUSED_MESSAGE } from "@/lib/constants";
+import { ALL_ROLES, CONTACT_REFUSED_MESSAGE, baseRole } from "@/lib/constants";
 import { detectContact } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
@@ -14,7 +14,9 @@ import { newProfileSlug } from "@/lib/utils";
 // connus (ALL_ROLES), dedoublonnes, plafonnes a 20 entrees.
 function sanitizeRecruitingRoles(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
-  const valid = input.filter((r) => typeof r === "string" && ALL_ROLES.includes(r));
+  // Un poste recherche s'enregistre sous le metier officiel, quelle que soit la forme
+  // choisie dans le selecteur : un signal « Disponible » se rattache a ce libelle.
+  const valid = input.filter((r) => typeof r === "string").map((r) => baseRole(r)).filter((r) => ALL_ROLES.includes(r));
   return [...new Set(valid)].slice(0, 20);
 }
 

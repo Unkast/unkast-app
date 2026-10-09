@@ -80,6 +80,7 @@ Composants / modules utilises par 3+ features.
 - **Consommateurs** : `RejoindreClient`, `MoiClient`, `ProfileClient` et `ProjetClient` (singleSelect, dans une `ModalBackdrop`)
 - **Risque si modifie** : **ELEVE** — 4 features
 - **singleSelect** (chantier 7) : un clic sur un autre metier remplace le precedent
+- **Formes feminines (09/10/2026)** : `selectedRoles` peut contenir une forme feminine (« Monteuse »). Le clic sur le libelle d'une pastille bascule la forme a la meme place, la croix retire. Nouvelle prop `allowForms` (defaut oui). Ne jamais comparer un metier a la liste officielle sans `baseRole()` (`constants.ts`)
 
 ## ContactModal
 

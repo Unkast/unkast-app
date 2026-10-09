@@ -13,7 +13,7 @@ import { normalizeUrl, formatInstagram, getDisplayName as profileDisplayName } f
 import RoleSelector from "@/components/RoleSelector";
 import CastingFieldsForm from "@/components/CastingFieldsForm";
 import CastingSummary from "@/components/CastingSummary";
-import { ACTING_ROLES, type CastingFields } from "@/lib/constants";
+import { isActingRole, type CastingFields } from "@/lib/constants";
 import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
 import { isGrantValid } from "@/lib/pro-plan";
@@ -253,7 +253,7 @@ export default function MoiClient() {
     setIsEditing(true);
   }
 
-  const editIsActor = editRoles.some((r) => ACTING_ROLES.includes(r));
+  const editIsActor = editRoles.some(isActingRole);
 
   async function saveProfile() {
     setSaving(true);
@@ -496,6 +496,7 @@ export default function MoiClient() {
                         <p className="text-[13px] text-text-secondary">Quel(s) métier(s) recherches-tu ?</p>
                         <RoleSelector
                           selectedRoles={editRecruitingRoles}
+                          allowForms={false}
                           onChange={setEditRecruitingRoles}
                           maxSelection={5}
                           placeholder="Quel métier recherches-tu ?"

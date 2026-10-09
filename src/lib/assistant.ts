@@ -9,6 +9,7 @@ import {
   LANGUAGE_LABELS,
   MAX_PROJECTS_FREE,
   ROLES_BY_CATEGORY,
+  ROLE_FEMININE,
   type Language,
 } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
@@ -26,77 +27,8 @@ export function normalize(text: string): string {
 
 // ---- Metiers ----------------------------------------------------------------
 
-// Comedien et comedienne : cherches ensemble, le type de roles les departage.
-export const ACTOR_ROLES = ["Comédien", "Comédienne"];
-
-// Feminin d'un metier de la liste officielle. Sert a deux choses : reconnaitre la
-// saisie (« cadreuse ») et retrouver les profils qui portent encore un metier au
-// feminin, saisi avant la liste fermee (« Monteuse », « Productrice »).
-export const ROLE_FEMININE: Record<string, string[]> = {
-  "Réalisateur": ["Réalisatrice"],
-  "Premier assistant réalisateur": ["Première assistante réalisatrice"],
-  "Deuxième assistant réalisateur": ["Deuxième assistante réalisatrice"],
-  "Directeur de la photographie": ["Directrice de la photographie"],
-  "Cadreur": ["Cadreuse"],
-  "Premier assistant caméra": ["Première assistante caméra"],
-  "Deuxième assistant caméra": ["Deuxième assistante caméra"],
-  "Steadicameur": ["Steadicameuse"],
-  "Chef électricien": ["Cheffe électricienne"],
-  "Électricien": ["Électricienne"],
-  "Étalonneur": ["Étalonneuse"],
-  "Ingénieur du son": ["Ingénieure du son"],
-  "Monteur son": ["Monteuse son"],
-  "Mixeur": ["Mixeuse"],
-  "Compositeur": ["Compositrice"],
-  "Superviseur musical": ["Superviseuse musicale"],
-  "Bruiteur": ["Bruiteuse"],
-  "Monteur": ["Monteuse"],
-  "Assistant monteur": ["Assistante monteuse"],
-  "Monteur VFX": ["Monteuse VFX"],
-  "Superviseur VFX": ["Superviseuse VFX"],
-  "Producteur": ["Productrice"],
-  "Producteur délégué": ["Productrice déléguée"],
-  "Producteur exécutif": ["Productrice exécutive"],
-  "Directeur de production": ["Directrice de production"],
-  "Régisseur général": ["Régisseuse générale"],
-  "Régisseur adjoint": ["Régisseuse adjointe"],
-  "Régisseur de plateau": ["Régisseuse de plateau"],
-  "Chargé de production": ["Chargée de production"],
-  "Assistant de production": ["Assistante de production"],
-  "Directeur de casting": ["Directrice de casting"],
-  "Assistant casting": ["Assistante casting"],
-  "Chef décorateur": ["Cheffe décoratrice"],
-  "Assistant décorateur": ["Assistante décoratrice"],
-  "Ensemblier": ["Ensemblière"],
-  "Chef costumier": ["Cheffe costumière"],
-  "Costumier": ["Costumière"],
-  "Habilleuse": ["Habilleur"],
-  "Chef maquilleur": ["Cheffe maquilleuse"],
-  "Maquilleur": ["Maquilleuse"],
-  "Assistant maquilleur": ["Assistante maquilleuse"],
-  "Chef coiffeur": ["Cheffe coiffeuse"],
-  "Coiffeur": ["Coiffeuse"],
-  "Cascadeur": ["Cascadeuse"],
-  "Coordinateur de cascades": ["Coordinatrice de cascades"],
-  "Comédien de complément": ["Comédienne de complément"],
-  "Comédien de doublage": ["Comédienne de doublage"],
-  "Story-boardeur": ["Story-boardeuse"],
-  "Auteur": ["Autrice", "Auteure"],
-  "Distributeur": ["Distributrice"],
-  "Attaché de presse": ["Attachée de presse"],
-  "Chargé de communication": ["Chargée de communication"],
-  "Directeur artistique": ["Directrice artistique"],
-  "Concepteur sonore": ["Conceptrice sonore"],
-  "Illustrateur": ["Illustratrice"],
-  "Animateur": ["Animatrice"],
-  "Coordinateur de tournage": ["Coordinatrice de tournage"],
-  "Logisticien": ["Logisticienne"],
-};
-
-/** Metiers a chercher pour une liste de metiers officiels : eux-memes et leur feminin. */
-export function withFeminine(roles: string[]): string[] {
-  return [...new Set(roles.flatMap((r) => [r, ...(ROLE_FEMININE[r] ?? [])]))];
-}
+// Comedien et comedienne : un seul metier (les deux formes sont cherchees ensemble).
+export const ACTOR_ROLES = ["Comédien"];
 
 // Autres facons de dire un metier (abreviations, jargon de plateau, anglais).
 const ROLE_SYNONYMS: Record<string, string[]> = {
@@ -141,6 +73,7 @@ const ROLE_SYNONYMS: Record<string, string[]> = {
   "Voix off": ["voix", "voice over"],
   "Comédien de doublage": ["doublage", "doubleur", "doubleuse"],
   "Scénariste": ["scenario", "auteur de scenario", "screenwriter"],
+  "Auteur": ["auteure"],
   "Story-boardeur": ["storyboard", "story board", "storyboarder", "storyboardeur", "storyboardeuse"],
   "Agent artistique": ["agent", "agente"],
   "Graphiste": ["graphisme"],
@@ -174,7 +107,7 @@ const ROLE_INDEX: Map<string, RoleMatch> = (() => {
   for (const role of ALL_ROLES) {
     if (ACTOR_ROLES.includes(role)) continue; // geres par ACTOR_WORDS
     add(role, role, role);
-    for (const feminine of ROLE_FEMININE[role] ?? []) add(feminine, role, feminine);
+    if (ROLE_FEMININE[role]) add(ROLE_FEMININE[role], role, ROLE_FEMININE[role]);
     for (const synonym of ROLE_SYNONYMS[role] ?? []) add(synonym, role, role);
   }
   // Pluriels simples (« monteurs », « cadreuses »).

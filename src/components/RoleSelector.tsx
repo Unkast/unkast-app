@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ROLE_CATEGORIES, POPULAR_ROLES, ALL_ROLES } from "@/lib/constants";
+import { ROLE_CATEGORIES, POPULAR_ROLES, ALL_ROLES, ROLE_FEMININE, baseRole, otherRoleForm } from "@/lib/constants";
 import { RoleIcon } from "@/components/icons/RoleIcons";
 import type { RoleIconName } from "@/components/icons/RoleIcons";
 import Button from "@/components/ui/Button";
@@ -20,6 +20,9 @@ interface Props {
    *  pour les métiers d'un profil, que le serveur limite à la liste officielle ;
    *  conservé pour le rôle au générique d'un film, qui reste libre. */
   allowCustom?: boolean;
+  /** Proposer la bascule masculin / féminin sur un métier choisi (défaut : oui).
+   *  Désactivé pour les postes recherchés par un recruteur, qui désignent un métier. */
+  allowForms?: boolean;
 }
 
 function normalize(str: string): string {
@@ -28,21 +31,46 @@ function normalize(str: string): string {
 
 const SECTION_LABEL = "font-mono text-[11px] uppercase tracking-widest text-text-tertiary";
 
-// Chip de selection retirable. Le premier metier d'une selection multiple est le
-// titre principal (ordre du tableau selectedRoles, jamais reordonne ici).
-function SelectedChip({ role, primary, onRemove }: { role: string; primary: boolean; onRemove: () => void }) {
-  return (
-    <Chip
-      variant="removable"
-      onClick={onRemove}
-      aria-label={`Retirer ${role}${primary ? " (titre principal)" : ""}`}
-      className={primary ? "border-lime/40 text-text-primary" : ""}
-    >
-      {primary && (
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-lime">Titre principal</span>
-      )}
+// Metier choisi. Le premier d'une selection multiple est le titre principal (ordre du
+// tableau selectedRoles, jamais reordonne ici). Deux zones : le libelle bascule entre
+// la forme masculine et la forme feminine du metier (s'il en a deux), la croix le retire.
+function SelectedChip({ role, primary, onRemove, onToggleForm }: { role: string; primary: boolean; onRemove: () => void; onToggleForm?: () => void }) {
+  const other = onToggleForm ? otherRoleForm(role) : null;
+  const label = (
+    <>
+      {primary && <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-lime">Titre principal</span>}
       <span className="truncate">{role}</span>
-    </Chip>
+    </>
+  );
+  return (
+    <span className={`glass inline-flex h-9 max-w-full shrink-0 items-center rounded-pill text-sm font-medium text-text-secondary ${primary ? "border-lime/40 text-text-primary" : ""}`}>
+      {other ? (
+        <button
+          type="button"
+          onClick={onToggleForm}
+          aria-label={`${role} : afficher « ${other} » à la place`}
+          title={`Afficher « ${other} »`}
+          className="inline-flex h-full min-w-0 items-center gap-1.5 rounded-l-pill pl-4 pr-1.5 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+        >
+          {label}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-lime">
+            <path d="M7 8h13l-3-3M17 16H4l3 3" />
+          </svg>
+        </button>
+      ) : (
+        <span className="inline-flex h-full min-w-0 items-center gap-1.5 pl-4 pr-1.5">{label}</span>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Retirer ${role}${primary ? " (titre principal)" : ""}`}
+        className="inline-flex h-full shrink-0 items-center rounded-r-pill pl-1.5 pr-3 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden="true">
+          <path d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </span>
   );
 }
 
@@ -53,6 +81,7 @@ export default function RoleSelector({
   placeholder = "Rechercher un métier...",
   singleSelect = false,
   allowCustom = true,
+  allowForms = true,
 }: Props) {
   const reduced = useReducedMotion();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -88,19 +117,26 @@ export default function RoleSelector({
       closeSheet();
       return;
     }
-    if (selectedRoles.includes(role)) {
-      onChange(selectedRoles.filter((r) => r !== role));
+    // Deja choisi, sous l'une ou l'autre forme : le clic le retire.
+    if (selectedRoles.some((r) => baseRole(r) === baseRole(role))) {
+      onChange(selectedRoles.filter((r) => baseRole(r) !== baseRole(role)));
     } else if (!atMax) {
       onChange([...selectedRoles, role]);
     }
   }, [singleSelect, selectedRoles, onChange, atMax, closeSheet]);
 
   const removeRole = (role: string) => onChange(selectedRoles.filter((r) => r !== role));
+  // Bascule masculin / feminin, a la meme place dans la liste (le titre principal reste premier).
+  const toggleForm = (role: string) => {
+    const other = otherRoleForm(role);
+    if (other) onChange(selectedRoles.map((r) => (r === role ? other : r)));
+  };
+  const hasForms = allowForms && selectedRoles.some((r) => otherRoleForm(r));
 
   const searching = query.length > 0;
   const normalizedQuery = normalize(query);
   const searchResults = query.length >= 2
-    ? ALL_ROLES.filter((r) => normalize(r).includes(normalizedQuery))
+    ? ALL_ROLES.filter((r) => normalize(r).includes(normalizedQuery) || (ROLE_FEMININE[r] && normalize(ROLE_FEMININE[r]).includes(normalizedQuery)))
     : [];
 
   // Familles affichees : toutes, ou seulement celles qui contiennent un resultat
@@ -113,17 +149,21 @@ export default function RoleSelector({
   const canAddCustom = allowCustom && customRole.length > 2 && !selectedRoles.includes(customRole) && (singleSelect || !atMax);
 
   const roleChip = (role: string) => {
-    const selected = selectedRoles.includes(role);
+    const chosen = selectedRoles.find((r) => baseRole(r) === role);
+    // Recherche tapee au feminin (« monteuse ») : c'est cette forme qui est proposee.
+    const feminine = ROLE_FEMININE[role];
+    const typedFeminine = searching && feminine && normalize(feminine).includes(normalizedQuery) && !normalize(role).includes(normalizedQuery);
+    const form = chosen ?? (typedFeminine ? feminine : role);
     return (
       <Chip
         key={role}
-        selected={selected}
+        selected={Boolean(chosen)}
         // Selection unique : un clic sur un autre metier remplace le precedent.
-        disabled={!singleSelect && atMax && !selected}
-        onClick={() => toggleRole(role)}
+        disabled={!singleSelect && atMax && !chosen}
+        onClick={() => toggleRole(form)}
         className="disabled:cursor-not-allowed disabled:opacity-35"
       >
-        {role}
+        {form}
       </Chip>
     );
   };
@@ -134,13 +174,17 @@ export default function RoleSelector({
 
   return (
     <>
-      {/* Selection visible (multiple) : Chip retirables, le premier = titre principal */}
-      {!singleSelect && selectedRoles.length > 0 && (
+      {/* Selection visible : le premier = titre principal (selection multiple). En selection
+          unique, la pastille n'apparait que si le metier a deux formes, pour pouvoir basculer. */}
+      {selectedRoles.length > 0 && (!singleSelect || hasForms) && (
         <div className="mb-2.5 flex flex-wrap gap-2">
           {selectedRoles.map((role, i) => (
-            <SelectedChip key={role} role={role} primary={i === 0} onRemove={() => removeRole(role)} />
+            <SelectedChip key={role} role={role} primary={!singleSelect && i === 0} onRemove={() => removeRole(role)} onToggleForm={allowForms ? () => toggleForm(role) : undefined} />
           ))}
         </div>
+      )}
+      {hasForms && (
+        <p className="mb-2.5 text-xs leading-relaxed text-text-tertiary">Clique sur un métier choisi pour l&apos;afficher au féminin ou au masculin.</p>
       )}
 
       {/* Declencheur */}
@@ -212,6 +256,7 @@ export default function RoleSelector({
                             role={role}
                             primary={!singleSelect && i === 0}
                             onRemove={() => removeRole(role)}
+                            onToggleForm={allowForms ? () => toggleForm(role) : undefined}
                           />
                         ))}
                       </div>
@@ -269,7 +314,7 @@ export default function RoleSelector({
 
                     {(!searching || searchResults.length > 0) &&
                       groups.map(({ cat, roles }) => {
-                        const count = cat.roles.filter((r) => selectedRoles.includes(r)).length;
+                        const count = cat.roles.filter((r) => selectedRoles.some((s) => baseRole(s) === r)).length;
                         return (
                           <section key={cat.id} className="mb-5 last:mb-0">
                             <div className="mb-2.5 flex items-center gap-2">

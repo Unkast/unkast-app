@@ -10,11 +10,9 @@ interface Props {
   className?: string;
 }
 
-type NativeShare = { share?: (options: { title: string; url: string }) => Promise<unknown> };
-
 // Bouton « Partager » d'une fiche ou d'un film.
-// Téléphone et app installée : feuille de partage du système (plugin Share de
-// Capacitor s'il est présent dans l'app, sinon navigator.share), copie du lien en repli.
+// Téléphone et app installée : feuille de partage du système (plugin @capacitor/share
+// dans l'app, navigator.share dans un navigateur), copie du lien en repli.
 // Ordinateur : copie du lien, et le bouton lui-même affiche une coche et « Lien
 // copié » pendant 2 s (aucune bulle au-dessus des boutons voisins).
 export default function ShareButton({ title, label = "Partager", className = "" }: Props) {
@@ -32,10 +30,13 @@ export default function ShareButton({ title, label = "Partager", className = "" 
       window.matchMedia("(pointer: coarse)").matches || document.documentElement.classList.contains("app-installed");
 
     if (handheld) {
-      const plugin = (window as unknown as { Capacitor?: { Plugins?: { Share?: NativeShare } } }).Capacitor?.Plugins?.Share;
       try {
-        if (plugin?.share) {
-          await plugin.share({ title, url });
+        // App Android : la WebView n'a pas navigator.share, le plugin ouvre la feuille
+        // de partage du systeme. Charge a la demande, comme les autres plugins.
+        const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
+          const { Share } = await import("@capacitor/share");
+          await Share.share({ title, url });
           return;
         }
         if (typeof navigator.share === "function") {

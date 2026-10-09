@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import RoleSelector from "@/components/RoleSelector";
 import CastingFieldsForm from "@/components/CastingFieldsForm";
-import { ACTING_ROLES, type CastingFields } from "@/lib/constants";
+import { isActingRole, type CastingFields } from "@/lib/constants";
 import { EnterItem, EnterList } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
@@ -71,7 +71,7 @@ export default function FinaliserClient({
   const [city, setCity] = useState("");
   // Champs facultatifs (lot 8) : âge de jeu, type de rôles, langues.
   const [casting, setCasting] = useState<CastingFields>({ playing_ages: null, role_type: null, languages: null });
-  const isActor = selectedRoles.some((r) => ACTING_ROLES.includes(r));
+  const isActor = selectedRoles.some(isActingRole);
   const [loading, setLoading] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState("");

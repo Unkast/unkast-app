@@ -3,9 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { TEAM_SELECT, loadFilmTeams } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
-import { ALL_ROLES, CATEGORY_LABELS, LANGUAGES, PLAYING_AGES, type Language, type PlayingAge } from "@/lib/constants";
+import { ALL_ROLES, CATEGORY_LABELS, LANGUAGES, PLAYING_AGES, baseRole, withBothForms, type Language, type PlayingAge } from "@/lib/constants";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
-import { withFeminine } from "@/lib/assistant";
 
 // Echappe les wildcards ILIKE (`%`, `_`, antislash) pour un matching
 // litteral : sans ca, un `%`/`_` saisi par l'utilisateur agit comme
@@ -79,7 +78,8 @@ function parseParams(raw: Record<string, unknown>): SearchParams | NextResponse 
 
   // Metiers exacts : liste (POST) ou chaine separee par des virgules (GET).
   const rawRoles = Array.isArray(raw.roles) ? raw.roles : typeof raw.roles === "string" ? raw.roles.split(",") : [];
-  const roles = [...new Set(rawRoles.filter((r): r is string => typeof r === "string" && ALL_ROLES.includes(r)))];
+  // Une forme feminine est acceptee et ramenee au metier officiel.
+  const roles = [...new Set(rawRoles.filter((r): r is string => typeof r === "string").map((r) => baseRole(r.trim())).filter((r) => ALL_ROLES.includes(r)))];
   if (rawRoles.length > 0 && roles.length !== rawRoles.length) return fail("Métier inconnu.");
 
   const integer = (name: string, min: number, max: number): number | null | NextResponse => {
@@ -206,9 +206,8 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
       if (location) {
         query = query.ilike("location", `%${escapeLikeWildcards(location)}%`);
       }
-      // Avec le feminin de chaque metier : des profils portent encore « Monteuse » ou
-      // « Productrice », saisis avant la liste fermee.
-      if (withRoles) query = query.in("wanted_roles.role_name", withFeminine(params.roles));
+      // Les deux formes de chaque metier : la personne affiche « Monteur » ou « Monteuse ».
+      if (withRoles) query = query.in("wanted_roles.role_name", withBothForms(params.roles));
 
       if (params.role_type) {
         query = strict

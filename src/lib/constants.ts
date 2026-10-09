@@ -42,7 +42,7 @@ export const ROLES_BY_CATEGORY: Record<string, string[]> = {
   "Montage & Post-production": ["Monteur", "Assistant monteur", "Monteur VFX", "Superviseur VFX", "Motion designer", "Coloriste"],
   "Production": ["Producteur", "Producteur délégué", "Producteur exécutif", "Directeur de production", "Régisseur général", "Régisseur adjoint", "Régisseur de plateau", "Chargé de production", "Assistant de production", "Directeur de casting", "Assistant casting"],
   "Décors & Costumes": ["Chef décorateur", "Assistant décorateur", "Ensemblier", "Accessoiriste", "Chef costumier", "Costumier", "Habilleuse", "Chef maquilleur", "Maquilleur", "Assistant maquilleur", "Chef coiffeur", "Coiffeur", "Coordinateur effets spéciaux", "Technicien effets spéciaux"],
-  "Interprétation": ["Comédien", "Comédienne", "Comédien de complément", "Cascadeur", "Coordinateur de cascades", "Doublure", "Doublure lumière", "Voix off", "Comédien de doublage"],
+  "Interprétation": ["Comédien", "Comédien de complément", "Cascadeur", "Coordinateur de cascades", "Doublure", "Doublure lumière", "Voix off", "Comédien de doublage"],
   "Écriture": ["Scénariste", "Dialoguiste", "Story-boardeur", "Auteur"],
   "Distribution & Communication": ["Distributeur", "Agent artistique", "Attaché de presse", "Chargé de communication", "Community manager", "Graphiste", "Affichiste", "Bande-annonciste"],
   "Technique spécialisé": ["Chef opérateur son", "Technicien HF", "Vidéo assist", "Technicien plateau", "Coordinateur post-production", "Superviseur post-production", "Producteur de post-production"],
@@ -51,8 +51,115 @@ export const ROLES_BY_CATEGORY: Record<string, string[]> = {
 
 export const ALL_ROLES = Object.values(ROLES_BY_CATEGORY).flat();
 
+// ---- Formes feminines des metiers --------------------------------------------
+// Chaque metier de la liste officielle a, quand elle existe, sa forme feminine la
+// plus courante dans le cinema. La personne choisit la forme qu'elle affiche (clic
+// sur la pastille du metier dans RoleSelector) : c'est cette forme qui est
+// enregistree, telle quelle, dans profile_roles.role_name ou dans le role au
+// generique d'un film. Aucune colonne ne porte ce choix.
+// Un metier absent d'ici s'ecrit pareil aux deux genres (Scripte, Perchiste,
+// Scenariste, Motion designer). « Habilleuse » est le seul metier dont la forme
+// officielle est feminine : son autre forme est « Habilleur ».
+export const ROLE_FEMININE: Record<string, string> = {
+  "Réalisateur": "Réalisatrice",
+  "Premier assistant réalisateur": "Première assistante réalisatrice",
+  "Deuxième assistant réalisateur": "Deuxième assistante réalisatrice",
+  "Réalisateur second équipe": "Réalisatrice seconde équipe",
+  "Directeur de la photographie": "Directrice de la photographie",
+  "Cadreur": "Cadreuse",
+  "Premier assistant caméra": "Première assistante caméra",
+  "Deuxième assistant caméra": "Deuxième assistante caméra",
+  "Steadicameur": "Steadicameuse",
+  "Chef électricien": "Cheffe électricienne",
+  "Électricien": "Électricienne",
+  "Chef machiniste": "Cheffe machiniste",
+  "Étalonneur": "Étalonneuse",
+  "Ingénieur du son": "Ingénieure du son",
+  "Monteur son": "Monteuse son",
+  "Mixeur": "Mixeuse",
+  "Compositeur": "Compositrice",
+  "Superviseur musical": "Superviseuse musicale",
+  "Bruiteur": "Bruiteuse",
+  "Monteur": "Monteuse",
+  "Assistant monteur": "Assistante monteuse",
+  "Monteur VFX": "Monteuse VFX",
+  "Superviseur VFX": "Superviseuse VFX",
+  "Producteur": "Productrice",
+  "Producteur délégué": "Productrice déléguée",
+  "Producteur exécutif": "Productrice exécutive",
+  "Directeur de production": "Directrice de production",
+  "Régisseur général": "Régisseuse générale",
+  "Régisseur adjoint": "Régisseuse adjointe",
+  "Régisseur de plateau": "Régisseuse de plateau",
+  "Chargé de production": "Chargée de production",
+  "Assistant de production": "Assistante de production",
+  "Directeur de casting": "Directrice de casting",
+  "Assistant casting": "Assistante casting",
+  "Chef décorateur": "Cheffe décoratrice",
+  "Assistant décorateur": "Assistante décoratrice",
+  "Ensemblier": "Ensemblière",
+  "Chef costumier": "Cheffe costumière",
+  "Costumier": "Costumière",
+  "Habilleuse": "Habilleur",
+  "Chef maquilleur": "Cheffe maquilleuse",
+  "Maquilleur": "Maquilleuse",
+  "Assistant maquilleur": "Assistante maquilleuse",
+  "Chef coiffeur": "Cheffe coiffeuse",
+  "Coiffeur": "Coiffeuse",
+  "Coordinateur effets spéciaux": "Coordinatrice effets spéciaux",
+  "Technicien effets spéciaux": "Technicienne effets spéciaux",
+  "Comédien": "Comédienne",
+  "Comédien de complément": "Comédienne de complément",
+  "Cascadeur": "Cascadeuse",
+  "Coordinateur de cascades": "Coordinatrice de cascades",
+  "Comédien de doublage": "Comédienne de doublage",
+  "Story-boardeur": "Story-boardeuse",
+  "Auteur": "Autrice",
+  "Distributeur": "Distributrice",
+  "Agent artistique": "Agente artistique",
+  "Attaché de presse": "Attachée de presse",
+  "Chargé de communication": "Chargée de communication",
+  "Chef opérateur son": "Cheffe opératrice son",
+  "Technicien HF": "Technicienne HF",
+  "Technicien plateau": "Technicienne plateau",
+  "Coordinateur post-production": "Coordinatrice post-production",
+  "Superviseur post-production": "Superviseuse post-production",
+  "Producteur de post-production": "Productrice de post-production",
+  "Directeur artistique": "Directrice artistique",
+  "Concepteur sonore": "Conceptrice sonore",
+  "Illustrateur": "Illustratrice",
+  "Animateur": "Animatrice",
+  "Chef monteur publicité": "Cheffe monteuse publicité",
+  "Coordinateur de tournage": "Coordinatrice de tournage",
+  "Logisticien": "Logisticienne",
+  "Chauffeur de production": "Chauffeuse de production",
+};
+
+const ROLE_BASE: Record<string, string> = Object.fromEntries(Object.entries(ROLE_FEMININE).map(([base, other]) => [other, base]));
+
+/** Metier de la liste officielle correspondant a une forme (« Monteuse » -> « Monteur »). */
+export function baseRole(role: string): string {
+  return ROLE_BASE[role] ?? role;
+}
+
+/** L'autre forme d'un metier (« Monteur » <-> « Monteuse »), ou null s'il n'en a qu'une. */
+export function otherRoleForm(role: string): string | null {
+  return ROLE_FEMININE[role] ?? ROLE_BASE[role] ?? null;
+}
+
+/** Les deux formes de chaque metier : toute recherche par metier passe par ici. */
+export function withBothForms(roles: string[]): string[] {
+  return [...new Set(roles.flatMap((r) => { const base = baseRole(r); return ROLE_FEMININE[base] ? [base, ROLE_FEMININE[base]] : [base]; }))];
+}
+
+/** Toutes les formes acceptees pour un metier de profil. */
+export const ALL_ROLE_FORMS = [...ALL_ROLES, ...Object.values(ROLE_FEMININE)];
+
 // Metiers d'interpretation : seuls ces profils declarent un age de jeu et un type de roles.
 export const ACTING_ROLES = ROLES_BY_CATEGORY["Interprétation"];
+export function isActingRole(role: string): boolean {
+  return ACTING_ROLES.includes(baseRole(role));
+}
 
 // ---- Champs facultatifs du profil (lot 8) -----------------------------------
 // Listes FERMEES, alignees sur les CHECK de la migration
@@ -149,7 +256,8 @@ export function checkCastingFields(
   return { ok: true, fields };
 }
 
-// Metiers d'un profil : 5 au plus, pris dans la liste officielle (ALL_ROLES).
+// Metiers d'un profil : 5 au plus, pris dans la liste officielle (ALL_ROLES), sous
+// leur forme masculine ou feminine (ALL_ROLE_FORMS).
 export const MAX_PROFILE_ROLES = 5;
 
 /**
@@ -165,11 +273,17 @@ export function checkProfileRoles(
   if (!Array.isArray(roles) || roles.some((r) => typeof r !== "string")) {
     return { ok: false, error: "Liste de métiers invalide." };
   }
-  const clean = [...new Set((roles as string[]).map((r) => r.trim()).filter(Boolean))];
+  // Un metier ne compte qu'une fois, sous la forme choisie (masculine ou feminine).
+  const seen = new Set<string>();
+  const clean = (roles as string[]).map((r) => r.trim()).filter((r) => {
+    if (!r || seen.has(baseRole(r))) return false;
+    seen.add(baseRole(r));
+    return true;
+  });
   if (clean.length > MAX_PROFILE_ROLES) {
     return { ok: false, error: `Tu peux choisir ${MAX_PROFILE_ROLES} métiers au maximum.` };
   }
-  const unknown = clean.filter((r) => !ALL_ROLES.includes(r) && !alreadyOwned.includes(r));
+  const unknown = clean.filter((r) => !ALL_ROLE_FORMS.includes(r) && !alreadyOwned.includes(r));
   if (unknown.length > 0) {
     return {
       ok: false,
