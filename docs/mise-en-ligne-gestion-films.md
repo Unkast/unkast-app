@@ -271,6 +271,11 @@ A tester apres le deploiement (etape A seule), puis de nouveau apres B :
 
 ## Avant le lancement public (lot separe, non fait)
 
+- [ ] **Supprimer les 6 comptes de demonstration et leurs films.** Comptes `@demo.com` crees par
+      `supabase/seed.sql` en production (Lucas Meriaux, Chloe Bernard, Romain Dufour, Sofia
+      Leclerc, Mehdi Kaci, Camille Roux). Bannis depuis le 09/10/2026 (`banned_until = infinity`),
+      jamais connectes ; leurs profils, films et credits restent visibles sur le site. Voir
+      `docs/audits/2026-10-09-secrets.md` (constat C1).
 - [ ] **Noms reels : etape B a executer** (voir « 4 octies »). Tant qu'elle n'est pas passee,
       les vrais noms restent lisibles en base avec la cle publique.
 - [ ] Refuser une demande de credit sur un film non visible.

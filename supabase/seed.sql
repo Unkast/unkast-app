@@ -2,16 +2,21 @@
 -- Run this in Supabase SQL Editor AFTER schema.sql
 -- Creates 6 fake profiles with projects and cross-credits
 
+-- NE JAMAIS EXECUTER EN PRODUCTION : base locale ou de developpement uniquement.
+-- Aucun mot de passe dans ce fichier (le depot est public) : chaque compte recoit un
+-- mot de passe aleatoire que personne ne connait. Pour se connecter avec l'un d'eux,
+-- lui definir un mot de passe a la main dans Authentication > Users.
+
 -- First, create auth users (Supabase auth.users)
 -- We use fixed UUIDs so we can reference them in profiles
 INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, aud, role)
 VALUES
-  ('a1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'lucas.meriaux@demo.com', crypt('password123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
-  ('a1000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'chloe.bernard@demo.com', crypt('password123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
-  ('a1000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'romain.dufour@demo.com', crypt('password123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
-  ('a1000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'sofia.leclerc@demo.com', crypt('password123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
-  ('a1000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'mehdi.kaci@demo.com', crypt('password123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
-  ('a1000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'camille.roux@demo.com', crypt('password123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated')
+  ('a1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'lucas.meriaux@demo.com', crypt(gen_random_uuid()::text, gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
+  ('a1000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'chloe.bernard@demo.com', crypt(gen_random_uuid()::text, gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
+  ('a1000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'romain.dufour@demo.com', crypt(gen_random_uuid()::text, gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
+  ('a1000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'sofia.leclerc@demo.com', crypt(gen_random_uuid()::text, gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
+  ('a1000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'mehdi.kaci@demo.com', crypt(gen_random_uuid()::text, gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
+  ('a1000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'camille.roux@demo.com', crypt(gen_random_uuid()::text, gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated')
 ON CONFLICT (id) DO NOTHING;
 
 -- Also insert into auth.identities (required by Supabase Auth)
