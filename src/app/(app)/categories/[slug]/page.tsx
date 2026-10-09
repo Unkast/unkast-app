@@ -9,6 +9,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
 import { TEAM_SELECT, loadFilmTeams } from "@/lib/film-team";
+import FilmPoster from "@/components/FilmPoster";
 
 export const revalidate = 300; // Cache 5 minutes (était absent → aucun cache)
 
@@ -143,21 +144,15 @@ export default async function CategoryPage({ params }: Props) {
                   className="group block"
                 >
                   <GlassCard className="h-full p-2.5 transition-[translate,border-color,box-shadow] duration-base ease-glass group-hover:border-white/20 motion-safe:group-hover:-translate-y-1">
-                    <div className="relative aspect-video w-full overflow-hidden rounded-media bg-white/5 shadow-[0_18px_40px_rgba(0,0,0,0.55)]">
-                      {p.poster_url ? (
-                        <img
-                          src={p.poster_url}
-                          alt={p.title}
-                          className="absolute inset-0 h-full w-full object-cover"
-                        />
-                      ) : (
+                    <FilmPoster src={p.poster_url} alt={p.title} sizes="(max-width: 768px) 50vw, 320px" framed className="rounded-media shadow-[0_18px_40px_rgba(0,0,0,0.55)]">
+                      {!p.poster_url && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <span className="glass-strong flex size-11 items-center justify-center rounded-pill" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
                           </span>
                         </div>
                       )}
-                    </div>
+                    </FilmPoster>
                     <div className="mt-2.5 px-1 pb-0.5">
                       <p className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate leading-tight">
                         {p.title}

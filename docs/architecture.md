@@ -46,6 +46,9 @@ CORE  Layout app (src/app/(app)/layout.tsx)
 
 CORE  AppShell (src/components/AppShell.tsx)
   Sidebar desktop + navigation mobile + header. Indicateur anime (framer-motion layoutId).
+  En-tete desktop (lot 7, 09/10/2026) : champ de recherche centre « Un film, un talent, un metier »
+  (Ctrl K ou Cmd K), Entree envoie vers /recherche?q= ; absent sur /recherche. Remplace le libelle
+  de section et l'icone loupe.
   [utilise] framer-motion, LiquidDock, MobileTabBar ; [depend de] next/navigation (usePathname)
   Deux rendus de navigation mobile (07/10/2026), choisis en CSS par la classe app-installed
   sur <html> : LiquidDock si l'app est installee (Capacitor natif ou PWA standalone),
@@ -144,8 +147,17 @@ HOOK  usePushNotifications (src/hooks/usePushNotifications.ts) — enregistremen
 FEATURE  Welcome / racine — / (src/app/page.tsx + WelcomeClient.tsx)
 
 FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
-  Hero carousel 3D + rangees par categorie + talents a decouvrir.
-  [utilise] HeroCarousel, HeroPlayer, HomeAnimations, ConversionBanner
+  Bloc « A la une » + rangees par categorie + talents a decouvrir.
+  [utilise] HeroCarousel, FilmRow, HomeAnimations, ConversionBanner, FilmPoster, FilmLink
+  Lot 7 (09/10/2026) : HeroCarousel = bloc arrondi 32 px, texte a gauche (A LA UNE 01 / 05, titre,
+  FilmMeta, description sur 2 lignes, avatars de l'equipe, « Voir le film », « Voir l'equipe »,
+  fleches sur la ligne des boutons), affiche a droite dans un cadre fixe 16:9 (une colonne sous xl,
+  affiche en haut). Hauteur du bloc constante d'un film a l'autre : titre et description sur 2
+  lignes reservees, ligne equipe toujours presente. Lumiere =
+  l'affiche tres floutee (.film-ambient) sous un voile sombre, puis les 5 films en vignettes avec
+  barre de progression (8 s par film, minuteur JS + .hero-progress). Le carrousel 3D mobile et
+  HeroPlayer.tsx sont supprimes. FilmRow (client) = rangee avec fleches et fondu du bord droit
+  (masque). RestoreFilmScroll remet le defilement du <main> au retour d'un film.
   [persiste dans] profiles, projects, profile_roles, project_credits (lecture)
   Verre liquide (chantier 4, 07/10/2026) : infos du film en text-sheen + pilule categorie a point
   de couleur, cartes video rounded-media (ombre, elevation au survol, lecture en verre), talents
@@ -169,7 +181,14 @@ FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server
   tous, membres pour les connectes, carte verrouillee (avec le role) pour un visiteur.
 
 FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server + ProjetClient]
-  Image hero + video en modale plein ecran, equipe, projets lies. [utilise] VideoEmbed
+  Lot 7 (09/10/2026) : « Retour », lecteur 16:9 (max 1080 px, affiche entiere, aucun texte dessus,
+  lumiere floutee derriere), mention cookies, puis deux colonnes : FilmMeta, titre, description,
+  « Lancer le film », « Partager », equipe en generique (role, avatar, nom jamais coupe ; le role
+  passe au-dessus du nom quand la ligne est etroite), encart « Rejoindre »
+  pour les visiteurs ; colonne collante : « Realise par », fiche technique, « Signaler ce film ».
+  « Films lies » en grille de 4. Lecture dans le cadre en desktop, modale plein ecran en mobile,
+  toujours apres un clic. Le menu trois points est supprime. Duree non affichee (voir ROADMAP).
+  [utilise] VideoEmbed, FilmPoster, FilmLink (FilmPlayerFrame), lib/film-transition
   Verre liquide (chantier 4) : hero en panneau rounded-panel dans le conteneur (plus bord a bord),
   cartes d'equipe, fiche technique et carte createur en GlassCard. Equipe et projets lies restent
   empiles (pas d'onglets).
@@ -180,6 +199,7 @@ FEATURE  Recherche — voir ci-dessous. Verre liquide (chantier 4) : bascule Par
 
 FEATURE  Recherche — /recherche (src/app/(app)/recherche/) [+ RechercheClient]
   Recherche debounced, filtres role/categorie/localisation. [declenche] GET /api/search
+  ?q= (lot 7) : ouvre la page en mode Rechercher avec ce texte (champ de l'en-tete d'AppShell).
 
 FEATURE  Categories — /categories/[slug] (src/app/(app)/categories/[slug]/)
   Listing par categorie (Server Component).
@@ -302,6 +322,9 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée |
 | `src/app/(app)/moi/PosterUpload.tsx` | SUB | image du film : recadrage 16:9, compression dans le navigateur, retour à l'image de la vidéo |
 | `src/components/FilmMeta.tsx` | UTILITY | ligne d infos d un film sous son titre : point de couleur + categorie, puis auteur et annee. Regle (09/10/2026) : aucun texte ni badge sur la vignette d un film (feed, recherche, fiche, films lies, carte verrouillee, ou seul le cadenas reste) ; la mention cookies de `VideoFacade` est sous la vignette |
+| `src/components/FilmPoster.tsx` | UTILITY | affiche d'un film (lot 7), toujours entiere et a son format reel (lu au chargement de l'image, 16:9 en attendant), sans bande ni fond. Deux usages : hauteur fixee par l'appelant (classe `h-*`, la largeur suit le format : rangees, films lies, /moi) ou `framed` (cadre fixe 16:9, l'affiche y tient a son format : a la une, lecteur, grilles, `VideoFacade`). Vignettes YouTube 4:3 a bandes noires (hqdefault, sddefault) recadrees en 16:9. Porte le nom de transition (`shareKey`, `player`). A utiliser pour toute vignette de film |
+| `src/components/FilmLink.tsx` | UTILITY | `FilmLink` (lien vers un film : marque la vignette cliquee, precharge au survol), `FilmPlayerFrame` (lecteur en cours de lecture et squelette), `RestoreFilmScroll` |
+| `src/lib/film-transition.ts` | UTILITY | etat de la transition partagee vignette → lecteur (View Transitions de React) : seule la vignette cliquee porte le nom `film-poster` ; `backWithTransition` anime le bouton « Retour » (React n'anime pas un retour d'historique) ; position de defilement du `<main>` gardee au clic |
 | `src/components/LockedFilmCard.tsx` | UTILITY | carte verrouillée d'un film « membres seulement » pour un visiteur (image floutée, cadenas, titre, bouton d'inscription) ; utilisée par la page film et la fiche profil |
 
 Points de vigilance :

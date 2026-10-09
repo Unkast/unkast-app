@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import FilmPoster from "@/components/FilmPoster";
 import VideoEmbed, { VIDEO_COOKIE_NOTICE } from "@/components/VideoEmbed";
 
 interface Props {
@@ -29,26 +29,17 @@ export default function VideoFacade({ url, title, poster, className = "" }: Prop
       type="button"
       onClick={() => setActivated(true)}
       aria-label={`Lire la vidéo : ${title}`}
-      className={`relative block aspect-video w-full cursor-pointer bg-white/[0.04] ${className}`}
+      className={`block w-full cursor-pointer overflow-hidden ${className}`}
     >
-      {poster && (
-        <Image
-          src={poster}
-          alt={title}
-          fill
-          sizes="(max-width: 768px) 100vw, 700px"
-          loading="lazy"
-          style={{ objectFit: "cover" }}
-        />
-      )}
-
-      {/* Voile + bouton lecture en verre */}
-      <span className="absolute inset-0 bg-black/25" />
-      <span className="glass-strong absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill text-lime">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      </span>
+      {/* Cadre 16:9 (celui du lecteur) : affiche à son format réel, voile + bouton lecture en verre */}
+      <FilmPoster src={poster} alt={title} sizes="(max-width: 768px) 100vw, 700px" framed>
+        <span className="absolute inset-0 bg-black/25" />
+        <span className="glass-strong absolute left-1/2 top-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill text-lime">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </span>
+      </FilmPoster>
     </button>
     {/* Mention cookies, visible avant le clic : sous la vignette, jamais dessus */}
     <p className="px-3 pt-2 text-left text-[11px] leading-snug text-text-tertiary">{VIDEO_COOKIE_NOTICE}</p>

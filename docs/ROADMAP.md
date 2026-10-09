@@ -126,13 +126,14 @@ Audit puis correctifs priorisés. Garde commun `getActiveUser` ([lib/auth-guard.
 - [ ] *(évolution future, non prioritaire)* exploiter les **crédits croisés** comme signal anti-faux-profil automatisé ; bloquer les **API en lecture** pour un suspendu (aujourd'hui seules les écritures le sont).
 
 ### Chantier 4 — Formats & modélisation des œuvres
+- [ ] **Durée d'un film affichée** *(reporté du lot 7, 9 octobre 2026)* : la durée n'existe que dans `project_moderation.source_duration` (table fermée aux clients, Vimeo seulement). Migration à écrire : copier la durée dans une colonne lisible de `projects`, protégée par le trigger comme `poster_url`, puis l'afficher dans `FilmMeta` et la fiche technique de la page film. Pour YouTube, il faut en plus une clé YouTube Data API.
 - [x] Ajouter **moyen métrage** et **long métrage** à l'enum `project_category`. ✅ *(voir « Terminé », 14 juin 2026)*
 - [ ] Gérer les **séries** : regrouper des épisodes en une seule œuvre, pour qu'une série compte comme 1 entrée dans le plafond (vs 12 épisodes = 12 films). Changement de structure (la base ne connaît que des projets isolés).
 - [ ] Revoir le plafond Pro (30) à la lumière des séries.
 
 ### Chantier 5 — Refonte mise en page (UI) ✅ BOUCLÉ
 - [x] **Toutes les pages principales déclinées en desktop** — Feed, Profil, Projet, Recherche, Dashboard, /Moi : largeurs maîtrisées, cartes Feed, boutons intrinsèques, mobile préservé. *(voir « Terminé », 14 juin 2026)*
-- [ ] *(polish optionnel, non bloquant)* fondus dégradés en bord de rangée (écartés à cause du bleed `-mx`) ; quelques ajustements mobiles ponctuels si besoin.
+- [x] fondus en bord de rangée : faits au lot 7 (9 octobre 2026), par masque sur la rangée (`feed/FilmRow.tsx`).
 
 ### Chantier 6 — Valorisation du mérite / engagement *(à creuser, PAS d'étoiles classiques)*
 - [ ] Trouver un système qui fait remonter la qualité sans punir l'audace ni noter les personnes.

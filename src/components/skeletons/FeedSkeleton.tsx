@@ -1,25 +1,35 @@
 const BAR = "rounded bg-white/[0.07]";
 
-// Cale sur feed/page.tsx : hero (eventail mobile, billboard desktop) puis rangees de cartes.
+// Cale sur feed/page.tsx : bloc a la une (texte + affiche 16:9, une colonne en mobile,
+// puis les vignettes) et rangees de cartes.
 export default function FeedSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[1600px] animate-pulse">
-      {/* Hero mobile : eventail + infos du film */}
-      <div className="lg:hidden">
-        <div className="flex h-[320px] items-center justify-center">
-          <div className="glass h-[260px] w-[180px] rounded-media" />
+      {/* Bloc a la une */}
+      <div className="px-4 pt-4 lg:px-10 lg:pt-7">
+        <div className="glass rounded-panel-lg p-4 sm:p-[22px] xl:px-11 xl:pb-[26px] xl:pt-11">
+          <div className="grid items-center gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-12">
+            <div className="space-y-[18px]">
+              <div className={`h-3 w-32 ${BAR}`} />
+              <div className={`h-10 w-4/5 lg:h-14 ${BAR}`} />
+              <div className={`h-3.5 w-52 ${BAR}`} />
+              <div className={`h-4 w-full max-w-[440px] ${BAR}`} />
+              <div className="flex gap-2.5 pt-1.5">
+                <div className="h-11 w-36 rounded-pill bg-white/[0.07]" />
+                <div className="h-11 w-32 rounded-pill bg-white/[0.07]" />
+              </div>
+            </div>
+            <div className="aspect-video w-full rounded-[20px] bg-white/[0.07] max-xl:order-first" />
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3.5 border-t border-white/[0.08] pt-[22px] sm:grid-cols-3 lg:grid-cols-5 xl:mt-[34px]">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="aspect-video w-full rounded-[10px] bg-white/[0.07]" />
+                <div className={`h-3 w-24 ${BAR}`} />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mt-6 space-y-3 px-5 pt-3.5">
-          <div className={`h-3 w-12 ${BAR}`} />
-          <div className={`h-7 w-56 ${BAR}`} />
-          <div className="h-7 w-32 rounded-pill bg-white/[0.07]" />
-          <div className="h-11 w-full rounded-pill bg-white/[0.07]" />
-        </div>
-      </div>
-
-      {/* Hero desktop : billboard */}
-      <div className="hidden px-12 pt-2 lg:block xl:px-16">
-        <div className="glass h-[460px] rounded-panel xl:h-[540px]" />
       </div>
 
       {/* Rangees */}

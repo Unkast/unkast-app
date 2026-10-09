@@ -14,12 +14,12 @@ import type { PublicProjectCredit } from "@/types/database";
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 /** Fragment de select a imbriquer sous `projects` (lu par les membres connectes). */
-export const TEAM_SELECT = `project_credits ( role_on_project, ghost_name, profiles ( ${DISPLAY_NAME_COLUMNS}, slug ) )`;
+export const TEAM_SELECT = `project_credits ( role_on_project, ghost_name, profiles ( ${DISPLAY_NAME_COLUMNS}, slug, avatar_url ) )`;
 
 type MemberCredit = {
   role_on_project: string;
   ghost_name: string | null;
-  profiles: (DisplayNameRow & { slug: string }) | null;
+  profiles: (DisplayNameRow & { slug: string; avatar_url: string | null }) | null;
 };
 
 export type FilmTeam = {
@@ -28,17 +28,22 @@ export type FilmTeam = {
   /** Profil du realisateur, seulement s'il est seul et qu'il a un profil lisible. */
   director_slug: string | null;
   team_size: number;
+  /** Quatre premiers credits, pour les avatars du bloc a la une. */
+  team_preview: { name: string; avatar_url: string | null }[];
 };
 
-const NO_TEAM: FilmTeam = { director_name: "", director_slug: null, team_size: 0 };
+const NO_TEAM: FilmTeam = { director_name: "", director_slug: null, team_size: 0, team_preview: [] };
 
-function summarize(credits: { role_on_project: string; name: string | null; slug: string | null }[]): FilmTeam {
+type SummaryCredit = { role_on_project: string; name: string | null; slug: string | null; avatar_url: string | null };
+
+function summarize(credits: SummaryCredit[]): FilmTeam {
   const directors = credits.filter((c) => isDirectorRole(c.role_on_project) && c.name);
   const names = new Set(directors.map((c) => c.name));
   return {
     director_name: directorNames(credits),
     director_slug: names.size === 1 ? directors.find((c) => c.slug)?.slug ?? null : null,
     team_size: credits.length,
+    team_preview: credits.slice(0, 4).map((c) => ({ name: c.name ?? "", avatar_url: c.avatar_url })),
   };
 }
 
@@ -68,7 +73,7 @@ export async function loadFilmTeams(
     for (const [id, credits] of byProject) {
       teams.set(
         id,
-        summarize(credits.map((c) => ({ role_on_project: c.role_on_project, name: c.display_name, slug: c.profile_slug })))
+        summarize(credits.map((c) => ({ role_on_project: c.role_on_project, name: c.display_name, slug: c.profile_slug, avatar_url: c.avatar_url })))
       );
     }
   } else {
@@ -81,6 +86,7 @@ export async function loadFilmTeams(
             role_on_project: c.role_on_project,
             name: displayNameOf(c.profiles) ?? c.ghost_name,
             slug: c.profiles?.slug ?? null,
+            avatar_url: c.profiles?.avatar_url ?? null,
           }))
         )
       );

@@ -8,18 +8,20 @@ interface Props {
   /** Réalisateur ; sur une carte verrouillée, le rôle de la personne. */
   author?: string | null;
   year?: number | null;
+  /** md : sous un grand titre (bloc à la une, page film). */
+  size?: "sm" | "md";
   className?: string;
 }
 
 // Ligne d'infos d'un film, sous son titre : point de couleur + catégorie, puis
 // auteur et année. Rien n'est posé sur la vignette d'un film (ni texte, ni
 // badge) : la catégorie se lit ici, partout dans l'app.
-export default function FilmMeta({ category, author, year, className = "" }: Props) {
+export default function FilmMeta({ category, author, year, size = "sm", className = "" }: Props) {
   const parts: ReactNode[] = [];
   if (category) {
     parts.push(
       <span key="category" className="inline-flex shrink-0 items-center gap-1.5">
-        <span className="size-1.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[category] }} aria-hidden="true" />
+        <span className={`rounded-full ${size === "md" ? "size-2" : "size-1.5"}`} style={{ backgroundColor: CATEGORY_COLORS[category] }} aria-hidden="true" />
         {CATEGORY_LABELS[category]}
       </span>
     );
@@ -29,7 +31,7 @@ export default function FilmMeta({ category, author, year, className = "" }: Pro
   if (parts.length === 0) return null;
 
   return (
-    <div className={`flex min-w-0 items-center gap-1.5 text-[11px] text-text-secondary ${className}`}>
+    <div className={`flex min-w-0 items-center text-text-secondary ${size === "md" ? "gap-2 text-sm" : "gap-1.5 text-[11px]"} ${className}`}>
       {parts.map((part, i) => (
         <span key={i} className="contents">
           {i > 0 && <span className="shrink-0 text-text-tertiary" aria-hidden="true">·</span>}

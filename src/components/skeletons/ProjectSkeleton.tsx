@@ -1,46 +1,49 @@
+import { FilmPlayerFrame } from "@/components/FilmLink";
+
 const BAR = "rounded bg-white/[0.07]";
 
-// Cale sur ProjetClient : hero en panneau arrondi, colonne principale + sidebar desktop.
+// Cale sur ProjetClient : « Retour », lecteur 16:9 (max 1080 px), puis deux colonnes.
+// Le cadre du lecteur porte le meme nom de transition que la page : la vignette
+// cliquee s'agrandit vers lui si la page n'est pas encore chargee.
 export default function ProjectSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[1280px] animate-pulse px-5 pt-3 lg:px-12 lg:pt-6">
-      {/* Hero */}
-      <div className="h-[260px] w-full rounded-panel border border-white/10 bg-white/[0.04] lg:h-[440px]" />
+    <div className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-5 lg:px-10 lg:pb-16 lg:pt-9">
+      <div className={`mb-5 mt-3.5 h-4 w-16 animate-pulse ${BAR}`} />
+      <FilmPlayerFrame>
+        <div className="aspect-video w-full rounded-[22px] border border-white/10 bg-glass-solid" />
+      </FilmPlayerFrame>
 
-      <div className="pb-6 lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-10 lg:pb-12 lg:pt-8">
+      <div className="mt-8 grid animate-pulse gap-7 lg:mt-11 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
         <div className="min-w-0">
-          {/* Titre + pastilles + Regarder (mobile) */}
-          <div className="lg:hidden">
-            <div className={`mb-2 mt-5 h-3 w-36 ${BAR}`} />
-            <div className={`mb-3.5 h-8 w-56 ${BAR}`} />
-            <div className="mb-5 flex gap-2">
-              <div className="h-6 w-24 rounded-pill bg-white/[0.07]" />
-              <div className="h-6 w-14 rounded-pill bg-white/[0.07]" />
-            </div>
-            <div className="mb-6 h-12 w-full rounded-pill bg-white/[0.07]" />
+          {/* Infos, titre, description, boutons */}
+          <div className={`h-3.5 w-40 ${BAR}`} />
+          <div className={`mt-4 h-10 w-3/4 lg:h-14 ${BAR}`} />
+          <div className="mt-5 space-y-2.5">
+            <div className={`h-4 w-full max-w-[620px] ${BAR}`} />
+            <div className={`h-4 w-4/5 max-w-[500px] ${BAR}`} />
+          </div>
+          <div className="mt-6 flex gap-2.5">
+            <div className="h-11 w-40 rounded-pill bg-white/[0.07]" />
+            <div className="h-11 w-32 rounded-pill bg-white/[0.07]" />
           </div>
 
-          {/* Synopsis */}
-          <div className={`mb-3 h-5 w-24 ${BAR}`} />
-          <div className="mb-8 space-y-2">
-            <div className={`h-3 w-full ${BAR}`} />
-            <div className={`h-3 w-4/5 ${BAR}`} />
-          </div>
-
-          {/* Equipe */}
-          <div className={`mb-3 h-5 w-20 ${BAR}`} />
-          <div className="flex gap-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="glass h-[122px] w-[104px] rounded-card" />
+          {/* Equipe en generique */}
+          <div className={`mb-4 mt-12 h-6 w-24 ${BAR}`} />
+          <div className="grid gap-x-7 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex min-h-16 items-center gap-3.5 border-b border-white/[0.07]">
+                <div className={`h-3 w-[110px] ${BAR}`} />
+                <div className="size-9 rounded-full bg-white/[0.07]" />
+                <div className={`h-3.5 w-28 ${BAR}`} />
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Sidebar desktop : fiche technique, Regarder, createur */}
-        <div className="hidden space-y-4 lg:block">
-          <div className="glass h-[150px] rounded-card" />
-          <div className="h-12 w-full rounded-pill bg-white/[0.07]" />
-          <div className="glass h-[86px] rounded-card" />
+        {/* Colonne : realise par, fiche technique */}
+        <div className="flex flex-col gap-3.5">
+          <div className="glass h-[168px] rounded-card" />
+          <div className="glass h-[140px] rounded-card" />
         </div>
       </div>
     </div>

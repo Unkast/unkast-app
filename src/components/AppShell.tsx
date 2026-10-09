@@ -284,6 +284,20 @@ export default function AppShell({
   }, [keyboardOpen]);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
+  // Champ de recherche de l'en-tete desktop : Ctrl K (ou Cmd K) y place le curseur.
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [headerQuery, setHeaderQuery] = useState("");
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && searchRef.current) {
+        e.preventDefault();
+        searchRef.current.focus();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Register push notifications when logged in
   usePushNotifications(!!user);
 
@@ -664,23 +678,37 @@ export default function AppShell({
               </Link>
             )}
           </div>
-          {/* Desktop: section name */}
-          <span className="hidden lg:block text-[13px] text-text-tertiary font-medium">
-            {allSidebarItems.find((_, i) => i === activeIndex)?.label ?? ""}
-          </span>
+          {/* Desktop : champ de recherche centre (Ctrl K). Absent sur /recherche, qui a le sien. */}
+          {pathname === "/recherche" ? (
+            <span className="hidden lg:block" />
+          ) : (
+            <form
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = headerQuery.trim();
+                router.push(q ? `/recherche?q=${encodeURIComponent(q)}` : "/recherche");
+                setHeaderQuery("");
+                searchRef.current?.blur();
+              }}
+              className="glass mx-auto hidden min-h-11 flex-[0_1_460px] items-center gap-2.5 rounded-pill pl-4 pr-2 text-text-secondary transition-colors duration-fast focus-within:border-lime/40 lg:flex"
+            >
+              <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 21l-4.5-4.5M18 11a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={searchRef}
+                type="search"
+                value={headerQuery}
+                onChange={(e) => setHeaderQuery(e.target.value)}
+                placeholder="Un film, un talent, un métier"
+                aria-label="Rechercher"
+                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary"
+              />
+              <kbd className="rounded-lg bg-white/[0.07] px-2 py-1 font-sans text-[11px] font-semibold text-text-secondary">Ctrl K</kbd>
+            </form>
+          )}
           <div className="flex items-center gap-3">
-            {/* Search icon — desktop only */}
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="hidden lg:block">
-              <Link
-                href="/recherche"
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-text-tertiary hover:text-text-primary transition-colors"
-                aria-label="Recherche"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </Link>
-            </motion.div>
             {authChecked && !user && (
               <div className="flex items-center gap-2 lg:hidden">
                 <Link

@@ -51,6 +51,15 @@
 | `(app)/feed/page.tsx` | [utilise] | `ui/GlassCard` |
 | `ConversionBanner` | [utilise] | `ui/Button` |
 | `HeroCarousel` | [utilise] | `ui/Button` (liens) |
+| `HeroCarousel`, `feed/FilmRow` | [utilise] | `FilmPoster` (`shareKey`), `FilmLink`, `FilmMeta`, `lib/film-transition` |
+| `(app)/feed/page.tsx` | [utilise] | `feed/FilmRow`, `FilmLink` (`RestoreFilmScroll`) |
+| `ProjetClient`, `skeletons/ProjectSkeleton` | [utilise] | `FilmLink` (`FilmPlayerFrame`) : meme nom de transition que la vignette cliquee |
+| `ProjetClient` | [utilise] | `FilmPoster` (`player`), `lib/film-transition` (`backWithTransition`) |
+| `FilmPoster` | [depend de] | `lib/film-transition` (vignette cliquee), `next/image` |
+| `VideoFacade`, `RechercheClient`, `categories/[slug]/page.tsx`, `moi/parts.tsx` | [utilise] | `FilmPoster` |
+| `FilmPoster`, `HeroCarousel`, `ProjetClient` | [depend de] | `globals.css` (`.film-ambient`, `.hero-progress`, regles `::view-transition-*`) |
+| `AppShell` (champ de recherche desktop) | [declenche] | `/recherche?q=` → `recherche/page.tsx` → `RechercheClient` (`initialQuery`) |
+| `lib/film-team.ts` | [persiste dans] | `profiles.avatar_url` (lecture, `team_preview` du bloc a la une) |
 | `ConversionBanner` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`, defilement du `<main>`) |
 | `AppShell` (`<main>`) | [depend de] | `globals.css` (`.pb-tabbar` : reserve de la navigation mobile pour toutes les pages) |
 | --- | --- | --- |

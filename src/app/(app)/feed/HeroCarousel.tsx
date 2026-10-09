@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
-import Button from "@/components/ui/Button";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
+import Avatar from "@/components/Avatar";
+import Button from "@/components/ui/Button";
+import FilmLink from "@/components/FilmLink";
+import FilmMeta from "@/components/FilmMeta";
+import FilmPoster from "@/components/FilmPoster";
+import { CATEGORY_LABELS } from "@/lib/constants";
+import { markFilmClick } from "@/lib/film-transition";
 import type { ProjectCategory } from "@/types/database";
 
 interface CarouselProject {
@@ -15,10 +19,9 @@ interface CarouselProject {
   category: ProjectCategory;
   year: number;
   description: string | null;
-  video_url: string;
   director_name: string;
-  director_slug: string | null;
   team_size: number;
+  team_preview: { name: string; avatar_url: string | null }[];
   poster_url?: string | null;
   preview_url?: string | null;
 }
@@ -27,328 +30,206 @@ interface HeroCarouselProps {
   projects: CarouselProject[];
 }
 
-const POSITIONS = [
-  { rotateY: 45, translateX: -200, translateZ: -120, scale: 0.65, opacity: 0.35, zIndex: 1 },
-  { rotateY: 28, translateX: -130, translateZ: -60, scale: 0.8, opacity: 0.6, zIndex: 2 },
-  { rotateY: 0, translateX: 0, translateZ: 0, scale: 1, opacity: 1, zIndex: 5 },
-  { rotateY: -28, translateX: 130, translateZ: -60, scale: 0.8, opacity: 0.6, zIndex: 2 },
-  { rotateY: -45, translateX: 200, translateZ: -120, scale: 0.65, opacity: 0.35, zIndex: 1 },
-];
+// Duree d'affichage d'un film a la une. Meme valeur que .hero-progress (globals.css).
+const SLIDE_MS = 8000;
+const PLAY_ICON = "M8 5v14l11-7z";
 
-// Memes classes que ui/Button, mais sur des liens (Button ne rend qu'un <button>)
-const PILL = "glass inline-flex h-7 items-center gap-2 rounded-pill px-3 text-xs text-text-secondary";
+const image = (p: CarouselProject) => p.preview_url || p.poster_url || null;
+const two = (n: number) => String(n).padStart(2, "0");
 
+// Bloc « À la une » : texte à gauche, affiche à droite, lumière de l'affiche en fond,
+// puis les films à la une en vignettes. Rien n'est posé sur une affiche.
+// La hauteur du bloc ne change jamais d'un film à l'autre : chaque élément du texte a
+// une hauteur réservée (titre et description sur 2 lignes, ligne équipe toujours
+// présente) et l'affiche tient, à son format réel, dans un cadre fixe en 16:9.
 export default function HeroCarousel({ projects }: HeroCarouselProps) {
   const reduced = useReducedMotion();
-  const count = Math.min(projects.length, 5);
+  const films = projects.slice(0, 5);
+  const count = films.length;
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
-  const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const resetAuto = useCallback(() => {
-    if (autoRef.current) clearInterval(autoRef.current);
-    autoRef.current = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % count);
-    }, 5000);
-  }, [count]);
-
+  // Film suivant apres 8 s ; le minuteur repart a chaque changement de film.
   useEffect(() => {
-    resetAuto();
-    return () => { if (autoRef.current) clearInterval(autoRef.current); };
-  }, [resetAuto]);
-
-  const goTo = useCallback((i: number) => {
-    setActiveIndex(((i % count) + count) % count);
-    resetAuto();
-  }, [count, resetAuto]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    touchStartX.current = null;
-    if (delta > 40) goTo(activeIndex - 1);
-    else if (delta < -40) goTo(activeIndex + 1);
-  };
+    if (count < 2) return;
+    const timer = setTimeout(() => setActiveIndex((i) => (i + 1) % count), SLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [activeIndex, count]);
 
   if (count === 0) return null;
 
-  const active = projects[activeIndex];
-
-  function getSlotIndex(i: number): number {
-    const offset = ((i - activeIndex) % count + count) % count;
-    if (offset === 0) return 2; // center
-    if (offset === 1) return 3; // right +1
-    if (offset === 2) return 4; // right +2
-    if (offset === count - 1) return 1; // left -1
-    if (offset === count - 2) return 0; // left -2
-    return -1; // hidden
-  }
-
-  const activeColor = CATEGORY_COLORS[active.category];
+  const goTo = (i: number) => setActiveIndex(((i % count) + count) % count);
+  const active = films[activeIndex];
+  const shareKey = `une:${active.id}`;
+  const fade = { duration: reduced ? 0.15 : 0.3 };
 
   return (
-    <>
-    {/* ============ MOBILE / TABLET — carrousel 3D en éventail (inchangé) ============ */}
-    <div
-      className="w-full select-none lg:hidden"
-      style={{ overflowX: "hidden", overflowY: "visible" }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* 3D Fan carousel */}
-      <div
-        style={{
-          height: 320,
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          perspective: 1000,
-          perspectiveOrigin: "50% 50%",
-        }}
-      >
-        {projects.slice(0, count).map((project, i) => {
-          const slot = getSlotIndex(i);
-          if (slot < 0) return null;
-          const pos = POSITIONS[slot];
-          const isCenter = slot === 2;
-
-          return (
-            <motion.div
-              key={project.id}
-              onClick={() => {
-                if (isCenter) return;
-                if (slot < 2) goTo(activeIndex - (2 - slot));
-                else goTo(activeIndex + (slot - 2));
-              }}
-              animate={{
-                rotateY: pos.rotateY,
-                x: pos.translateX,
-                z: pos.translateZ,
-                scale: pos.scale,
-                opacity: pos.opacity,
-                zIndex: pos.zIndex,
-              }}
-              transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
-              style={{
-                position: "absolute",
-                width: 180,
-                height: 260,
-                borderRadius: "var(--radius-media)",
-                overflow: "hidden",
-                // Opaque : les cartes de l'eventail se chevauchent
-                backgroundColor: "var(--color-glass-solid)",
-                cursor: isCenter ? "default" : "pointer",
-                transformStyle: "preserve-3d",
-                border: `1px solid var(${isCenter ? "--glass-border-strong" : "--glass-border"})`,
-                boxShadow: isCenter ? "0 30px 80px rgba(0,0,0,0.7)" : "none",
-              }}
+    <section aria-label="À la une" className="px-4 pt-4 lg:px-10 lg:pt-7">
+      <div className="relative isolate overflow-hidden rounded-panel-lg border border-white/[0.11] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_40px_110px_rgba(0,0,0,0.55)] sm:p-[22px] xl:px-11 xl:pb-[26px] xl:pt-11">
+        {/* Lumiere : l'affiche de chaque film, tres floutee ; seule celle du film en cours est visible */}
+        {films.map((p, i) => {
+          const src = image(p);
+          return src ? (
+            <div
+              key={p.id}
+              aria-hidden="true"
+              className={`film-ambient pointer-events-none absolute -left-[15%] -top-[25%] -z-20 h-[150%] w-[130%] transition-opacity duration-slow ease-glass ${i === activeIndex ? "opacity-60" : "opacity-0"}`}
             >
-              {/* Poster image or play icon placeholder */}
-              {project.poster_url ? (
-                <Image
-                  src={project.poster_url}
-                  alt={project.title}
-                  fill
-                  sizes="180px"
-                  priority={isCenter}
-                  style={{ objectFit: "cover" }}
-                />
-              ) : (
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="40" height="40" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.2 }}>
-                    <polygon points="16,10 40,24 16,38" fill="#C8FF00" />
-                  </svg>
-                </div>
-              )}
-
-              {/* Center card link overlay */}
-              {isCenter && (
-                <Link
-                  href={`/projet/${project.slug}`}
-                  style={{ position: "absolute", inset: 0, display: "block" }}
-                  aria-label={`Voir ${project.title}`}
-                />
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Dots */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
-        {projects.slice(0, count).map((_, i) => (
-          <motion.button
-            key={i}
-            onClick={() => goTo(i)}
-            animate={{
-              width: i === activeIndex ? 20 : 6,
-              backgroundColor: i === activeIndex ? "rgba(200,255,0,1)" : "rgba(255,255,255,0.16)",
-            }}
-            transition={{ duration: 0.3 }}
-            style={{ height: 6, borderRadius: 4, border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
-          />
-        ))}
-      </div>
-
-      {/* Info section */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeIndex}
-          initial={{ opacity: 0, y: reduced ? 0 : 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: reduced ? 0 : -8 }}
-          transition={{ duration: 0.25 }}
-          className="px-5 pt-3.5"
-        >
-          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-tertiary mb-1">
-            {active.year}
-          </p>
-          <h2 className="text-sheen text-[26px] font-bold tracking-[-0.5px] leading-[1.15] pb-0.5 mb-2">
-            {active.title}
-          </h2>
-
-          <div className="flex flex-wrap gap-1.5 mb-3.5">
-            <span className={PILL}>
-              <span className="size-1.5 rounded-full" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }} />
-              {CATEGORY_LABELS[active.category]}
-            </span>
-            {active.team_size > 0 && (
-              <span className={PILL}>
-                {active.team_size} talent{active.team_size > 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button href={`/projet/${active.slug}`} className="flex-1">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-              Voir le film
-            </Button>
-            {/* Réalisateur (crédits de réalisation). Plusieurs noms ou pas de profil : le lien mène au film. */}
-            {active.director_name && (
-              <Button variant="glass" href={active.director_slug ? `/profil/${active.director_slug}` : `/projet/${active.slug}`} className="max-w-[160px]">
-                <span className="truncate">{active.director_name}</span>
-              </Button>
-            )}
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-
-    {/* ============ DESKTOP — billboard façon Netflix ============ */}
-    <div className="hidden lg:block px-12 xl:px-16 pt-2">
-      <div className="relative w-full overflow-hidden glass rounded-panel shadow-2xl shadow-black/60 h-[460px] xl:h-[540px]">
-        {/* Backdrop (crossfade sur le projet actif) */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active.id}
-            initial={{ opacity: 0, scale: reduced ? 1 : 1.04 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute inset-0"
-          >
-            {active.preview_url || active.poster_url ? (
-              <Image
-                src={(active.preview_url || active.poster_url) as string}
-                alt={active.title}
-                fill
-                priority
-                sizes="(max-width: 1600px) 100vw, 1600px"
-                style={{ objectFit: "cover" }}
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg width="72" height="72" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.12 }}>
-                  <polygon points="16,10 40,24 16,38" fill="#C8FF00" />
-                </svg>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Scrims pour la lisibilité du texte */}
-        <div className="absolute inset-0 bg-gradient-to-t from-canvas/90 via-canvas/30 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-canvas/80 via-canvas/10 to-transparent" />
-
-        {/* Bloc texte + actions (largeur intrinsèque, aligné à gauche) */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active.id + "-info"}
-            initial={{ opacity: 0, y: reduced ? 0 : 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: reduced ? 0 : -8 }}
-            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute left-0 bottom-0 p-10 xl:p-12 max-w-[620px]"
-          >
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary mb-3">{active.year}</p>
-            <h2 className="text-sheen text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05] pb-1.5 mb-2.5">
-              {active.title}
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 mb-7">
-              <span className={PILL}>
-                <span className="size-1.5 rounded-full" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }} />
-                {CATEGORY_LABELS[active.category]}
-              </span>
-              {active.team_size > 0 && (
-                <span className={PILL}>
-                  {active.team_size} talent{active.team_size > 1 ? "s" : ""}
-                </span>
-              )}
+              <Image src={src} alt="" fill sizes="64px" className="object-cover" />
             </div>
-            <div className="flex items-center gap-3">
-              <Button href={`/projet/${active.slug}`}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          ) : null;
+        })}
+        {/* Voile sombre, plus fort a gauche (lisibilite du texte) */}
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(10,10,12,0.94)_0%,rgba(10,10,12,0.7)_38%,rgba(10,10,12,0.25)_100%)]" />
+
+        <div className="grid items-center gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-12">
+          {/* Texte. @container : les boutons s'allegent quand la colonne est etroite, pour
+              que les fleches restent sur leur ligne. */}
+          <div className="@container flex min-w-0 flex-col gap-[18px]">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={active.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={fade}
+                className="flex min-w-0 flex-col gap-[18px]"
+              >
+                <p className="flex items-center gap-2.5 text-xs font-semibold tracking-[0.16em] text-text-secondary">
+                  <span className="text-text-primary">À LA UNE</span>
+                  <span className="font-mono">{two(activeIndex + 1)} / {two(count)}</span>
+                </p>
+                {/* Titre : 2 lignes au plus, hauteur de 2 lignes toujours reservee */}
+                <h2 className="text-sheen line-clamp-2 h-[2.2em] text-[34px] font-extrabold leading-[1.1] tracking-[-0.035em] sm:text-[40px] xl:text-5xl 2xl:text-[64px]">
+                  {active.title}
+                </h2>
+                <FilmMeta size="md" category={active.category} author={active.director_name} year={active.year} />
+                {/* Description : 2 lignes reservees, meme sans texte */}
+                <p className="line-clamp-2 h-[3.1em] max-w-[440px] text-[17px] leading-[1.55] text-text-primary/85">{active.description}</p>
+                {/* Ligne equipe : toujours presente, vide si personne n'est au generique */}
+                <div className="flex h-[30px] items-center gap-2.5 text-[13px] text-text-secondary">
+                  {active.team_size > 0 && (
+                    <>
+                      <div className="flex">
+                        {active.team_preview.map((member, i) => (
+                          <Avatar
+                            key={i}
+                            url={member.avatar_url}
+                            name={member.name}
+                            size={30}
+                            style={{ marginLeft: i === 0 ? 0 : -10, boxShadow: "0 0 0 2px #0f0f13", background: "var(--color-glass-solid)", fontSize: 11 }}
+                          />
+                        ))}
+                      </div>
+                      {active.team_size} talent{active.team_size > 1 ? "s" : ""} au générique
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Boutons et fleches sur une seule ligne, fleches calees a droite */}
+            <div className="mt-1.5 flex items-center gap-2">
+              <Button size="sm" href={`/projet/${active.slug}`} onClick={() => markFilmClick(shareKey)} className="shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="hidden @[350px]:block"><path d={PLAY_ICON} /></svg>
                 Voir le film
               </Button>
-              {active.director_name && (
-                <Button variant="glass" href={active.director_slug ? `/profil/${active.director_slug}` : `/projet/${active.slug}`} className="max-w-[220px]">
-                  <span className="truncate">{active.director_name}</span>
-                </Button>
+              <Button size="sm" variant="glass" href={`/projet/${active.slug}#equipe`} aria-label="Voir l'équipe" className="shrink-0">
+                <span className="@[320px]:hidden">Équipe</span>
+                <span className="hidden @[320px]:inline">Voir l&apos;équipe</span>
+              </Button>
+              {count > 1 && (
+                <div className="ml-auto flex shrink-0 gap-2">
+                  <Button variant="icon" size="sm" aria-label="Film précédent" onClick={() => goTo(activeIndex - 1)}>
+                    <Chevron d="M15 5l-7 7 7 7" />
+                  </Button>
+                  <Button variant="icon" size="sm" aria-label="Film suivant" onClick={() => goTo(activeIndex + 1)}>
+                    <Chevron d="M9 5l7 7-7 7" />
+                  </Button>
+                </div>
               )}
             </div>
-          </motion.div>
-        </AnimatePresence>
+          </div>
 
-        {/* Rail de vignettes — sélecteur (remplace les dots sur desktop) */}
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-2.5">
-          {projects.slice(0, count).map((p, i) => {
-            const isActive = i === activeIndex;
-            return (
-              <motion.button
-                key={p.id}
-                onClick={() => goTo(i)}
-                aria-label={`Voir ${p.title}`}
-                animate={{ width: isActive ? 132 : 104, height: isActive ? 74 : 60 }}
-                transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
-                className="relative overflow-hidden rounded-media flex-shrink-0"
-                style={{
-                  border: isActive ? "2px solid #C8FF00" : "1px solid var(--glass-border)",
-                  boxShadow: isActive ? "0 12px 30px rgba(0,0,0,0.5)" : "none",
-                  cursor: isActive ? "default" : "pointer",
-                }}
+          {/* Cadre fixe en 16:9 (en haut sur mobile) : l'affiche y tient a son format reel.
+              Glisser du doigt pour changer de film. */}
+          <div
+            className="relative aspect-video max-xl:order-first"
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return;
+              const delta = e.changedTouches[0].clientX - touchStartX.current;
+              touchStartX.current = null;
+              if (delta > 40) goTo(activeIndex - 1);
+              else if (delta < -40) goTo(activeIndex + 1);
+            }}
+          >
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={active.id}
+                initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, filter: "blur(8px)" }}
+                animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+                exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.04, filter: "blur(8px)" }}
+                transition={{ duration: reduced ? 0.15 : 0.45, ease: [0.65, 0, 0.35, 1] }}
+                className="absolute inset-0"
               >
-                {p.preview_url || p.poster_url ? (
-                  <Image src={(p.preview_url || p.poster_url) as string} alt={p.title} fill sizes="132px" style={{ objectFit: "cover" }} />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-glass-solid">
-                    <svg width="20" height="20" viewBox="0 0 48 48" fill="none" style={{ opacity: 0.25 }}>
-                      <polygon points="16,10 40,24 16,38" fill="#C8FF00" />
-                    </svg>
-                  </div>
-                )}
-                {!isActive && <div className="absolute inset-0 bg-black/40 hover:bg-black/10 transition-colors" />}
-              </motion.button>
-            );
-          })}
+                <FilmLink slug={active.slug} shareKey={shareKey} aria-label={`Voir ${active.title}`} className="press-spring group block">
+                  <FilmPoster
+                    src={image(active)}
+                    alt={active.title}
+                    framed
+                    shareKey={shareKey}
+                    sizes="(max-width: 1280px) 100vw, 60vw"
+                    priority={activeIndex === 0}
+                    className="rounded-[20px] shadow-[0_50px_120px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.16)]"
+                  >
+                    <span aria-hidden="true" className="glass-strong absolute left-1/2 top-1/2 flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill bg-black/35 transition-transform duration-base ease-glass group-hover:scale-105 xl:size-[68px]">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d={PLAY_ICON} /></svg>
+                    </span>
+                  </FilmPoster>
+                </FilmLink>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
+
+        {/* Les films a la une : chaque affiche a son format reel dans un cadre 16:9, barre de
+            progression sur le film en cours */}
+        {count > 1 && (
+          <div className="mt-6 grid grid-cols-2 gap-3.5 border-t border-white/[0.08] pt-[22px] sm:grid-cols-3 lg:grid-cols-5 xl:mt-[34px]">
+            {films.map((p, i) => {
+              const isActive = i === activeIndex;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`À la une : ${p.title}`}
+                  aria-current={isActive}
+                  className={`flex min-w-0 flex-col gap-2 text-left transition-opacity duration-base ease-glass hover:opacity-100 ${isActive ? "opacity-100" : "opacity-55"}`}
+                >
+                  <span className="block h-[3px] w-full overflow-hidden rounded-sm bg-white/[0.14]">
+                    {isActive && <span key={activeIndex} className="hero-progress block h-full bg-lime shadow-[0_0_10px_var(--color-lime)]" />}
+                  </span>
+                  <FilmPoster src={image(p)} alt="" framed align="start" sizes="(max-width: 1024px) 50vw, 220px" className="rounded-[10px]" />
+                  <span className="w-full min-w-0">
+                    <span className="block truncate text-[13px] font-semibold text-text-primary">{p.title}</span>
+                    <span className="block truncate text-xs text-text-secondary">{CATEGORY_LABELS[p.category]}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
-    </>
+    </section>
+  );
+}
+
+function Chevron({ d }: { d: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
   );
 }

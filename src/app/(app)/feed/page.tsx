@@ -1,14 +1,14 @@
 import Link from "next/link";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_LABELS } from "@/lib/constants";
-import FilmMeta from "@/components/FilmMeta";
 import type { ProjectCategory } from "@/types/database";
 import { Section, AnimatedCard } from "./HomeAnimations";
 import Avatar from "@/components/Avatar";
 import GlassCard from "@/components/ui/GlassCard";
 import HeroCarousel from "./HeroCarousel";
 import ConversionBanner from "./ConversionBanner";
+import FilmRow, { type FilmRowItem } from "./FilmRow";
+import { RestoreFilmScroll } from "@/components/FilmLink";
 import { TEAM_SELECT, loadFilmTeams, type FilmTeam } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
@@ -26,6 +26,7 @@ interface ProjectCard {
   director_name: string;
   director_slug: string | null;
   team_size: number;
+  team_preview: FilmTeam["team_preview"];
   poster_url?: string | null;
   preview_url?: string | null;
 }
@@ -45,6 +46,20 @@ interface ContentRow {
   title: string;
   href: string;
   items: ProjectCard[];
+}
+
+// Une rangee ne recoit que ce qu'elle affiche (pas la description ni l'apercu d'equipe).
+function toRowItem(p: ProjectCard): FilmRowItem {
+  return {
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    category: p.category,
+    year: p.year,
+    director_name: p.director_name,
+    team_size: p.team_size,
+    image: p.preview_url || p.poster_url || null,
+  };
 }
 
 // Films d'une liste. La visibilite (public / membres seulement / depublie) est
@@ -165,8 +180,9 @@ export default async function Home() {
 
   return (
     <div>
+      <RestoreFilmScroll />
       <div className="mx-auto w-full max-w-[1600px]">
-      {/* HERO CAROUSEL */}
+      {/* À LA UNE */}
       {recent.length > 0 && (
         <HeroCarousel projects={recent.slice(0, 5)} />
       )}
@@ -175,13 +191,13 @@ export default async function Home() {
       <div className="space-y-8 lg:space-y-12 py-6 lg:py-10">
         {recent.length > 5 && (
           <Section>
-            <ProjectRow title="Projets récents" href="/recherche?type=projets" items={recent.slice(5)} />
+            <FilmRow title="Projets récents" href="/recherche?type=projets" items={recent.slice(5).map(toRowItem)} />
           </Section>
         )}
 
         {categoryRows.map((row) => (
           <Section key={row.title}>
-            <ProjectRow {...row} />
+            <FilmRow title={row.title} href={row.href} items={row.items.map(toRowItem)} />
           </Section>
         ))}
 
@@ -240,83 +256,5 @@ export default async function Home() {
 
       <ConversionBanner />
     </div>
-  );
-}
-
-/* PROJECT ROW */
-function ProjectRow({ title, href, items }: ContentRow) {
-  return (
-    <section className="px-5 sm:px-8 lg:px-12 xl:px-16">
-      <div className="flex items-end justify-between mb-3 lg:mb-4">
-        <h2 className="text-[15px] lg:text-xl font-bold text-text-primary tracking-tight">{title}</h2>
-        <Link href={href} className="group/all inline-flex items-center gap-1 text-[11px] lg:text-xs text-text-tertiary hover:text-lime transition-colors duration-300">
-          Tout voir
-          <span className="transition-transform duration-300 group-hover/all:translate-x-0.5">→</span>
-        </Link>
-      </div>
-      <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pt-2 -mt-2 pb-6 -mb-5">
-        {items.map((project) => {
-          return (
-            <AnimatedCard key={project.id}>
-              <Link href={`/projet/${project.slug}`} className="flex-shrink-0 w-60 sm:w-72 lg:w-80 group block">
-                <div
-                  className="glass relative w-full rounded-media overflow-hidden shadow-xl shadow-black/50 group-hover:border-white/20 group-hover:shadow-2xl group-hover:shadow-black/70 transition-[border-color,box-shadow] duration-base ease-glass"
-                  style={{ aspectRatio: "16/9" }}
-                >
-                  {project.preview_url ? (
-                    <Image
-                      src={project.preview_url}
-                      alt={project.title}
-                      fill
-                      loading="lazy"
-                      sizes="(max-width: 768px) 240px, 288px"
-                      style={{ objectFit: "cover" }}
-                    />
-                  ) : project.poster_url ? (
-                    <Image
-                      src={project.poster_url}
-                      alt={project.title}
-                      fill
-                      loading="lazy"
-                      sizes="(max-width: 768px) 240px, 288px"
-                      style={{ objectFit: "cover" }}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white/[0.08]" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/30 transition-opacity duration-base flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="glass-strong w-11 h-11 rounded-pill flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2.5 px-0.5">
-                  <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors duration-300 truncate leading-tight">
-                    {project.title}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <FilmMeta category={project.category} author={project.director_name} year={project.year} />
-                    {project.team_size > 0 && (
-                      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-text-tertiary/50">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {project.team_size}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </AnimatedCard>
-          );
-        })}
-      </div>
-    </section>
   );
 }

@@ -4,12 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
 import type { ManagerRequestKind, ManagerRequestStatus, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoEmbed, { VIDEO_COOKIE_NOTICE } from "@/components/VideoEmbed";
 import FilmMeta from "@/components/FilmMeta";
 import Avatar from "@/components/Avatar";
-import { EnterItem, EnterList, ModalBackdrop } from "@/components/motion";
+import { EnterItem, ModalBackdrop } from "@/components/motion";
+import FilmLink, { FilmPlayerFrame } from "@/components/FilmLink";
+import FilmPoster from "@/components/FilmPoster";
+import { backWithTransition } from "@/lib/film-transition";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
@@ -60,18 +63,34 @@ function initials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-const SEPARATOR = "h-px bg-white/[0.06] my-5";
-const SECTION_TITLE = "text-base font-semibold text-text-primary";
+const SECTION_TITLE = "text-[22px] font-bold tracking-tight text-text-primary";
 const PLAY_ICON = "M8 5v14l11-7z";
+const PLAYER_LOOK = "rounded-[22px] shadow-[0_60px_140px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.16)]";
+
+// Le texte entre après l'agrandissement de la vignette (transition partagée) : le
+// titre arrive en dernier.
+const textStagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.25 } },
+};
 
 export default function ProjetClient({ project, relatedProjects, isVisitor, categoryLabels, categoryColors }: Props) {
   const router = useRouter();
   const reduced = useReducedMotion();
   const [showVideo, setShowVideo] = useState(false);
   const [synopsisOpen, setSynopsisOpen] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
+  // Lecture dans le cadre (desktop) ; en mobile, modale plein écran (showVideo).
+  const [playingInline, setPlayingInline] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const optionsRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
+
+  // Le lecteur ne se monte qu'après ce clic (règle cookies).
+  function play() {
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      setPlayingInline(true);
+      playerRef.current?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+    } else setShowVideo(true);
+  }
 
   // User status for visibility tiers
   const userStatus = useUserStatus();
@@ -113,16 +132,6 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
     else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
   }, [showVideo]);
-
-  // Close options on outside click
-  useEffect(() => {
-    if (!showOptions) return;
-    const handler = (e: MouseEvent) => {
-      if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) setShowOptions(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showOptions]);
 
   const showCreditButton = userStatus === "free" && creditStatusLoaded && !creditStatus.isCredited && !creditStatus.hasPendingRequest && !creditStatus.isManager;
   const showConversionCTA = userStatus === "anonymous";
@@ -188,6 +197,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
       slug: c.profile?.slug ?? null,
       avatar_url: c.profile?.avatar_url ?? null,
       role: c.role_on_project,
+      location: c.profile?.location ?? null,
     }));
 
   // Actions d'un membre connecté sur le film (rendues en mobile et dans la sidebar).
@@ -221,23 +231,20 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
           Demander à co-gérer ce film
         </Button>
       )}
-      {creditStatus.claimPending ? (
+      {creditStatus.claimPending && (
         <p className="text-center text-xs text-text-tertiary">Ta demande est en cours de traitement par l&apos;équipe.</p>
-      ) : (
-        <button type="button" onClick={openSignal} className="block w-full py-1 text-center font-mono text-xs text-text-tertiary hover:text-text-secondary">
-          Signaler ce film
-        </button>
       )}
     </div>
   );
 
   const desc = project.description || "";
-  const descLong = desc.length > 120;
+  const descLong = desc.length > 280;
+  const poster = project.preview_url || project.poster_url || null;
+  const talents = `${project.credits.length} talent${project.credits.length !== 1 ? "s" : ""}`;
 
   return (
     <>
-      <EnterList>
-        <div className="mx-auto w-full max-w-[1280px] px-5 lg:px-12 pt-3 lg:pt-6">
+      <div className="mx-auto w-full max-w-[1160px] px-4 pb-10 pt-5 lg:px-10 lg:pb-16 lg:pt-9">
         {/* Banner for pending/refused */}
         {project.status && project.status !== "approved" && (
           <GlassCard className="mb-3 border-l-[3px] border-l-[#f97316] px-3.5 py-2.5 font-mono text-[11px] text-[#f97316]">
@@ -251,259 +258,167 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
           </GlassCard>
         )}
 
-        {/* ===== ZONE 1 — IMAGE HERO (bannière) ===== */}
-        {/* Hors EnterItem : l'image est prioritaire (LCP), elle ne doit pas attendre l'hydratation. */}
-        <div className="relative w-full overflow-hidden rounded-panel border border-white/10 bg-white/[0.04] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] h-[260px] lg:h-[440px]">
-          {project.preview_url ? (
-            <Image src={project.preview_url} alt={project.title} fill priority sizes="100vw" style={{ objectFit: "cover" }} />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg width="60" height="60" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.15 }}><path d={PLAY_ICON} /></svg>
+        {/* ===== LECTEUR ===== */}
+        {/* Hors animation d'entrée : l'affiche est prioritaire (LCP) et c'est elle que la
+            vignette cliquée rejoint. Aucun texte dessus, seulement le bouton lecture. */}
+        <section className="relative isolate">
+          {/* Lumière : la même affiche, très floutée, derrière le lecteur */}
+          {poster && (
+            <div aria-hidden="true" className="film-ambient pointer-events-none absolute -top-[10%] left-[5%] -z-10 h-[105%] w-[90%] overflow-hidden rounded-full opacity-50">
+              <Image src={poster} alt="" fill sizes="64px" className="object-cover" />
             </div>
           )}
 
-          {/* Gradient overlay (lisibilité du titre et des boutons) */}
-          <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(10,10,12,0.25) 0%, transparent 30%, transparent 50%, rgba(10,10,12,0.8) 100%)" }} />
+          <button type="button" onClick={() => backWithTransition(playerRef.current?.querySelector<HTMLElement>("[data-film-player]") ?? null, () => router.back())} className="mb-5 inline-flex min-h-11 items-center gap-2 text-sm max-lg:hidden text-text-secondary transition-colors duration-fast hover:text-text-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            Retour
+          </button>
 
-          {/* Back button */}
-          <Button variant="icon" aria-label="Retour" onClick={() => router.back()} className="absolute top-4 left-4 z-10 bg-black/35">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
-          </Button>
-
-          {/* Options button */}
-          <div ref={optionsRef} className="absolute top-4 right-4 z-10">
-            <Button variant="icon" aria-label="Options" onClick={() => setShowOptions(!showOptions)} className="bg-black/35">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-            </Button>
-            {showOptions && (
-              <GlassCard strong className="absolute top-12 right-0 z-20 w-[180px] bg-black/50 p-1">
-                <button onClick={() => { navigator.clipboard.writeText(window.location.href); setShowOptions(false); toast("Lien copié !"); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-primary hover:bg-white/[0.06]">Partager ce film</button>
-                <button onClick={() => { setShowOptions(false); openSignal(); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-[13px] text-text-secondary hover:bg-white/[0.06]">Signaler</button>
-              </GlassCard>
+          {/* Cadre fixe en 16:9 : l'affiche y tient à son format réel, la vidéo le remplit */}
+          <div ref={playerRef}>
+            {playingInline ? (
+              <FilmPlayerFrame>
+                <div data-film-player="" className={`overflow-hidden ${PLAYER_LOOK}`}>
+                  <VideoEmbed url={project.video_url} title={project.title} autoplay />
+                </div>
+              </FilmPlayerFrame>
+            ) : (
+              <button type="button" onClick={play} aria-label={`Lancer ${project.title}`} className="press-spring group block w-full">
+                <FilmPoster src={poster} alt={project.title} sizes="(max-width: 1160px) 100vw, 1080px" priority framed player className={PLAYER_LOOK}>
+                  <span aria-hidden="true" className="glass-strong absolute left-1/2 top-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill bg-black/35 transition-transform duration-base ease-glass group-hover:scale-105 lg:size-[76px]">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d={PLAY_ICON} /></svg>
+                  </span>
+                </FilmPoster>
+              </button>
             )}
           </div>
 
-          {/* Play button */}
-          <Button variant="icon" aria-label="Regarder" onClick={() => setShowVideo(true)} className="absolute top-1/2 left-1/2 size-16 -translate-x-1/2 -translate-y-1/2 bg-black/35">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d={PLAY_ICON} /></svg>
-          </Button>
+          {/* Mention cookies : le lecteur ne se charge qu'au clic */}
+          <p className="mt-3 text-center text-xs leading-snug text-text-tertiary">{VIDEO_COOKIE_NOTICE}</p>
+        </section>
 
-          {/* Titre en surimpression — desktop uniquement */}
-          <div className="hidden lg:flex absolute inset-0 flex-col justify-end pointer-events-none">
-            <div className="w-full px-10 pb-10">
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary mb-2">
-                {project.year} &middot; {categoryLabels[project.category].toUpperCase()}
-              </p>
-              <h1 className="text-sheen text-4xl xl:text-5xl font-bold tracking-tight leading-[1.1] pb-1">{project.title}</h1>
-            </div>
-          </div>
-        </div>
-
-        {/* Mention cookies : le lecteur ne se charge qu'au clic sur « Regarder » */}
-        <p className="mt-2 px-1 text-[11px] leading-snug text-text-tertiary">{VIDEO_COOKIE_NOTICE}</p>
-
-        {/* ===== ZONE 2 — CONTENT ===== */}
-          <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 lg:items-start lg:pt-8 pb-6 lg:pb-12">
+        {/* ===== CONTENU : deux colonnes ===== */}
+        <motion.div variants={textStagger} initial="hidden" animate="show" className="mt-8 grid gap-7 lg:mt-11 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
           {/* ========= COLONNE PRINCIPALE ========= */}
           <div className="min-w-0">
-
-          {/* Date + Titre + Pills + Regarder — mobile (sur desktop : bannière + sidebar) */}
-          <EnterItem className="lg:hidden">
-          {/* Date + category */}
-          <p className="mt-5 mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
-            {project.year} &middot; {categoryLabels[project.category].toUpperCase()}
-          </p>
-
-          {/* Title */}
-          <h1 className="text-sheen mb-3.5 pb-0.5 text-[28px] font-bold leading-[1.15]">{project.title}</h1>
-
-          {/* Pills */}
-          <div className="mb-5 flex flex-wrap gap-2">
-            <Badge variant="neutral">{categoryLabels[project.category]}</Badge>
-            <Badge variant="neutral">{project.year}</Badge>
-            <Badge variant="neutral">{project.credits.length} talent{project.credits.length !== 1 ? "s" : ""}</Badge>
-          </div>
-
-          {/* Regarder button */}
-          <Button size="lg" onClick={() => setShowVideo(true)} className="mb-6 w-full">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d={PLAY_ICON} /></svg>
-            Regarder
-          </Button>
-
-          {/* Separator */}
-          <div className="h-px bg-white/[0.06] mb-6" />
-          </EnterItem>
-
-          {/* Synopsis + Équipe + Du même réalisateur (partagés mobile/desktop) */}
-          <div className="lg:pt-2">
-
-          {/* Synopsis */}
-          {desc && (
             <EnterItem>
-              <h2 className={`${SECTION_TITLE} mb-2.5`}>Synopsis</h2>
-              <p className="text-sm text-text-secondary" style={{ lineHeight: 1.75, margin: 0, whiteSpace: "pre-line", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: synopsisOpen ? 9999 : 3, WebkitBoxOrient: "vertical" as const }}>{desc}</p>
-              {descLong && (
-                <button onClick={() => setSynopsisOpen(!synopsisOpen)} className="mt-1.5 text-[13px] font-medium text-lime">
-                  {synopsisOpen ? "Réduire" : "Lire la suite"}
-                </button>
-              )}
-              <div className={SEPARATOR} />
+              <FilmMeta size="md" category={project.category} year={project.year} />
             </EnterItem>
-          )}
 
-          {/* Team */}
-          <EnterItem>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className={SECTION_TITLE}>Équipe</h2>
-            <span className="font-mono text-[11px] text-text-tertiary">({project.credits.length} talent{project.credits.length !== 1 ? "s" : ""})</span>
-          </div>
-
-          <div style={{ position: "relative" }}>
-            {/* Gradient overlay for anonymous : fondu par masque (plus de dégradé opaque vers le fond) */}
-            <div
-              className="no-scrollbar flex gap-3 overflow-x-auto pb-1"
-              style={userStatus === "anonymous" && project.credits.length > 3 ? { maskImage: "linear-gradient(#000 15%, rgba(0,0,0,0.05))", WebkitMaskImage: "linear-gradient(#000 15%, rgba(0,0,0,0.05))" } : undefined}
-            >
-              {project.credits.map((c) => {
-                const fullName = c.profile?.full_name ?? c.ghost_name ?? "Inconnu";
-                // Visiteur : le serveur n'envoie que des initiales (« L. M. »), sauf pour
-                // les crédits de réalisation (nom complet, profil cliquable s'il existe).
-                const isAnon = isVisitor && !isDirectorRole(c.role_on_project);
-                const displayName = fullName;
-
-                const card = (
-                  <GlassCard className="w-[104px] px-2.5 py-3 text-center transition-colors duration-fast group-hover:border-white/20">
-                    <div style={{ width: 52, height: 52, borderRadius: "50%", background: isAnon ? "rgba(255,255,255,0.06)" : "rgba(200,255,0,0.08)", border: isAnon ? "1.5px solid rgba(255,255,255,0.1)" : "1.5px solid rgba(200,255,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", overflow: "hidden" }}>
-                      {!isAnon && c.profile?.avatar_url ? (
-                        <img src={c.profile.avatar_url} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <span style={{ fontSize: isAnon ? 16 : 14, fontWeight: 600, color: isAnon ? "#555" : "#C8FF00" }}>{isAnon ? "?" : initials(fullName)}</span>
-                      )}
-                    </div>
-                    <p className="truncate text-[11px] font-medium" style={{ color: isAnon ? "#555" : "#f0f0f0", margin: 0 }}>{displayName}</p>
-                    <p className="mt-0.5 truncate font-mono text-[10px] text-text-tertiary">{c.role_on_project}</p>
-                  </GlassCard>
-                );
-
-                if (!isAnon && c.profile?.slug) {
-                  return <Link key={c.id} href={`/profil/${c.profile.slug}`} className="group" style={{ textDecoration: "none", flexShrink: 0 }}>{card}</Link>;
-                }
-                return <div key={c.id} style={{ flexShrink: 0 }}>{card}</div>;
-              })}
-            </div>
-          </div>
-
-          {/* Anonymous: conversion CTA */}
-          {showConversionCTA && (
-            <GlassCard className="mt-4 border-lime/20 p-5 text-center">
-              <p className="mb-1.5 text-sm font-semibold text-text-primary">Voir l&apos;équipe complète</p>
-              <p className="mb-3.5 text-xs text-text-secondary">Crée un compte gratuit en 2 minutes</p>
-              <Button onClick={() => router.push("/rejoindre")} className="w-full">Créer mon compte gratuit</Button>
-            </GlassCard>
-          )}
-          </EnterItem>
-
-          {directors.length > 0 && (
-          <EnterItem className="lg:hidden">
-          <div className={SEPARATOR} />
-
-          {/* Director */}
-          <h2 className={`${SECTION_TITLE} mb-3`}>Réalisé par</h2>
-          <div className="space-y-2.5">
-            {directors.map((d) => <DirectorCard key={d.id} director={d} />)}
-          </div>
-          </EnterItem>
-          )}
-
-          {/* Related projects */}
-          {relatedProjects.length > 0 && (
             <EnterItem>
-              <div className={SEPARATOR} />
-              <h2 className={`${SECTION_TITLE} mb-2.5`}>Du même réalisateur</h2>
-              {/* pt-2 : place pour l'élévation au survol (overflow-x-auto rogne aussi en vertical) */}
-              <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar pt-2 pb-1">
-                {relatedProjects.map((rp) => {
-                  return (
-                    <Link key={rp.id} href={`/projet/${rp.slug}`} className="flex-shrink-0 w-60 sm:w-72 group block">
-                      <div
-                        className="relative w-full bg-white/[0.04] border border-white/10 rounded-media overflow-hidden shadow-[0_18px_40px_-12px_rgba(0,0,0,0.75)] transition-[translate,box-shadow,border-color] duration-base ease-glass group-hover:border-white/20 group-hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.9)] motion-safe:group-hover:-translate-y-1"
-                        style={{ aspectRatio: "16/9" }}
-                      >
-                        {rp.preview_url || rp.poster_url ? (
-                          <img src={(rp.preview_url || rp.poster_url) as string} alt={rp.title} className="absolute inset-0 w-full h-full object-cover" />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="#C8FF00" style={{ opacity: 0.12 }}><path d={PLAY_ICON} /></svg>
-                          </div>
-                        )}
-                        {/* Bouton lecture en verre (décoratif : toute la carte est le lien) */}
-                        <span aria-hidden="true" className="glass absolute top-1/2 left-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill bg-black/35">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 2 }}><path d={PLAY_ICON} /></svg>
-                        </span>
-                      </div>
-                      <div className="mt-2.5 px-0.5">
-                        <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{rp.title}</h3>
-                        <FilmMeta category={rp.category} author={rp.director_name} year={rp.year} className="mt-1" />
-                      </div>
-                    </Link>
-                  );
-                })}
+              <h1 className="text-sheen mt-3 pb-1.5 text-[38px] font-extrabold leading-none tracking-[-0.035em] lg:text-[56px]">{project.title}</h1>
+
+              {desc && (
+                <>
+                  <p className="mt-[18px] max-w-[620px] text-[17px] text-text-primary/85" style={{ lineHeight: 1.6, whiteSpace: "pre-line", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: synopsisOpen || !descLong ? 9999 : 4, WebkitBoxOrient: "vertical" as const }}>{desc}</p>
+                  {descLong && (
+                    <button onClick={() => setSynopsisOpen(!synopsisOpen)} className="mt-1.5 text-[13px] font-medium text-lime">
+                      {synopsisOpen ? "Réduire" : "Lire la suite"}
+                    </button>
+                  )}
+                </>
+              )}
+
+              <div className="mt-6 flex flex-wrap gap-2.5">
+                <Button onClick={play}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={PLAY_ICON} /></svg>
+                  Lancer le film
+                </Button>
+                <Button variant="glass" onClick={() => { navigator.clipboard.writeText(window.location.href); toast("Lien copié !"); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
+                  Partager
+                </Button>
               </div>
             </EnterItem>
-          )}
 
-          {/* Crédit + statut — mobile (desktop : sidebar) */}
-          <EnterItem className="lg:hidden">
-          {showCreditButton && (
-            <>
-              <div className={SEPARATOR} />
-              <Button variant="dashed" size="sm" onClick={() => setShowCreditModal(true)} className="w-full font-mono">
-                + J&apos;ai participe a ce projet
-              </Button>
-            </>
-          )}
-
-          {creditStatus.hasPendingRequest && (
-            <div className="mt-4 text-center">
-              <Badge variant="pending">Demande en attente</Badge>
-            </div>
-          )}
-          {memberActions && <div className="mt-4">{memberActions}</div>}
-          </EnterItem>
-
-          </div>{/* fin wrapper partagé */}
-          </div>{/* fin colonne principale */}
-
-          {/* ========= SIDEBAR (desktop uniquement) ========= */}
-          <aside className="hidden lg:block lg:sticky lg:top-8 space-y-4">
-            {/* Fiche technique */}
+            {/* Équipe en générique : rôle, avatar, nom */}
             <EnterItem>
-            <GlassCard className="p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary mb-3">Fiche technique</p>
-              <dl className="space-y-2.5 text-sm">
-                <div className="flex items-center justify-between gap-3"><dt className="text-text-secondary">Catégorie</dt><dd className="font-medium" style={{ color: catColor }}>{categoryLabels[project.category]}</dd></div>
-                <div className="flex items-center justify-between gap-3"><dt className="text-text-secondary">Année</dt><dd className="font-medium font-mono text-text-primary">{project.year}</dd></div>
-                <div className="flex items-center justify-between gap-3"><dt className="text-text-secondary">Talents</dt><dd className="font-medium text-text-primary">{project.credits.length}</dd></div>
-              </dl>
-            </GlassCard>
-            </EnterItem>
+              <div id="equipe" className="mb-4 mt-12 flex scroll-mt-6 items-baseline justify-between">
+                <h2 className={SECTION_TITLE}>Équipe</h2>
+                <span className="text-sm text-text-secondary">{talents}</span>
+              </div>
 
-            {/* Regarder */}
-            <EnterItem>
-            <Button size="lg" onClick={() => setShowVideo(true)} className="w-full">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d={PLAY_ICON} /></svg>
-              Regarder
-            </Button>
-            </EnterItem>
+              <div className="grid gap-x-7 sm:grid-cols-2">
+                {project.credits.map((c) => {
+                  // Chaque ligne est un conteneur (@container) : assez large, le rôle est à
+                  // gauche ; sinon il passe en petit au-dessus du nom. Le nom n'est jamais coupé.
+                  const fullName = c.profile?.full_name ?? c.ghost_name ?? "Inconnu";
+                  // Visiteur : le serveur n'envoie que des initiales (« L. M. »), sauf pour
+                  // les crédits de réalisation (nom complet, profil cliquable s'il existe).
+                  const isAnon = isVisitor && !isDirectorRole(c.role_on_project);
 
+                  const row = (
+                    <div className="@container border-b border-white/[0.07]">
+                    <div className="flex min-h-16 items-center gap-3.5 py-2.5">
+                      <span className="hidden w-[110px] shrink-0 text-[13px] leading-tight text-text-tertiary @[300px]:block">{c.role_on_project}</span>
+                      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full" style={{ background: isAnon ? "rgba(255,255,255,0.06)" : "rgba(200,255,0,0.08)", border: isAnon ? "1.5px solid rgba(255,255,255,0.1)" : "1.5px solid rgba(200,255,0,0.2)" }}>
+                        {!isAnon && c.profile?.avatar_url ? (
+                          <img src={c.profile.avatar_url} alt="" className="size-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-semibold" style={{ color: isAnon ? "#555" : "#C8FF00" }}>{isAnon ? "?" : initials(fullName)}</span>
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-xs leading-tight text-text-tertiary @[300px]:hidden">{c.role_on_project}</span>
+                        <span className={`block break-words leading-snug ${isAnon ? "font-medium text-text-secondary" : "font-semibold text-text-primary group-hover:text-lime"} transition-colors duration-fast`}>{fullName}</span>
+                      </span>
+                    </div>
+                    </div>
+                  );
+
+                  if (!isAnon && c.profile?.slug) {
+                    return <Link key={c.id} href={`/profil/${c.profile.slug}`} className="group block">{row}</Link>;
+                  }
+                  return <div key={c.id}>{row}</div>;
+                })}
+              </div>
+
+              {/* Visiteur : encart « Rejoindre » */}
+              {showConversionCTA && (
+                <GlassCard className="mt-5 flex flex-wrap items-center gap-4 px-5 py-[18px]">
+                  <div className="flex-[1_1_300px]">
+                    <p className="font-semibold text-text-primary">Découvre toute l&apos;équipe</p>
+                    <p className="text-sm text-text-secondary">Crée ton profil gratuit pour voir les noms et ouvrir les profils.</p>
+                  </div>
+                  <Button href="/rejoindre">Rejoindre</Button>
+                </GlassCard>
+              )}
+            </EnterItem>
+          </div>
+
+          {/* ========= COLONNE COLLANTE (sous le contenu en mobile) ========= */}
+          <aside className="flex flex-col gap-3.5 lg:sticky lg:top-8 lg:self-start">
             {/* Réalisé par */}
             {directors.length > 0 && (
-            <EnterItem>
-            <div className="space-y-2.5">
-              {directors.map((d) => <DirectorCard key={d.id} director={d} label="Réalisé par" />)}
-            </div>
-            </EnterItem>
+              <EnterItem>
+                <GlassCard className="flex flex-col gap-3.5 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-tertiary">Réalisé par</p>
+                  {directors.map((d) => (
+                    <div key={d.id} className="flex flex-col gap-3.5">
+                      <div className="flex items-center gap-3.5">
+                        <Avatar url={d.avatar_url} name={d.name} size={52} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-text-primary">{d.name}</p>
+                          <p className="truncate text-[13px] text-text-secondary">{[d.role, d.location].filter(Boolean).join(" · ")}</p>
+                        </div>
+                      </div>
+                      {d.slug && <Button variant="glass" href={`/profil/${d.slug}`}>Voir le profil</Button>}
+                    </div>
+                  ))}
+                </GlassCard>
+              </EnterItem>
             )}
+
+            {/* Fiche technique */}
+            <EnterItem>
+              <GlassCard className="px-5 py-2">
+                <dl className="text-sm">
+                  <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] py-2.5"><dt className="text-text-secondary">Catégorie</dt><dd className="font-medium" style={{ color: catColor }}>{categoryLabels[project.category]}</dd></div>
+                  <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] py-2.5"><dt className="text-text-secondary">Année</dt><dd className="font-mono font-medium text-text-primary">{project.year}</dd></div>
+                  <div className="flex items-center justify-between gap-3 py-2.5"><dt className="text-text-secondary">Équipe</dt><dd className="font-medium text-text-primary">{talents}</dd></div>
+                </dl>
+              </GlassCard>
+            </EnterItem>
 
             {/* Crédit + statut */}
             {showCreditButton && (
@@ -517,11 +432,43 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
               </div>
             )}
             {memberActions}
-          </aside>
 
-          </div>{/* fin grille */}
-        </div>
-      </EnterList>
+            {!creditStatus.claimPending && (
+              <button type="button" onClick={openSignal} className="inline-flex min-h-11 items-center gap-2 self-start text-[13px] text-text-tertiary transition-colors duration-fast hover:text-text-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5" /></svg>
+                Signaler ce film
+              </button>
+            )}
+          </aside>
+        </motion.div>
+
+        {/* ===== FILMS LIÉS ===== */}
+        {relatedProjects.length > 0 && (
+          <section className="mt-12 lg:mt-16">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className={SECTION_TITLE}>Films liés</h2>
+              <span className="text-sm text-text-secondary">Mêmes talents</span>
+            </div>
+            {/* Même hauteur pour toutes les affiches, largeur au format réel de l'image */}
+            <div className="flex flex-wrap gap-4">
+              {relatedProjects.slice(0, 4).map((rp) => (
+                <FilmLink key={rp.id} slug={rp.slug} className="group flex w-fit max-w-full flex-col items-start gap-2.5">
+                  <FilmPoster
+                    src={rp.preview_url || rp.poster_url}
+                    alt={rp.title}
+                    sizes="(max-width: 1024px) 50vw, 260px"
+                    className="h-[92px] rounded-media border sm:h-[120px] lg:h-[142px] border-white/[0.11] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.75)] transition-[translate,box-shadow,border-color] duration-base ease-glass group-hover:border-white/20 group-hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.9)] motion-safe:group-hover:-translate-y-1"
+                  />
+                  <div className="w-0 min-w-full px-0.5">
+                    <h3 className="truncate text-[15px] font-semibold text-text-primary transition-colors group-hover:text-lime">{rp.title}</h3>
+                    <FilmMeta category={rp.category} author={rp.director_name} year={rp.year} className="mt-1" />
+                  </div>
+                </FilmLink>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
 
       {/* ===== VIDEO MODAL ===== */}
       <AnimatePresence>
@@ -617,24 +564,4 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
       />
     </>
   );
-}
-
-type Director = { id: string; name: string; slug: string | null; avatar_url: string | null; role: string };
-
-// Carte d'un réalisateur (crédit de réalisation). Cliquable seulement s'il a un profil.
-function DirectorCard({ director, label }: { director: Director; label?: string }) {
-  const card = (
-    <GlassCard className={`flex items-center gap-3.5 px-4 py-3.5 ${director.slug ? "transition-colors duration-fast hover:border-white/20" : ""}`}>
-      <Avatar url={director.avatar_url} name={director.name} size={48} style={{ background: "rgba(200,255,0,0.08)", border: "1.5px solid rgba(200,255,0,0.2)" }} />
-      <div className="min-w-0 flex-1">
-        {label && <p className="font-mono text-[10px] uppercase tracking-wide text-text-tertiary mb-0.5">{label}</p>}
-        <p className="truncate text-[15px] font-medium text-text-primary">{director.name}</p>
-        <p className="mt-0.5 truncate text-xs text-text-secondary">{director.role}</p>
-      </div>
-      {director.slug && (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M9 5l7 7-7 7" /></svg>
-      )}
-    </GlassCard>
-  );
-  return director.slug ? <Link href={`/profil/${director.slug}`} className="block">{card}</Link> : card;
 }

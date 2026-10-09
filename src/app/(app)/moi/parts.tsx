@@ -1,5 +1,6 @@
 // Sous-composants de presentation de l'espace /moi (aucune logique metier).
 import type { ReactNode } from "react";
+import FilmPoster from "@/components/FilmPoster";
 
 /* ---------- petit titre de section (capitales mono) ---------- */
 
@@ -39,16 +40,8 @@ export function Note({ tone = "error", children }: { tone?: "error" | "ok"; chil
 
 export function FilmThumb({ url }: { url: string | null | undefined }) {
   return (
-    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-media border border-white/10 bg-white/5">
-      {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="size-full object-cover" />
-      ) : (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-tertiary" aria-hidden="true">
-          <path d="M15 12l-4 2.5v-5l4 2.5z" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </div>
+    // Hauteur fixe, largeur au format réel de l'image
+    <FilmPoster src={url} alt="" sizes="110px" className="h-12 rounded-lg border border-white/10" />
   );
 }
 

@@ -15,6 +15,18 @@ Composants / modules utilises par 3+ features.
 - **Risque si modifie** : **CRITIQUE** — casse la navigation de toute l'app
 - **Note admin** : le menu utilisateur desktop affiche un lien « Administration » si `is_admin` (fetch `GET /api/me` au montage quand connecte — affichage seulement, la garde reelle est le layout serveur de `/admin`)
 
+## FilmPoster / FilmLink (lot 7, 09/10/2026)
+
+- **Fichiers** : `src/components/FilmPoster.tsx`, `src/components/FilmLink.tsx`, `src/lib/film-transition.ts`
+- **Role** : affiche d'un film toujours entiere, a son format reel, sans bande ni fond ; lien de film avec transition partagee vers le lecteur
+- **Regle** : jamais de texte ni de badge dans `FilmPoster` (seulement bouton lecture ou cadenas), jamais d'image de film hors de `FilmPoster` (c'est lui qui garantit le format reel)
+- **Consommateurs** : feed (`HeroCarousel`, `FilmRow`), `ProjetClient`, `RechercheClient`, `categories/[slug]/page`, `VideoFacade` (profil, admin), `moi/parts` (`FilmThumb`), `skeletons/ProjectSkeleton`
+- **Risque si modifie** : **ELEVE** — toutes les vignettes de film. Un seul element de la page peut porter le nom de transition `film-poster` : ne pas nommer une vignette autrement que par `FilmPoster` (`shareKey`)
+
+## AppShell : champ de recherche de l'en-tete (lot 7, 09/10/2026)
+
+- En-tete desktop : champ centre (Ctrl K), Entree → `/recherche?q=`. Masque sur `/recherche`. Rien ne change en mobile.
+
 ## Avatar
 
 - **Fichier** : `src/components/Avatar.tsx`

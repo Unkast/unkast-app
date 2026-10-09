@@ -58,7 +58,13 @@ async function getRecruitingProfiles() {
   });
 }
 
-export default async function RecherchePage() {
-  const [counts, recruiting] = await Promise.all([getCategoryCounts(), getRecruitingProfiles()]);
-  return <RechercheClient categoryCounts={counts} recruitingProfiles={recruiting} />;
+type Props = {
+  searchParams: Promise<{ q?: string | string[] }>;
+};
+
+export default async function RecherchePage({ searchParams }: Props) {
+  const [counts, recruiting, { q }] = await Promise.all([getCategoryCounts(), getRecruitingProfiles(), searchParams]);
+  // ?q= : recherche lancee depuis le champ de l'en-tete (AppShell).
+  const initialQuery = typeof q === "string" ? q.slice(0, 100) : "";
+  return <RechercheClient key={initialQuery} categoryCounts={counts} recruitingProfiles={recruiting} initialQuery={initialQuery} />;
 }

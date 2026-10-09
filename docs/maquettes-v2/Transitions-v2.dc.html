@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Transitions v2</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./unkast.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&amp;family=Instrument+Sans:wght@400;500;600&amp;family=Instrument+Serif&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0A0C}
+.tv{width:1440px;height:1000px;padding:56px 64px;box-sizing:border-box;display:flex;flex-direction:column;gap:36px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;flex:1}
+.demo{position:relative;display:flex;flex-direction:column;gap:16px}
+.box{position:relative;overflow:hidden;height:420px;border-radius:28px;border:1px solid var(--glass-b);background:rgba(255,255,255,.03);box-shadow:var(--hi)}
+.cap h3{margin:0;font:700 20px var(--f-d);letter-spacing:-.02em}
+.cap p{margin:6px 0 0;font-size:14px;line-height:1.5;color:var(--mu)}
+.clean::after{display:none}
+.pt{position:absolute;z-index:1;left:0;right:0;bottom:11%;text-align:center;font-family:'Instrument Serif',serif;color:rgba(255,255,255,.93);letter-spacing:.16em;text-transform:uppercase;line-height:1}
+/* 1. morph carte vers lecteur */
+.m-card{position:absolute;border-radius:12px;width:116px;aspect-ratio:16/9;top:250px}
+.m-a{left:24px}.m-c{left:276px}
+.m-b{left:150px;z-index:3;animation:k-morph 5s cubic-bezier(.65,0,.35,1) infinite}
+.m-b .pt{font-size:9px;animation:k-ptgrow 5s cubic-bezier(.65,0,.35,1) infinite}
+.m-a,.m-c{animation:k-away 5s cubic-bezier(.65,0,.35,1) infinite}
+.m-amb{position:absolute;inset:-30%;filter:blur(70px);opacity:0;animation:k-amb 5s ease-in-out infinite}
+.m-txt{position:absolute;left:24px;bottom:24px;right:24px;display:flex;flex-direction:column;gap:6px;opacity:0;animation:k-txt 5s cubic-bezier(.2,.8,.2,1) infinite}
+.m-txt b{font:800 26px var(--f-d);letter-spacing:-.03em}
+.m-tap{position:absolute;left:198px;top:268px;width:20px;height:20px;border-radius:50%;background:rgba(201,255,31,.9);box-shadow:0 0 24px var(--ac);opacity:0;z-index:4;animation:k-tap 5s ease-out infinite}
+@keyframes k-tap{0%,8%{opacity:0;transform:scale(.4)}12%{opacity:1;transform:scale(1)}20%{opacity:0;transform:scale(2.4)}100%{opacity:0}}
+@keyframes k-morph{0%,14%{left:150px;top:250px;width:116px;border-radius:12px;transform:scale(1)}17%{transform:scale(.94)}20%{transform:scale(1)}42%,78%{left:24px;top:40px;width:356px;border-radius:18px}96%,100%{left:150px;top:250px;width:116px;border-radius:12px}}
+@keyframes k-ptgrow{0%,20%{font-size:9px}42%,78%{font-size:26px}96%,100%{font-size:9px}}
+@keyframes k-away{0%,18%{opacity:1;filter:blur(0);transform:none}36%,80%{opacity:0;filter:blur(10px);transform:scale(.9)}96%,100%{opacity:1;filter:blur(0);transform:none}}
+@keyframes k-amb{0%,25%{opacity:0}45%,78%{opacity:.55}95%,100%{opacity:0}}
+@keyframes k-txt{0%,44%{opacity:0;transform:translateY(16px);filter:blur(6px)}54%,76%{opacity:1;transform:none;filter:blur(0)}86%,100%{opacity:0;transform:translateY(8px)}}
+/* 2. appui */
+.p-wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px}
+.p-btn{animation:k-press 2.4s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes k-press{0%,30%{transform:scale(1)}38%{transform:scale(.94)}52%{transform:scale(1.03)}62%,100%{transform:scale(1)}}
+.p-glow{position:absolute;left:50%;top:50%;width:200px;height:56px;margin:-28px 0 0 -100px;border-radius:999px;box-shadow:0 0 0 0 rgba(201,255,31,.55);animation:k-ring 2.4s ease-out infinite;pointer-events:none}
+@keyframes k-ring{0%,36%{box-shadow:0 0 0 0 rgba(201,255,31,.55)}70%,100%{box-shadow:0 0 0 22px rgba(201,255,31,0)}}
+.p-card{width:220px;animation:k-lift 3.2s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes k-lift{0%,25%{transform:none;box-shadow:0 22px 50px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.14)}45%,75%{transform:translateY(-6px) scale(1.04);box-shadow:0 34px 70px rgba(0,0,0,.6),0 0 40px rgba(201,255,31,.18),inset 0 0 0 1px rgba(255,255,255,.24)}100%{transform:none}}
+/* 3. a la une */
+.u-amb{position:absolute;inset:-30%;filter:blur(70px);opacity:.55}
+.u-a{animation:k-x1 6s ease-in-out infinite}.u-b{opacity:0;animation:k-x2 6s ease-in-out infinite}
+@keyframes k-x1{0%,40%{opacity:.55}55%,90%{opacity:0}100%{opacity:.55}}
+@keyframes k-x2{0%,40%{opacity:0}55%,90%{opacity:.55}100%{opacity:0}}
+.u-frame{position:absolute;left:24px;right:24px;top:40px;aspect-ratio:16/9}
+.u-frame .ph{position:absolute;inset:0;border-radius:16px}
+.u-f1{animation:k-f1 6s cubic-bezier(.65,0,.35,1) infinite}.u-f2{animation:k-f2 6s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes k-f1{0%,40%{opacity:1;transform:none;filter:blur(0)}52%,90%{opacity:0;transform:scale(1.04);filter:blur(8px)}100%{opacity:1;transform:none;filter:blur(0)}}
+@keyframes k-f2{0%,40%{opacity:0;transform:scale(.96);filter:blur(8px)}52%,90%{opacity:1;transform:none;filter:blur(0)}100%{opacity:0}}
+.u-frame .pt{font-size:24px}
+.u-bars{position:absolute;left:24px;right:24px;bottom:28px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.u-bars span{height:3px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.u-bars i{display:block;height:100%;width:0;background:var(--ac);box-shadow:0 0 10px var(--ac)}
+.u-bars span:nth-child(2) i{animation:k-fill1 6s linear infinite}
+.u-bars span:nth-child(3) i{animation:k-fill2 6s linear infinite}
+@keyframes k-fill1{0%{width:0}45%{width:100%}46%,100%{width:100%}}
+@keyframes k-fill2{0%,50%{width:0}100%{width:90%}}
+.rules{display:flex;gap:28px;font-size:14px;color:var(--mu)}
+.rules div{flex:1;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);line-height:1.5}
+.rules b{display:block;color:var(--tx);margin-bottom:4px;font-weight:600}
+@media (prefers-reduced-motion:reduce){.tv *{animation:none!important}}
+</style>
+</helmet>
+<div class="u tv">
+  <div>
+    <div class="lbl">Mouvement</div>
+    <h1 class="d gt" style="margin:8px 0 0;font-size:44px;font-weight:800">Les transitions d'Unkast</h1>
+  </div>
+  <div class="grid3">
+    <div class="demo">
+      <div class="box">
+        <div class="m-amb p1"></div>
+        <div class="ph clean p5 m-card m-a"></div>
+        <div class="ph clean p1 m-card m-b"><div class="pt">Les Ombres du Matin</div></div>
+        <div class="ph clean p7 m-card m-c"></div>
+        <span class="m-tap"></span>
+        <div class="m-txt"><span class="fm" style="font-size:12px;color:var(--mu)">Court métrage · 2024</span><b class="gt">Les Ombres du Matin</b></div>
+      </div>
+      <div class="cap"><h3>Clic sur un film</h3><p>La vignette grandit et devient le lecteur de la page du film. Les autres s'effacent, la lumière du film envahit la page, le titre arrive en dernier. Le retour fait l'inverse.</p></div>
+    </div>
+    <div class="demo">
+      <div class="box">
+        <div class="p-wrap">
+          <span class="p-glow"></span>
+          <span class="btn btn-ac p-btn" style="min-width:200px;min-height:56px;font-size:16px">Voir le film</span>
+          <div class="ph clean p4 p-card"><div class="pt" style="font-size:16px">Nuit Électrique</div></div>
+        </div>
+      </div>
+      <div class="cap"><h3>Appui et survol</h3><p>Un bouton s'enfonce puis rebondit, avec un halo lime. Une carte se soulève au survol. Sur téléphone, le même enfoncement au toucher.</p></div>
+    </div>
+    <div class="demo">
+      <div class="box">
+        <div class="u-amb p5 u-a"></div>
+        <div class="u-amb p4 u-b"></div>
+        <div class="u-frame">
+          <div class="ph clean p5 u-f1"><div class="pt">Horizons</div></div>
+          <div class="ph clean p4 u-f2"><div class="pt">Nuit Électrique</div></div>
+        </div>
+        <div class="u-bars"><span><i></i></span><span><i></i></span><span><i></i></span><span><i></i></span><span><i></i></span></div>
+      </div>
+      <div class="cap"><h3>Film à la une</h3><p>Toutes les 8 secondes, le film suivant arrive en fondu net, et la couleur de la lumière glisse vers celle du nouveau film. La barre montre le temps restant.</p></div>
+    </div>
+  </div>
+  <div class="rules">
+    <div><b>Rapide</b>Entre 250 et 450 ms. La page suivante est préchargée, la transition ne ralentit rien.</div>
+    <div><b>Fluide</b>Seulement des déplacements, agrandissements et fondus, calculés par la carte graphique.</div>
+    <div><b>Respectueux</b>Si le téléphone demande moins d'animations, on garde des fondus simples. Version allégée sur les petits Android.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

@@ -32,13 +32,13 @@ export function Section({ children }: { children: ReactNode }) {
   );
 }
 
-// Legere elevation au survol
+// Legere elevation au survol, enfoncement puis rebond a l'appui
 export function AnimatedCard({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion();
   return (
     <motion.div
       whileHover={reduced ? undefined : { y: -4 }}
-      whileTap={reduced ? undefined : { scale: 0.98 }}
+      whileTap={reduced ? undefined : { scale: 0.96, transition: { type: "spring", stiffness: 500, damping: 30 } }}
       transition={cardSpring}
     >
       {children}

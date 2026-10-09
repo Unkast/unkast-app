@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import FilmMeta from "@/components/FilmMeta";
+import FilmPoster from "@/components/FilmPoster";
 import type { ProjectCategory } from "@/types/database";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList } from "@/components/motion";
@@ -171,11 +172,13 @@ function CategoryBg({ categoryKey }: { categoryKey: string }) {
 interface Props {
   categoryCounts: Record<string, number>;
   recruitingProfiles: any[];
+  /** Recherche demandée par l'adresse (?q=), depuis le champ de l'en-tête. */
+  initialQuery?: string;
 }
 
-export default function RechercheClient({ categoryCounts, recruitingProfiles }: Props) {
-  const [mode, setMode] = useState<Mode>("browse");
-  const [query, setQuery] = useState("");
+export default function RechercheClient({ categoryCounts, recruitingProfiles, initialQuery = "" }: Props) {
+  const [mode, setMode] = useState<Mode>(initialQuery ? "search" : "browse");
+  const [query, setQuery] = useState(initialQuery);
   const [filter, setFilter] = useState<SearchFilter>("all");
   const [talents, setTalents] = useState<TalentResult[]>([]);
   const [projects, setProjects] = useState<ProjectResult[]>([]);
@@ -431,19 +434,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                     return (
                       <Link key={p.id} href={`/projet/${p.slug}`} className="block group">
                         <GlassCard className="flex items-center gap-3 p-3">
-                          <div className="relative w-[60px] h-[44px] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden bg-white/5">
-                            {(p.preview_url || p.poster_url) ? (
-                              <img
-                                src={(p.preview_url || p.poster_url) as string}
-                                alt={p.title}
-                                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                              />
-                            ) : (
-                              <svg className="w-4 h-4" style={{ color: "#C8FF00", opacity: 0.3 }} fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            )}
-                          </div>
+                          <FilmPoster src={p.preview_url || p.poster_url} alt={p.title} sizes="96px" className="h-11 rounded-lg" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-text-primary group-hover:text-lime transition truncate">{p.title}</p>
                             <FilmMeta category={p.category} author={p.director_name} year={p.year} className="mt-0.5" />
@@ -463,17 +454,14 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                     return (
                       <Link key={p.id} href={`/projet/${p.slug}`} className="group block">
                         <GlassCard className="p-2.5 transition-[translate,border-color,box-shadow] duration-base ease-glass group-hover:border-white/20 motion-safe:group-hover:-translate-y-1">
-                          <div className="relative w-full bg-white/5 rounded-media overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.55)]" style={{ aspectRatio: "16/9" }}>
-                            {hasImage && (
-                              <img src={(p.preview_url || p.poster_url) as string} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
-                            )}
+                          <FilmPoster src={p.preview_url || p.poster_url} alt={p.title} sizes="(max-width: 1280px) 40vw, 420px" framed className="rounded-media shadow-[0_18px_40px_rgba(0,0,0,0.55)]">
                             {/* Bouton lecture en verre : visible sans image, au survol sinon */}
                             <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-base ${hasImage ? "opacity-0 group-hover:opacity-100" : ""}`}>
                               <span className="glass-strong flex size-12 items-center justify-center rounded-pill" aria-hidden>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
                               </span>
                             </div>
-                          </div>
+                          </FilmPoster>
                           <div className="mt-2.5 px-1 pb-0.5">
                             <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
                             <FilmMeta category={p.category} author={p.director_name} year={p.year} className="mt-1" />

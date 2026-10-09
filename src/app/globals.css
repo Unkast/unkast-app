@@ -385,3 +385,54 @@ body {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* ===== Lot 7 : bloc a la une, lumiere d'ambiance, transitions entre pages ===== */
+
+/* Lumiere d'ambiance d'un film : son affiche, tres reduite et agrandie. En .lite (Android) :
+   pas de filtre, l'image agrandie est deja floue. */
+.film-ambient {
+  filter: blur(90px) saturate(150%);
+}
+.lite .film-ambient {
+  filter: none;
+}
+
+/* Barre de progression du film a la une (8 s). En reduced motion la regle globale
+   la remplit d'un coup : le changement de film est pilote par un minuteur, pas par elle. */
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.hero-progress {
+  transform-origin: left;
+  animation: hero-progress 8s linear forwards;
+}
+
+/* Transition partagee vignette -> lecteur (classe posee par <ViewTransition share>).
+   Le reste de la page s'efface en fondu. */
+::view-transition-group(.film-share) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+::view-transition-old(.film-share),
+::view-transition-new(.film-share) {
+  height: 100%;
+  object-fit: cover;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+}
+/* Reduced motion et .lite : fondus simples, aucun deplacement. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 150ms !important;
+  }
+}
+html.lite::view-transition-group(*) {
+  animation: none !important;
+}

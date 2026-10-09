@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Feed v2</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./unkast.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&amp;family=Instrument+Sans:wght@400;500;600&amp;family=Instrument+Serif&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0A0C}
+.v2 .main{padding-bottom:120px}
+.v2 .top{gap:14px}
+.srch{flex:0 1 460px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 8px 0 16px;border-radius:999px;background:var(--glass);box-shadow:var(--hi),inset 0 0 0 1px var(--glass-b);color:var(--dim);font-size:14px}
+.srch kbd{margin-left:auto;font:600 11px var(--f-b);color:var(--mu);padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.07)}
+.hx{position:relative;isolation:isolate;overflow:hidden;margin:28px 40px 0;padding:44px 44px 26px;border-radius:32px;border:1px solid var(--glass-b);box-shadow:var(--hi),0 40px 110px rgba(0,0,0,.55)}
+.hx-amb{position:absolute;left:-15%;top:-25%;width:130%;height:150%;z-index:-2;filter:blur(90px) saturate(150%);opacity:.6}
+.hx-veil{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(10,10,12,.94) 0%,rgba(10,10,12,.7) 38%,rgba(10,10,12,.25) 100%)}
+.hx-in{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:48px;align-items:center}
+.hx-txt{display:flex;flex-direction:column;gap:18px;min-width:0}
+.idx{display:flex;align-items:center;gap:10px;font:600 12px var(--f-b);letter-spacing:.16em;color:var(--dim)}
+.idx b{color:var(--tx);font-weight:600}
+.hx h1{margin:0;font:800 64px/1 var(--f-d);letter-spacing:-.035em}
+.fm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--mu)}
+.fm i{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.fm s{text-decoration:none;color:#55555f}
+.lg{margin:0;max-width:440px;font-size:17px;line-height:1.55;color:#d9d6cf}
+.ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.team{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mu)}
+.team span.av{width:30px;height:30px;font-size:11px;margin-left:-10px;box-shadow:0 0 0 2px #0f0f13}
+.team span.av:first-child{margin-left:0}
+.frame{display:block;position:relative}
+.frame .ph{border-radius:20px;box-shadow:0 50px 120px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.16)}
+.frame .pl i{width:68px;height:68px}
+.clean::after{display:none}
+.pt{position:absolute;z-index:1;left:0;right:0;bottom:11%;text-align:center;font-family:'Instrument Serif',serif;color:rgba(255,255,255,.93);letter-spacing:.16em;text-transform:uppercase;line-height:1;text-shadow:0 2px 24px rgba(0,0,0,.45)}
+.pt small{display:block;margin-top:.5em;font-size:.32em;letter-spacing:.3em;opacity:.8}
+.frame .pt{font-size:46px}
+.next{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:34px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08)}
+.nx{display:flex;flex-direction:column;gap:8px;opacity:.55;transition:opacity .3s var(--ease)}
+.nx:hover,.nx.on{opacity:1}
+.nx .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.nx .bar i{display:block;height:100%;width:0}
+.nx.on .bar i{width:62%;background:var(--ac);box-shadow:0 0 10px var(--ac)}
+.nx .ph{border-radius:10px}
+.nx .ph .pt{font-size:11px}
+.nx .t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nx .s{font-size:12px;color:var(--dim)}
+.row-wrap{position:relative}
+.row-wrap::after{content:"";position:absolute;top:0;right:-40px;bottom:0;width:120px;pointer-events:none;background:linear-gradient(90deg,transparent,#0A0A0C)}
+.fc{flex:0 0 300px;display:flex;flex-direction:column;gap:12px}
+.fc .pt{font-size:22px}
+.fc .t{font-weight:600;font-size:16px}
+.arr{display:flex;gap:8px}
+.arr .btn-ic{width:36px;min-height:36px}
+.tal{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+@media(max-width:1080px){.hx{margin:16px;padding:22px}.hx-in{grid-template-columns:1fr;gap:24px}.frame{order:-1}.hx h1{font-size:40px}.next{grid-template-columns:repeat(3,minmax(0,1fr))}.tal{grid-template-columns:repeat(2,minmax(0,1fr))}.srch{display:none}}
+@media(max-width:640px){.next{grid-template-columns:repeat(2,minmax(0,1fr))}.tal{grid-template-columns:1fr}.fc{flex-basis:240px}}
+</style>
+</helmet>
+<div class="u shell v2">
+  <aside class="side">
+    <div class="logo">unkast<b>.</b></div>
+    <a class="nav on" href="Feed-v2.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Accueil</a>
+    <a class="nav" href="Recherche.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Recherche</a>
+    <div style="flex:1"></div>
+    <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="font:700 16px var(--f-d);letter-spacing:-.02em">Montre ton travail.</div>
+      <div class="mu" style="font-size:13px;line-height:1.45">Publie tes films, sois trouvé par ceux qui recrutent.</div>
+      <a class="btn btn-ac" href="Rejoindre.dc.html" style="min-height:40px">Rejoindre Unkast</a>
+      <a class="mu" href="Rejoindre.dc.html" style="font-size:12px;text-align:center">Déjà inscrit ? Se connecter</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <a class="srch" href="Recherche.dc.html" aria-label="Rechercher"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Un film, un talent, un métier<kbd>Ctrl K</kbd></a>
+    </header>
+
+    <section class="hx" aria-label="À la une">
+      <div class="hx-amb p5"></div>
+      <div class="hx-veil"></div>
+      <div class="hx-in">
+        <div class="hx-txt">
+          <div class="idx"><b>À LA UNE</b> 01 / 05</div>
+          <h1 class="gt">Horizons</h1>
+          <div class="fm"><i style="background:var(--c-pub)"></i>Publicité <s>·</s> Lucas Meriaux <s>·</s> 2025</div>
+          <p class="lg">Une route, une lumière qui tombe, et le silence d'une berline au bord du monde.</p>
+          <div class="team">
+            <div style="display:flex"><span class="av" style="background:#8AB4FF">LM</span><span class="av" style="background:#F0B24B">YB</span><span class="av" style="background:#C79BFF">CR</span><span class="av" style="background:#7FD6B0">TD</span></div>
+            4 talents au générique
+          </div>
+          <div class="ctl">
+            <a class="btn btn-ac" href="Projet.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" fill="currentColor"></path></svg>Voir le film</a>
+            <a class="btn btn-gh" href="Projet.dc.html">Voir l'équipe</a>
+            <div class="arr" style="margin-left:auto">
+              <button class="btn btn-gh btn-ic" aria-label="Film précédent"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></button>
+              <button class="btn btn-gh btn-ic" aria-label="Film suivant"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></button>
+            </div>
+          </div>
+        </div>
+        <a class="frame" href="Projet.dc.html" aria-label="Lire Horizons">
+          <div class="ph clean p5">
+            <div class="pt">Horizons<small>Aller plus loin</small></div>
+            <div class="pl"><i><svg class="i" viewBox="0 0 24 24" fill="#fff"><path d="M8 5l12 7-12 7z"></path></svg></i></div>
+          </div>
+        </a>
+      </div>
+      <div class="next">
+        <sc-for list="{{une}}" as="n" hint-placeholder-count="5">
+          <a class="nx {{n.on}}" href="Feed-v2.dc.html">
+            <div class="bar"><i></i></div>
+            <div class="ph clean {{n.cls}}"><div class="pt">{{n.title}}</div></div>
+            <div><div class="t">{{n.title}}</div><div class="s">{{n.cat}}</div></div>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <div class="wrap" style="margin-top:56px;display:flex;flex-direction:column;gap:48px">
+      <sc-for list="{{rows}}" as="row" hint-placeholder-count="3">
+        <section>
+          <div class="sec-h" style="align-items:center">
+            <h3>{{row.label}}</h3>
+            <div style="display:flex;align-items:center;gap:14px">
+              <a class="mu" href="Recherche.dc.html" style="font-size:14px">Tout voir</a>
+              <div class="arr">
+                <button class="btn btn-gh btn-ic" aria-label="Défiler à gauche"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></button>
+                <button class="btn btn-gh btn-ic" aria-label="Défiler à droite"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></button>
+              </div>
+            </div>
+          </div>
+          <div class="row-wrap">
+            <div class="rowh">
+              <sc-for list="{{row.items}}" as="it" hint-placeholder-count="5">
+                <a class="fc" href="Projet.dc.html">
+                  <div class="ph clean {{it.cls}}"><div class="pt">{{it.title}}</div><div class="pl"><i><svg class="i" viewBox="0 0 24 24" fill="#fff"><path d="M8 5l12 7-12 7z"></path></svg></i></div></div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <div class="t">{{it.title}}</div>
+                    <div class="fm" style="font-size:13px"><i style="background:{{it.col}}"></i>{{it.cat}} <s>·</s> {{it.by}} <s>·</s> {{it.year}}</div>
+                  </div>
+                </a>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+      </sc-for>
+
+      <section>
+        <div class="sec-h"><h3>Talents à découvrir</h3><a class="mu" href="Recherche.dc.html" style="font-size:14px">Tout voir</a></div>
+        <div class="tal">
+          <sc-for list="{{talents}}" as="t" hint-placeholder-count="4">
+            <a class="card" href="Profil.dc.html" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <div class="av" style="width:56px;height:56px;font-size:20px;background:{{t.col}}">{{t.ini}}</div>
+                <div style="min-width:0"><div style="font-weight:600">{{t.name}}</div><div class="mu" style="font-size:13px">{{t.where}}</div></div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">{{t.r1}}</span><span class="pill">{{t.r2}}</span></div>
+              <div style="font-size:13px;color:var(--mu)">{{t.films}}</div>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="tabbar rs" aria-label="Navigation">
+    <a class="tab on" href="Feed-v2.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Accueil</a>
+    <a class="tab" href="Recherche.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Recherche</a>
+    <a class="tab" href="Rejoindre.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Rejoindre</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      une: [
+        { cls: 'p4', title: 'Nuit Électrique', cat: 'Court métrage', on: '' },
+        { cls: 'p7', title: 'Le Silence des Abeilles', cat: 'Court métrage', on: '' },
+        { cls: 'p5', title: 'Horizons', cat: 'Publicité', on: 'on' },
+        { cls: 'p6', title: 'Mémoires Vives', cat: 'Documentaire', on: '' },
+        { cls: 'p1', title: 'Les Ombres du Matin', cat: 'Court métrage', on: '' }
+      ],
+      rows: [
+        { label: 'Projets récents', items: [
+          { cls: 'p8', title: 'Dernier Acte', cat: 'Scène', col: 'var(--c-scene)', by: 'Lucas Meriaux', year: '2025' },
+          { cls: 'p3', title: 'Sous la Surface', cat: 'Court métrage', col: 'var(--c-court)', by: 'Marie Petit', year: '2024' },
+          { cls: 'p2', title: 'Neon Dreams', cat: 'Clip', col: 'var(--c-clip)', by: 'Studio Noire', year: '2025' },
+          { cls: 'p4', title: 'Nuit Électrique', cat: 'Court métrage', col: 'var(--c-court)', by: 'Sofia Leclerc', year: '2025' },
+          { cls: 'p6', title: 'Mémoires Vives', cat: 'Documentaire', col: 'var(--c-doc)', by: 'Julie Fontaine', year: '2024' }
+        ]},
+        { label: 'Courts métrages', items: [
+          { cls: 'p1', title: 'Les Ombres du Matin', cat: 'Court métrage', col: 'var(--c-court)', by: 'Lucas Meriaux', year: '2024' },
+          { cls: 'p7', title: 'Le Silence des Abeilles', cat: 'Court métrage', col: 'var(--c-court)', by: 'Marie Petit', year: '2023' },
+          { cls: 'p4', title: 'Nuit Électrique', cat: 'Court métrage', col: 'var(--c-court)', by: 'Sofia Leclerc', year: '2025' },
+          { cls: 'p3', title: 'Sous la Surface', cat: 'Court métrage', col: 'var(--c-court)', by: 'Marie Petit', year: '2024' },
+          { cls: 'p8', title: 'Hors Champ', cat: 'Court métrage', col: 'var(--c-court)', by: 'Théo Delmas', year: '2025' }
+        ]}
+      ],
+      talents: [
+        { ini: 'CR', col: '#8AB4FF', name: 'Camille Roux', where: 'Paris', r1: 'Réalisatrice', r2: 'Scénariste', films: '6 films au générique' },
+        { ini: 'YB', col: '#F0B24B', name: 'Yanis Berthe', where: 'Lyon', r1: 'Chef opérateur', r2: 'Étalonneur', films: '9 films au générique' },
+        { ini: 'LM', col: '#C79BFF', name: 'Léa Marchand', where: 'Marseille', r1: 'Comédienne', r2: 'Voix', films: '4 films au générique' },
+        { ini: 'TD', col: '#7FD6B0', name: 'Théo Delmas', where: 'Rennes', r1: 'Monteur', r2: 'Sound designer', films: '7 films au générique' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

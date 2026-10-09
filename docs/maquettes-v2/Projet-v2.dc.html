@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Film v2</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./unkast.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&amp;family=Instrument+Sans:wght@400;500;600&amp;family=Instrument+Serif&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0A0C}
+.v2 .main{padding-bottom:120px}
+.srch{flex:0 1 460px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 8px 0 16px;border-radius:999px;background:var(--glass);box-shadow:var(--hi),inset 0 0 0 1px var(--glass-b);color:var(--dim);font-size:14px}
+.srch kbd{margin-left:auto;font:600 11px var(--f-b);color:var(--mu);padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.07)}
+.stage{position:relative;isolation:isolate;padding:36px 40px 0}
+.amb{position:absolute;left:5%;top:-10%;width:90%;height:105%;z-index:-1;filter:blur(110px) saturate(150%);opacity:.5;border-radius:50%}
+.back{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--mu);margin-bottom:20px}
+.screen{max-width:1080px;margin:0 auto}
+.screen .ph{border-radius:22px;box-shadow:0 60px 140px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.16)}
+.screen .pl i{width:76px;height:76px}
+.clean::after{display:none}
+.pt{position:absolute;z-index:1;left:0;right:0;bottom:11%;text-align:center;font-family:'Instrument Serif',serif;color:rgba(255,255,255,.93);letter-spacing:.16em;text-transform:uppercase;line-height:1;text-shadow:0 2px 24px rgba(0,0,0,.45)}
+.pt small{display:block;margin-top:.5em;font-size:.32em;letter-spacing:.3em;opacity:.8}
+.screen .pt{font-size:64px}
+.cook{max-width:1080px;margin:12px auto 0;font-size:12px;color:var(--dim);text-align:center}
+.body{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:48px;max-width:1080px;margin:44px auto 0;padding:0 40px;box-sizing:content-box}
+.fm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--mu)}
+.fm i{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.fm s{text-decoration:none;color:#55555f}
+.h1{margin:12px 0 0;font:800 56px/1 var(--f-d);letter-spacing:-.035em}
+.desc{margin:18px 0 0;max-width:620px;font-size:17px;line-height:1.6;color:#d9d6cf}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.sub{margin:48px 0 16px;display:flex;align-items:baseline;justify-content:space-between}
+.sub h2{margin:0;font:700 22px var(--f-d);letter-spacing:-.02em}
+.crew{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 28px}
+.cr{display:flex;align-items:center;gap:14px;min-height:64px;border-bottom:1px solid rgba(255,255,255,.07)}
+.cr .role{font-size:13px;color:var(--dim);min-width:110px}
+.cr .nm{font-weight:600}
+.cr .lock{color:var(--mu);font-weight:500}
+.gate{margin-top:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 20px}
+.side2{position:sticky;top:90px;display:flex;flex-direction:column;gap:14px;align-self:start}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.kv:last-child{border-bottom:0}
+.rel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;max-width:1080px;margin:0 auto;padding:0 40px;box-sizing:content-box}
+.rc{display:flex;flex-direction:column;gap:10px}
+.rc .pt{font-size:18px}
+.rc .t{font-weight:600;font-size:15px}
+.rep{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);background:none;border:0;padding:0;cursor:pointer;min-height:44px}
+@media(max-width:1080px){.stage{padding:20px 16px 0}.body{grid-template-columns:1fr;padding:0 16px;gap:28px}.side2{position:static}.rel{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 16px}.h1{font-size:38px}.screen .pt{font-size:34px}.srch{display:none}}
+@media(max-width:640px){.crew{grid-template-columns:1fr}}
+</style>
+</helmet>
+<div class="u shell v2">
+  <aside class="side">
+    <div class="logo">unkast<b>.</b></div>
+    <a class="nav on" href="Feed-v2.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Accueil</a>
+    <a class="nav" href="Recherche.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Recherche</a>
+    <div style="flex:1"></div>
+    <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="font:700 16px var(--f-d);letter-spacing:-.02em">Montre ton travail.</div>
+      <div class="mu" style="font-size:13px;line-height:1.45">Publie tes films, sois trouvé par ceux qui recrutent.</div>
+      <a class="btn btn-ac" href="Rejoindre.dc.html" style="min-height:40px">Rejoindre Unkast</a>
+      <a class="mu" href="Rejoindre.dc.html" style="font-size:12px;text-align:center">Déjà inscrit ? Se connecter</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <a class="srch" href="Recherche.dc.html" aria-label="Rechercher"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Un film, un talent, un métier<kbd>Ctrl K</kbd></a>
+    </header>
+
+    <section class="stage">
+      <div class="amb p1"></div>
+      <div class="screen">
+        <a class="back" href="Feed-v2.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>Retour</a>
+        <button class="ph clean p1" aria-label="Lancer Les Ombres du Matin" style="display:block;width:100%;border:0;padding:0;cursor:pointer">
+          <span class="pt">Les Ombres du Matin<small>Un film de Lucas Meriaux</small></span>
+          <span class="pl"><i><svg class="i" viewBox="0 0 24 24" fill="#fff" style="width:30px;height:30px"><path d="M8 5l12 7-12 7z"></path></svg></i></span>
+        </button>
+      </div>
+      <p class="cook">En lançant la vidéo, YouTube peut déposer des cookies.</p>
+    </section>
+
+    <div class="body">
+      <div style="min-width:0">
+        <div class="fm"><i style="background:var(--c-court)"></i>Court métrage <s>·</s> 2024 <s>·</s> 14 min</div>
+        <h1 class="h1 gt">Les Ombres du Matin</h1>
+        <p class="desc">Un homme marche vers l'aube sur une route qu'il croyait avoir quittée pour toujours. Tourné en cinq jours dans le Vercors.</p>
+        <div class="acts">
+          <button class="btn btn-ac"><svg class="i" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" fill="currentColor"></path></svg>Lancer le film</button>
+          <button class="btn btn-gh"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"></path></svg>Partager</button>
+        </div>
+
+        <div class="sub"><h2>Équipe</h2><span class="mu" style="font-size:14px">5 talents</span></div>
+        <div class="crew">
+          <sc-for list="{{crew}}" as="c" hint-placeholder-count="6">
+            <div class="cr">
+              <span class="role">{{c.role}}</span>
+              <span class="av" style="width:36px;height:36px;font-size:12px;background:{{c.col}}">{{c.ini}}</span>
+              <span class="{{c.cls}}">{{c.name}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="card gate">
+          <div style="flex:1 1 300px"><div style="font-weight:600">Découvre toute l'équipe</div><div class="mu" style="font-size:14px">Crée ton profil gratuit pour voir les noms et ouvrir les profils.</div></div>
+          <a class="btn btn-ac" href="Rejoindre.dc.html">Rejoindre</a>
+        </div>
+      </div>
+
+      <aside class="side2">
+        <div class="card" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="lbl">Réalisé par</div>
+          <a href="Profil.dc.html" style="display:flex;align-items:center;gap:14px">
+            <span class="av" style="width:52px;height:52px;font-size:18px;background:#8AB4FF">LM</span>
+            <span><span style="display:block;font-weight:600">Lucas Meriaux</span><span class="mu" style="font-size:13px">Réalisateur · Lyon</span></span>
+          </a>
+          <a class="btn btn-gh" href="Profil.dc.html">Voir le profil</a>
+        </div>
+        <div class="card" style="padding:8px 20px">
+          <div class="kv"><span class="mu">Catégorie</span><span>Court métrage</span></div>
+          <div class="kv"><span class="mu">Année</span><span>2024</span></div>
+          <div class="kv"><span class="mu">Durée</span><span>14 min</span></div>
+          <div class="kv"><span class="mu">Équipe</span><span>5 talents</span></div>
+        </div>
+        <button class="rep"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M5 21V4h11l-2 4 2 4H5"></path></svg>Signaler ce film</button>
+      </aside>
+    </div>
+
+    <div class="sub" style="max-width:1080px;margin:64px auto 16px;padding:0 40px;box-sizing:content-box"><h2>Films liés</h2><span class="mu" style="font-size:14px">Mêmes talents</span></div>
+    <div class="rel">
+      <sc-for list="{{rel}}" as="r" hint-placeholder-count="4">
+        <a class="rc" href="Projet-v2.dc.html">
+          <div class="ph clean {{r.cls}}"><div class="pt">{{r.title}}</div></div>
+          <div style="display:flex;flex-direction:column;gap:4px"><div class="t">{{r.title}}</div><div class="fm" style="font-size:13px"><i style="background:{{r.col}}"></i>{{r.cat}} <s>·</s> {{r.year}}</div></div>
+        </a>
+      </sc-for>
+    </div>
+  </div>
+
+  <nav class="tabbar rs" aria-label="Navigation">
+    <a class="tab on" href="Feed-v2.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Accueil</a>
+    <a class="tab" href="Recherche.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Recherche</a>
+    <a class="tab" href="Rejoindre.dc.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Rejoindre</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      crew: [
+        { role: 'Réalisation', ini: 'LM', col: '#8AB4FF', name: 'Lucas Meriaux', cls: 'nm' },
+        { role: 'Image', ini: 'Y. B.', col: '#2a2a30', name: 'Y. B.', cls: 'lock' },
+        { role: 'Rôle principal', ini: 'A. R.', col: '#2a2a30', name: 'A. R.', cls: 'lock' },
+        { role: 'Montage', ini: 'T. D.', col: '#2a2a30', name: 'T. D.', cls: 'lock' },
+        { role: 'Musique', ini: 'N. K.', col: '#2a2a30', name: 'N. K.', cls: 'lock' }
+      ],
+      rel: [
+        { cls: 'p5', title: 'Horizons', cat: 'Publicité', col: 'var(--c-pub)', year: '2025' },
+        { cls: 'p8', title: 'Dernier Acte', cat: 'Scène', col: 'var(--c-scene)', year: '2025' },
+        { cls: 'p7', title: 'Le Silence des Abeilles', cat: 'Court métrage', col: 'var(--c-court)', year: '2023' },
+        { cls: 'p6', title: 'Mémoires Vives', cat: 'Documentaire', col: 'var(--c-doc)', year: '2024' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
