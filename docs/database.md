@@ -585,3 +585,5 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 4. **`schema.sql` a regenerer** depuis la base (10 tables + colonnes manquantes + RLS des nouvelles tables).
 
 > **Compte admin dedie (migration `20261017_admin_account.sql`).** `account_type='admin'` ajoute a `profiles_account_type_check`. Policy RESTRICTIVE `"Admin accounts are private"` sur `profiles` (SELECT, anon et authenticated) : une ligne admin n'est lisible que par son compte. Fonction `reject_admin_account()` + triggers du meme nom sur `conversations` (participants) et `project_credits` (`profile_id`) : un compte admin ne peut pas y figurer. Les droits restent portes par `is_admin`.
+
+> **Policies basees sur `is_admin` retirees (migration `20261018_drop_admin_policies.sql`).** `reports` "Admins manage reports", `waitlist` "Admins manage waitlist", `admin_logs` "Admins only" : acces admin direct sans second facteur, inutilise par le code (ces trois tables ne sont lues et ecrites que par le service role). RLS laissee active. La seule porte admin est `/api/admin` (`getAdminId()`).
