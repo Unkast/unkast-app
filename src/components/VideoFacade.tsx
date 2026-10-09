@@ -24,6 +24,7 @@ export default function VideoFacade({ url, title, poster, className = "" }: Prop
   }
 
   return (
+    <>
     <button
       type="button"
       onClick={() => setActivated(true)}
@@ -48,11 +49,9 @@ export default function VideoFacade({ url, title, poster, className = "" }: Prop
           <path d="M8 5v14l11-7z" />
         </svg>
       </span>
-
-      {/* Mention cookies, visible avant le clic */}
-      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-2 pt-6 text-left text-[11px] leading-snug text-white/80">
-        {VIDEO_COOKIE_NOTICE}
-      </span>
     </button>
+    {/* Mention cookies, visible avant le clic : sous la vignette, jamais dessus */}
+    <p className="px-3 pt-2 text-left text-[11px] leading-snug text-text-tertiary">{VIDEO_COOKIE_NOTICE}</p>
+    </>
   );
 }

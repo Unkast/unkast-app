@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
+import { CATEGORY_LABELS } from "@/lib/constants";
+import FilmMeta from "@/components/FilmMeta";
 import type { ProjectCategory } from "@/types/database";
 import { Section, AnimatedCard } from "./HomeAnimations";
 import Avatar from "@/components/Avatar";
@@ -255,7 +256,6 @@ function ProjectRow({ title, href, items }: ContentRow) {
       </div>
       <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 xl:-mx-16 xl:px-16 pt-2 -mt-2 pb-6 -mb-5">
         {items.map((project) => {
-          const catColor = CATEGORY_COLORS[project.category];
           return (
             <AnimatedCard key={project.id}>
               <Link href={`/projet/${project.slug}`} className="flex-shrink-0 w-60 sm:w-72 lg:w-80 group block">
@@ -295,22 +295,15 @@ function ProjectRow({ title, href, items }: ContentRow) {
                       </svg>
                     </div>
                   </div>
-                  <span className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill border border-white/10 bg-black/50 text-white/90 text-[9px] font-bold tracking-wide uppercase">
-                    <span className="size-1.5 rounded-full" style={{ backgroundColor: catColor }} />
-                    {CATEGORY_LABELS[project.category]}
-                  </span>
                 </div>
                 <div className="mt-2.5 px-0.5">
                   <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors duration-300 truncate leading-tight">
                     {project.title}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    {project.director_name && (
-                      <span className="text-[11px] text-text-tertiary truncate">{project.director_name}</span>
-                    )}
-                    <span className="text-[11px] text-text-tertiary/50 font-mono">{project.year}</span>
+                    <FilmMeta category={project.category} author={project.director_name} year={project.year} />
                     {project.team_size > 0 && (
-                      <span className="flex items-center gap-0.5 text-[11px] text-text-tertiary/50">
+                      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-text-tertiary/50">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>

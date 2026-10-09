@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, withDisplayName, type DisplayNameRow } from "@/lib/profile";
@@ -231,8 +230,6 @@ export default async function ProfilPage({ params }: Props) {
   return (
     <ProfileClient
       profile={profile}
-      categoryLabels={CATEGORY_LABELS}
-      categoryColors={CATEGORY_COLORS}
     />
   );
 }

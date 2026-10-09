@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ManagerRequestKind, ManagerRequestStatus, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
 import VideoEmbed, { VIDEO_COOKIE_NOTICE } from "@/components/VideoEmbed";
+import FilmMeta from "@/components/FilmMeta";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList, ModalBackdrop } from "@/components/motion";
 import Button from "@/components/ui/Button";
@@ -422,7 +423,6 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
               {/* pt-2 : place pour l'élévation au survol (overflow-x-auto rogne aussi en vertical) */}
               <div className="flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar pt-2 pb-1">
                 {relatedProjects.map((rp) => {
-                  const rpColor = categoryColors[rp.category];
                   return (
                     <Link key={rp.id} href={`/projet/${rp.slug}`} className="flex-shrink-0 w-60 sm:w-72 group block">
                       <div
@@ -440,19 +440,10 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
                         <span aria-hidden="true" className="glass absolute top-1/2 left-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill bg-black/35">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 2 }}><path d={PLAY_ICON} /></svg>
                         </span>
-                        <span
-                          className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide"
-                          style={{ backgroundColor: rpColor + "20", color: rpColor }}
-                        >
-                          {categoryLabels[rp.category]}
-                        </span>
                       </div>
                       <div className="mt-2.5 px-0.5">
                         <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{rp.title}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          {rp.director_name && <span className="text-[11px] text-text-tertiary truncate">{rp.director_name}</span>}
-                          <span className="text-[11px] text-text-tertiary/50 font-mono">{rp.year}</span>
-                        </div>
+                        <FilmMeta category={rp.category} author={rp.director_name} year={rp.year} className="mt-1" />
                       </div>
                     </Link>
                   );

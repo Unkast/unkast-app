@@ -9,10 +9,11 @@ import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
-import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit, ProjectCategory } from "@/types/database";
+import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import VideoFacade from "@/components/VideoFacade";
 import Avatar from "@/components/Avatar";
 import LockedFilmCard, { type LockedFilm } from "@/components/LockedFilmCard";
+import FilmMeta from "@/components/FilmMeta";
 import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
@@ -53,14 +54,10 @@ const FILM_FILTERS: { value: FilmFilter; label: string }[] = [
 
 interface Props {
   profile: ProfileData;
-  categoryLabels: Record<ProjectCategory, string>;
-  categoryColors: Record<ProjectCategory, string>;
 }
 
 export default function ProfileClient({
   profile,
-  categoryLabels,
-  categoryColors,
 }: Props) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilmFilter>("all");
@@ -523,34 +520,14 @@ export default function ProfileClient({
 
                       {/* Project info */}
                       <div className="p-5 sm:p-6">
-                        <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <Link
-                            href={`/projet/${project.slug}`}
-                            className="text-lg font-bold text-text-primary hover:text-lime transition"
-                          >
-                            {project.title}
-                          </Link>
-                          <span
-                            className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-                            style={{
-                              backgroundColor: categoryColors[project.category] + "15",
-                              color: categoryColors[project.category],
-                              border: `1px solid ${categoryColors[project.category]}30`,
-                            }}
-                          >
-                            {categoryLabels[project.category]}
-                          </span>
-                          <span className="text-text-tertiary text-xs font-mono">
-                            {project.year}
-                          </span>
-                        </div>
-
-                        {directors && (
-                          <p className="text-sm text-text-secondary mb-2">
-                            <span className="text-text-tertiary">Réalisation :</span>{" "}
-                            {directors}
-                          </p>
-                        )}
+                        <Link
+                          href={`/projet/${project.slug}`}
+                          className="text-lg font-bold text-text-primary hover:text-lime transition"
+                        >
+                          {project.title}
+                        </Link>
+                        {/* Infos : catégorie, réalisation (crédits de réalisation), année */}
+                        <FilmMeta category={project.category} author={directors} year={project.year} className="mt-1 mb-3 text-xs" />
 
                         {/* Role on project */}
                         {ownRole && (

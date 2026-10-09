@@ -301,6 +301,7 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/components/LegalLinks.tsx` | UTILITY | liens vers les pages légales (accueil, connexion, inscription, /moi) |
 | `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée |
 | `src/app/(app)/moi/PosterUpload.tsx` | SUB | image du film : recadrage 16:9, compression dans le navigateur, retour à l'image de la vidéo |
+| `src/components/FilmMeta.tsx` | UTILITY | ligne d infos d un film sous son titre : point de couleur + categorie, puis auteur et annee. Regle (09/10/2026) : aucun texte ni badge sur la vignette d un film (feed, recherche, fiche, films lies, carte verrouillee, ou seul le cadenas reste) ; la mention cookies de `VideoFacade` est sous la vignette |
 | `src/components/LockedFilmCard.tsx` | UTILITY | carte verrouillée d'un film « membres seulement » pour un visiteur (image floutée, cadenas, titre, bouton d'inscription) ; utilisée par la page film et la fiche profil |
 
 Points de vigilance :

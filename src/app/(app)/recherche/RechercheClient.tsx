@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
+import FilmMeta from "@/components/FilmMeta";
 import type { ProjectCategory } from "@/types/database";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList } from "@/components/motion";
@@ -428,7 +428,6 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                 {/* Mobile : liste compacte */}
                 <div className="space-y-2 lg:hidden">
                   {projects.map((p) => {
-                    const catColor = CATEGORY_COLORS[p.category];
                     return (
                       <Link key={p.id} href={`/projet/${p.slug}`} className="block group">
                         <GlassCard className="flex items-center gap-3 p-3">
@@ -446,13 +445,8 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-text-primary group-hover:text-lime transition truncate">{p.title}</p>
-                              <span className="px-2 py-0.5 rounded-pill text-[9px] font-mono font-semibold flex-shrink-0" style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}25`, letterSpacing: "0.08em" }}>
-                                {CATEGORY_LABELS[p.category]}
-                              </span>
-                            </div>
-                            <p className="text-xs text-text-secondary truncate">{p.director_name && `${p.director_name} · `}{p.year}</p>
+                            <p className="text-sm font-medium text-text-primary group-hover:text-lime transition truncate">{p.title}</p>
+                            <FilmMeta category={p.category} author={p.director_name} year={p.year} className="mt-0.5" />
                           </div>
                           <svg className="w-4 h-4 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -465,7 +459,6 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                 {/* Desktop : grille cartes Feed (films) */}
                 <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {projects.map((p) => {
-                    const catColor = CATEGORY_COLORS[p.category];
                     const hasImage = Boolean(p.preview_url || p.poster_url);
                     return (
                       <Link key={p.id} href={`/projet/${p.slug}`} className="group block">
@@ -480,16 +473,10 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles }: 
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-text-primary translate-x-px"><path d="M8 5v14l11-7z" /></svg>
                               </span>
                             </div>
-                            <span className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-pill text-[9px] font-bold uppercase tracking-wide backdrop-blur-md" style={{ backgroundColor: catColor + "20", color: catColor }}>
-                              {CATEGORY_LABELS[p.category]}
-                            </span>
                           </div>
                           <div className="mt-2.5 px-1 pb-0.5">
                             <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              {p.director_name && <span className="text-[11px] text-text-secondary truncate">{p.director_name}</span>}
-                              <span className="text-[11px] text-text-tertiary font-mono">{p.year}</span>
-                            </div>
+                            <FilmMeta category={p.category} author={p.director_name} year={p.year} className="mt-1" />
                           </div>
                         </GlassCard>
                       </Link>
