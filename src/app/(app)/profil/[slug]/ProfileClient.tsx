@@ -20,6 +20,7 @@ import { useUserStatus } from "@/hooks/useUserStatus";
 import { directorNames } from "@/lib/credits";
 import { CAREER_KINDS } from "@/lib/constants";
 import CastingSummary from "@/components/CastingSummary";
+import ShareButton from "@/components/ShareButton";
 
 type CreditWithProfile = ProjectCredit & {
   profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
@@ -64,7 +65,6 @@ export default function ProfileClient({
   const [activeFilter, setActiveFilter] = useState<FilmFilter>("all");
   const [expandedCredits, setExpandedCredits] = useState<Set<string>>(new Set());
   const [contacting, setContacting] = useState(false);
-  const [shareTooltip, setShareTooltip] = useState(false);
   // Cible du signalement : le profil, ou une entrée de son Parcours.
   const [reportTarget, setReportTarget] = useState<{ type: "profile" | "career_entry"; id: string } | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
@@ -127,11 +127,6 @@ export default function ProfileClient({
     });
   }
 
-  function handleShare() {
-    navigator.clipboard.writeText(window.location.href);
-    setShareTooltip(true);
-    setTimeout(() => setShareTooltip(false), 2000);
-  }
 
   // Contact unifie : un Pro ouvre directement une conversation (messagerie),
   // sans re-saisir nom/email. Plus d'ancien formulaire contact_requests.
@@ -427,16 +422,7 @@ export default function ProfileClient({
                   {contacting ? "…" : "Envoyer un message"}
                 </Button>
               )}
-              <div className="relative">
-                <Button variant="glass" onClick={handleShare} className="max-w-[240px]">
-                  Partager le profil
-                </Button>
-                {shareTooltip && (
-                  <span className="glass absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-pill text-xs text-lime whitespace-nowrap">
-                    Lien copié !
-                  </span>
-                )}
-              </div>
+              <ShareButton title={profile.full_name} label="Partager le profil" className="max-w-[240px]" />
               {viewerIsCreator && !isOwnProfile && userStatus !== "anonymous" && (
                 <Button variant="glass" onClick={openInviteModal}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>

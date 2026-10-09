@@ -12,6 +12,7 @@ import Avatar from "@/components/Avatar";
 import { EnterItem, ModalBackdrop } from "@/components/motion";
 import FilmLink, { FilmPlayerFrame } from "@/components/FilmLink";
 import FilmPoster from "@/components/FilmPoster";
+import ShareButton from "@/components/ShareButton";
 import { backWithTransition } from "@/lib/film-transition";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -324,10 +325,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={PLAY_ICON} /></svg>
                   Lancer le film
                 </Button>
-                <Button variant="glass" onClick={() => { navigator.clipboard.writeText(window.location.href); toast("Lien copié !"); }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6" /></svg>
-                  Partager
-                </Button>
+                <ShareButton title={project.title} />
               </div>
             </EnterItem>
 
