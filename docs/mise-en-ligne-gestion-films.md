@@ -80,8 +80,8 @@ Avec deux comptes de test (A et B), plus le compte admin.
       justificatif.
 - [ ] **Films lies** (navigation privee) : sur la page d'un film public qui partage une personne
       creditee avec un autre film public, la section des films lies n'est pas vide.
-- [ ] **Role du titulaire** (navigation privee) : sur un profil, le role de la personne sur ses
-      propres films apparait en clair ; le reste de l'equipe reste en initiales.
+- [ ] **Role du titulaire** (navigation privee) : sur un profil, le role de la personne sur les
+      films de sa fiche apparait en clair ; le reste de l'equipe reste en initiales.
 - [ ] **Plafond** : la jauge de /moi ne compte que les films dont on est Responsable.
 - [ ] **Nom du realisateur** : sur le feed et la page projet, il vient du credit de
       realisation, pas du Responsable.
@@ -226,6 +226,23 @@ deja finalise :
 - [ ] **Compte admin** : s'il n'a aucun metier, il passe une fois par la finalisation sur les
       pages hors admin ; l'admin reste accessible.
 
+## 4 septies. Lot « filmographie »
+
+- [ ] **Migration** `supabase/migrations/20261013_profile_filmography.sql`, a executer juste
+      avant le deploiement. Sans elle, rien ne casse : un visiteur ne voit que les films publies
+      par la personne, comme avant.
+A tester sur la fiche d'une personne creditee sur le film de quelqu'un d'autre :
+- [ ] **Membre connecte** : la liste « Films » contient ses films publies et ceux ou elle est
+      creditee, une seule fois chacun ; chaque carte affiche « Role : ... ».
+- [ ] **Filtre** : Tous / Publies / Credite. Il n'apparait pas si la fiche n'a qu'une sorte de
+      films. Le filtre par categorie a disparu de la fiche.
+- [ ] **Visiteur (navigation privee)** : memes films publics, avec son role en clair ; le reste
+      de l'equipe en initiales. Un film « membres seulement » ou elle est creditee apparait en
+      carte verrouillee, avec son role.
+- [ ] **Page du film, visiteur** : son credit y reste en initiales (sauf realisation).
+- [ ] **Film en attente, refuse ou depublie** ou elle est creditee : absent de sa fiche.
+- [ ] **Demande de credit en attente** : le film n'apparait pas tant qu'elle n'est pas acceptee.
+
 ## Avant le lancement public (lot separe, non fait)
 
 - [ ] **Fermer les noms reels en base.** `full_name`, `first_name` et `last_name` de `profiles`
@@ -256,8 +273,6 @@ deja finalise :
 - [ ] **Centre de notifications dans l'app.** Aujourd'hui une personne est prevenue par email et
       par notification du telephone, et retrouve l'information dans « Mes films ». Il n'existe pas
       de liste de notifications dans l'app. A faire dans un lot separe si besoin.
-- [ ] **Films ou la personne est creditee** : sa fiche ne liste que les films dont elle est
-      Responsable. Les afficher aussi (et leurs cartes verrouillees) fera l'objet d'un lot separe.
 - [ ] **Recherche sur le nom d'affichage.** `/api/search` filtre et trie encore sur `full_name` :
       chercher le vrai nom d'une personne la fait remonter sous son nom de scene, et on ne la
       trouve pas par son nom de scene. La recherche doit porter sur le nom d'affichage, jamais

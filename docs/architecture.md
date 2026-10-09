@@ -161,7 +161,12 @@ FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server
   [utilise] ProfileClient, VideoEmbed, ContactModal, ReportModal
   Verre liquide (chantier 4) : colonne gauche en panneau .glass (toujours lg:sticky), avatar
   112 px avec halo citron, Badge Disponible / Recruteur verifie (pas de badge Pro : `plan` n'est
-  pas expose au client par page.tsx), metiers en Chip, filtre de categories en Chip.
+  pas expose au client par page.tsx), metiers en Chip.
+  Filmographie (lot 5, 09/10/2026) : une seule liste « Films » = films publies par la personne
+  (elle en est Responsable) + films ou elle est creditee, sans doublon, tries par annee. Filtre
+  Tous / Publies / Credite en Chip (affiche seulement si la fiche mele les deux), qui remplace
+  le filtre par categorie. Chaque carte montre le role de la personne. Visibilite : public pour
+  tous, membres pour les connectes, carte verrouillee (avec le role) pour un visiteur.
 
 FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server + ProjetClient]
   Image hero + video en modale plein ecran, equipe, projets lies. [utilise] VideoEmbed

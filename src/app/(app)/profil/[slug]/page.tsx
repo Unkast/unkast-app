@@ -5,10 +5,21 @@ import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, withDisplayName, type DisplayNameRow } from "@/lib/profile";
-import { toLockedFilm, type LockedFilm } from "@/components/LockedFilmCard";
+import { toLockedFilm, type LockedFilm, type LockedFilmRow } from "@/components/LockedFilmCard";
 import ProfileClient from "./ProfileClient";
 
 export const revalidate = 60; // Cache 1 minute
+
+// Colonnes d'un film et de son équipe : les mêmes pour les films publiés par la
+// personne et pour ceux où elle est créditée.
+const FILM_COLUMNS = `
+  id, profile_id, title, slug, description, category, year,
+  video_url, poster_url, preview_url, status, visibility, created_at,
+  project_credits (
+    *,
+    profiles ( ${DISPLAY_NAME_COLUMNS}, slug, avatar_url )
+  )
+`;
 
 // Identité : le client ne reçoit que `full_name`, qui contient le NOM AFFICHÉ
 // (nom de scène si c'est le choix de la personne). Prénom, nom, nom de scène et
@@ -27,9 +38,11 @@ type ProfileWithRelations = Omit<Profile, "first_name" | "last_name" | "stage_na
   })[];
   // Parcours : entrées déclaratives, texte uniquement, année décroissante.
   career: CareerEntry[];
-  // Films « membres seulement » dont la personne est Responsable, pour un
-  // visiteur non connecté : cartes verrouillées (identifiant, adresse, titre,
-  // image, année, rien d'autre). Toujours vide pour un membre connecté.
+  // `projects` : films publiés par la personne (elle en est Responsable) ET films
+  // où elle est créditée, sans doublon. Le client les distingue par `profile_id`.
+  // Films « membres seulement » (publiés ou crédités), pour un visiteur non
+  // connecté : cartes verrouillées (identifiant, adresse, titre, image, année,
+  // rôle de la personne, rien d'autre). Toujours vide pour un membre connecté.
   locked_films: LockedFilm[];
 };
 
@@ -50,14 +63,7 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
       id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio,
       is_recruiting, recruiting_roles, recruiter_verified, plan, status, created_at, updated_at,
       profile_roles ( * ),
-      projects!projects_profile_id_fkey (
-        id, profile_id, title, slug, description, category, year,
-        video_url, poster_url, preview_url, status, visibility, created_at,
-        project_credits (
-          *,
-          profiles ( ${DISPLAY_NAME_COLUMNS}, slug, avatar_url )
-        )
-      )
+      projects!projects_profile_id_fkey ( ${FILM_COLUMNS} )
     `)
     .eq("slug", slug)
     .eq("status", "approved")
@@ -68,18 +74,14 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   if (!profile) return null;
 
   const roles = (profile.profile_roles ?? []) as ProfileRole[];
-  const rawProjects = (profile.projects ?? []) as (Project & {
+  type RawProject = Project & {
     project_credits: (ProjectCredit & {
       profiles: (DisplayNameRow & Pick<Profile, "slug" | "avatar_url">) | null;
     })[];
-  })[];
+  };
+  const rawProjects = (profile.projects ?? []) as RawProject[];
 
-  // Sort projects by year descending
-  rawProjects.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
-
-  // Parcours (lecture publique pour un profil approuvé) et, pour un visiteur non
-  // connecté, équipe des films : il ne lit aucune ligne de project_credits (RLS),
-  // elle passe par public_project_credits en un seul appel.
+  // Parcours (lecture publique pour un profil approuvé).
   const { data: { user } } = await supabase.auth.getUser();
   // Second verrou, en plus de la RLS : un visiteur ne recoit que les films
   // publics. Un film « membres seulement » ne lui parvient que sous forme de
@@ -89,26 +91,60 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
       if (rawProjects[i].visibility !== "public") rawProjects.splice(i, 1);
     }
   }
-  const [{ data: career }, visitorCredits, lockedRows] = await Promise.all([
+  const [{ data: career }, lockedRows, ownCredits] = await Promise.all([
     supabase
       .from("career_entries")
       .select("id, profile_id, title, role, year, kind, production, created_at")
       .eq("profile_id", profile.id)
       .order("year", { ascending: false })
       .order("created_at", { ascending: false }),
-    user ? null : fetchVisitorCredits(supabase, rawProjects.map((p) => p.id)),
-    // Films « membres seulement » : un visiteur ne les lit pas dans `projects`
-    // (RLS), la fonction lui en donne de quoi afficher une carte verrouillée.
+    // Films « membres seulement » (publiés ou crédités) : un visiteur ne les lit
+    // pas dans `projects` (RLS), la fonction lui en donne de quoi afficher une
+    // carte verrouillée.
     user
       ? null
-      : supabase.rpc("member_only_film_teasers", { p_profile_id: profile.id }).then((r) => r.data as LockedFilm[] | null),
+      : supabase.rpc("member_only_film_teasers", { p_profile_id: profile.id }).then((r) => r.data as LockedFilmRow[] | null),
+    // Crédits de la personne, tous films confondus. Une ligne de project_credits
+    // est un crédit accepté (les demandes en attente vivent ailleurs). Membre : la
+    // RLS les lui donne. Visiteur : il ne lit aucun crédit, la fonction lui donne
+    // ceux des films publics.
+    user
+      ? supabase
+          .from("project_credits")
+          .select("credit_id:id, project_id")
+          .eq("profile_id", profile.id)
+          .then((r) => r.data as { credit_id: string; project_id: string }[] | null)
+      : supabase
+          .rpc("public_profile_film_roles", { p_profile_id: profile.id })
+          .then((r) => r.data as { credit_id: string; project_id: string }[] | null),
   ]);
   const lockedFilms = (lockedRows ?? []).map(toLockedFilm);
+
+  // Films où la personne est créditée sans en être Responsable. Mêmes règles de
+  // visibilité que partout, posées ici en plus de la RLS (un gestionnaire du
+  // film lirait sinon un film dépublié) : approuvé, public pour un visiteur,
+  // public ou membres pour un membre.
+  const publishedIds = new Set(rawProjects.map((p) => p.id));
+  const creditedIds = [...new Set((ownCredits ?? []).map((c) => c.project_id))].filter((id) => !publishedIds.has(id));
+  if (creditedIds.length > 0) {
+    const { data: credited } = await supabase
+      .from("projects")
+      .select(FILM_COLUMNS)
+      .in("id", creditedIds)
+      .eq("status", "approved")
+      .in("visibility", user ? ["public", "members"] : ["public"]);
+    rawProjects.push(...((credited ?? []) as unknown as RawProject[]));
+  }
+  rawProjects.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+
+  // Visiteur non connecté : équipe des films par public_project_credits, en un
+  // seul appel.
+  const visitorCredits = user ? null : await fetchVisitorCredits(supabase, rawProjects.map((p) => p.id));
   if (visitorCredits) {
-    // Rôle du titulaire sur ses propres films : son nom est déjà public sur cette
-    // page, ses crédits y sont donc rendus en clair (les autres restent en initiales).
-    const { data: ownRoles } = await supabase.rpc("public_profile_film_roles", { p_profile_id: profile.id });
-    const ownCreditIds = new Set(((ownRoles ?? []) as { credit_id: string }[]).map((r) => r.credit_id));
+    // Rôle du titulaire sur les films de sa fiche : son nom est déjà public sur
+    // cette page, ses crédits y sont donc rendus en clair (les autres restent en
+    // initiales).
+    const ownCreditIds = new Set((ownCredits ?? []).map((r) => r.credit_id));
     // Nom affiché (nom de scène si c'est son choix), jamais le nom réel à sa place.
     const self = { full_name: displayNameOf(profile) as string, slug: profile.slug, avatar_url: profile.avatar_url };
     for (const project of rawProjects) {
@@ -192,14 +228,9 @@ export default async function ProfilPage({ params }: Props) {
 
   if (!profile) notFound();
 
-  const categories = Array.from(
-    new Set(profile.projects.map((p) => p.category))
-  );
-
   return (
     <ProfileClient
       profile={profile}
-      categories={categories}
       categoryLabels={CATEGORY_LABELS}
       categoryColors={CATEGORY_COLORS}
     />

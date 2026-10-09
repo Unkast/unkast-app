@@ -10,7 +10,7 @@ import type {
 } from "@/types/database";
 import { TEAM_SELECT, fetchVisitorCredits, loadFilmTeams, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, withDisplayName, type DisplayNameRow } from "@/lib/profile";
-import LockedFilmCard, { toLockedFilm, type LockedFilm } from "@/components/LockedFilmCard";
+import LockedFilmCard, { toLockedFilm, type LockedFilm, type LockedFilmRow } from "@/components/LockedFilmCard";
 import ProjetClient from "./ProjetClient";
 
 export const revalidate = 120; // Cache 2 minutes
@@ -230,7 +230,7 @@ async function getLockedFilm(slug: string): Promise<LockedFilm | null> {
   if (user) return null;
 
   const { data } = await supabase.rpc("member_only_film_teasers", { p_slug: slug });
-  const row = ((data ?? []) as LockedFilm[])[0];
+  const row = ((data ?? []) as LockedFilmRow[])[0];
   return row ? toLockedFilm(row) : null;
 }
 

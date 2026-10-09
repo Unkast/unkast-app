@@ -42,21 +42,28 @@ type ProfileData = Omit<Profile, "first_name" | "last_name" | "stage_name" | "di
   locked_films: LockedFilm[];
 };
 
+// Filtre de la liste « Films » : publiés par la personne (elle en est
+// Responsable) ou films où elle est créditée.
+type FilmFilter = "all" | "published" | "credited";
+const FILM_FILTERS: { value: FilmFilter; label: string }[] = [
+  { value: "all", label: "Tous" },
+  { value: "published", label: "Publiés" },
+  { value: "credited", label: "Crédité" },
+];
+
 interface Props {
   profile: ProfileData;
-  categories: ProjectCategory[];
   categoryLabels: Record<ProjectCategory, string>;
   categoryColors: Record<ProjectCategory, string>;
 }
 
 export default function ProfileClient({
   profile,
-  categories,
   categoryLabels,
   categoryColors,
 }: Props) {
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState<ProjectCategory | "all">("all");
+  const [activeFilter, setActiveFilter] = useState<FilmFilter>("all");
   const [expandedCredits, setExpandedCredits] = useState<Set<string>>(new Set());
   const [contacting, setContacting] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
@@ -92,19 +99,26 @@ export default function ProfileClient({
     checkOwn();
   }, [profile.id]);
 
-  const filteredProjects =
-    activeFilter === "all"
-      ? profile.projects
-      : profile.projects.filter((p) => p.category === activeFilter);
-
-  // Liste affichée : les films lisibles et, pour un visiteur non connecté, les
+  // Liste complète : les films lisibles et, pour un visiteur non connecté, les
   // cartes verrouillées des films « membres seulement », à leur place selon
-  // l'année. Leur catégorie n'est pas transmise : elles n'apparaissent que sous
-  // « Tous ».
-  const filmItems: ({ locked: false; year: number | null; project: ProjectWithCredits } | { locked: true; year: number | null; film: LockedFilm })[] = [
-    ...filteredProjects.map((project) => ({ locked: false as const, year: project.year, project })),
-    ...(activeFilter === "all" ? profile.locked_films : []).map((film) => ({ locked: true as const, year: film.year, film })),
+  // l'année. `published` : la personne est Responsable du film ; sinon elle y
+  // est créditée.
+  const allFilmItems: (
+    | { locked: false; published: boolean; year: number | null; project: ProjectWithCredits }
+    | { locked: true; published: boolean; year: number | null; film: LockedFilm }
+  )[] = [
+    ...profile.projects.map((project) => ({
+      locked: false as const,
+      published: project.profile_id === profile.id,
+      year: project.year,
+      project,
+    })),
+    ...profile.locked_films.map((film) => ({ locked: true as const, published: film.published, year: film.year, film })),
   ].sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+  const filmItems =
+    activeFilter === "all" ? allFilmItems : allFilmItems.filter((item) => item.published === (activeFilter === "published"));
+  // Le filtre n'a de sens que si la fiche mêle les deux sortes de films.
+  const showFilmFilter = allFilmItems.some((i) => i.published) && allFilmItems.some((i) => !i.published);
 
   function toggleCredits(projectId: string) {
     setExpandedCredits((prev) => {
@@ -447,19 +461,16 @@ export default function ProfileClient({
             <h2 className="text-xl font-bold text-text-primary mb-4">
               Films
               <span className="text-text-tertiary font-normal ml-2 text-base">
-                ({profile.projects.length + profile.locked_films.length})
+                ({allFilmItems.length})
               </span>
             </h2>
 
-            {/* Category filters */}
-            {categories.length > 1 && (
+            {/* Filtre : tous, publiés par la personne, films où elle est créditée */}
+            {showFilmFilter && (
               <div className="flex flex-wrap gap-2 mb-5">
-                <Chip selected={activeFilter === "all"} onClick={() => setActiveFilter("all")}>
-                  Tous
-                </Chip>
-                {categories.map((cat) => (
-                  <Chip key={cat} selected={activeFilter === cat} onClick={() => setActiveFilter(cat)}>
-                    {categoryLabels[cat]}
+                {FILM_FILTERS.map((f) => (
+                  <Chip key={f.value} selected={activeFilter === f.value} onClick={() => setActiveFilter(f.value)}>
+                    {f.label}
                   </Chip>
                 ))}
               </div>
@@ -484,9 +495,11 @@ export default function ProfileClient({
                     );
                   }
                   const project = item.project;
-                  const ownerCredit = project.credits.find(
-                    (c) => c.profile_id === profile.id
-                  );
+                  // Rôle(s) de la personne sur ce film, publié par elle ou non.
+                  const ownRole = project.credits
+                    .filter((c) => c.profile_id === profile.id)
+                    .map((c) => c.role_on_project)
+                    .join(", ");
                   const isExpanded = expandedCredits.has(project.id);
                   // Réalisateur : crédits de réalisation du film, pas son Responsable.
                   const directors = directorNames(
@@ -540,10 +553,10 @@ export default function ProfileClient({
                         )}
 
                         {/* Role on project */}
-                        {ownerCredit && (
+                        {ownRole && (
                           <p className="text-sm text-text-secondary mb-2">
                             <span className="text-text-tertiary">Rôle :</span>{" "}
-                            {ownerCredit.role_on_project}
+                            {ownRole}
                           </p>
                         )}
 

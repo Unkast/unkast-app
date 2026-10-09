@@ -245,6 +245,16 @@ Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (T
   `member_only_film_teasers(p_slug, p_profile_id)` renvoie uniquement `id`, `slug`, `title`,
   `poster_url`, `year` (un filtre obligatoire). Le lien vidéo, la description et l'équipe ne
   sortent pas de la base. Sert à la carte verrouillée (`src/components/LockedFilmCard.tsx`).
+- **Filmographie d'une fiche** (migration `20261013`) : la fiche d'une personne liste les films
+  qu'elle a publiés (elle en est Responsable) et ceux où elle est créditée. Une ligne de
+  `project_credits` est un crédit accepté (les demandes en attente vivent dans `credit_requests`
+  et `project_invitations`). Un membre lit ces crédits par la RLS. Un visiteur passe par
+  `public_profile_film_roles` (films publics) et par `member_only_film_teasers(p_profile_id)`,
+  qui renvoie aussi les films membres où la personne est créditée, avec deux colonnes en plus :
+  `role_on_project` (son rôle, plusieurs crédits réunis par une virgule) et `is_responsible`.
+  Les deux fonctions ne renvoient rien pour un profil non approuvé ou suspendu. Le masquage des
+  crédits pour un visiteur est levé **sur la fiche de la personne seulement** ; la page d'un film
+  garde les initiales (`public_project_credits` inchangée).
 - **Refus d'un film** (migration `20261011`) : `project_moderation.refusal_reasons` (motifs cochés
   par l'admin, parmi `son`, `image`, `amateur`, `hors_sujet`, `droits`, `autre`, contraints par
   CHECK et alignés sur `REFUSAL_REASONS` de `src/lib/constants.ts`) et `refusal_note` (texte
@@ -295,7 +305,7 @@ cible `career_entry`.
 | `is_director_role(text)` | `public_project_credits` | rôle découpé sur `&`, `,`, `/`, normalisé (casse, accents, espaces, tirets) |
 | `public_project_credits(uuid[])` | anon, authenticated | équipe des films publics pour un visiteur : initiales, nom en clair et lien pour les seuls crédits de réalisation. Le nom est le **nom affiché** (même règle que `getDisplayName`, `src/lib/profile.ts` : nom de scène si choisi, sinon prénom + nom, sinon `full_name`), les initiales en découlent |
 | `related_public_projects(uuid, int)` | anon, authenticated | films liés d'un film public pour un visiteur : identifiants de films publics partageant une personne créditée et nombre de collaborateurs communs, aucune identité |
-| `public_profile_film_roles(uuid)` | anon, authenticated | rôle du titulaire d'un profil sur les films publics dont il est Responsable (affiché sur sa page profil pour un visiteur) |
+| `public_profile_film_roles(uuid)` | anon, authenticated | rôle du titulaire d'un profil sur tous les films publics où il est crédité, qu'il en soit Responsable ou non (migration `20261013`) ; rien si le profil n'est pas approuvé ou est suspendu. Sert à sa page profil pour un visiteur |
 | `career_text_ok(text)` | CHECK de `career_entries` | refuse `http`, `www`, `@`, « arobase », suffixes de domaine. Pas de règle sur les chiffres : les numéros relèvent du détecteur serveur |
 | `publish_project(...)` | **service role** | seule voie de création d'un film : plafond, doublon, déclaration de droits, crédits, données oEmbed, dans une transaction. Renvoie `{ok, code, ...}` |
 | `request_project_manager`, `decide_project_manager`, `transfer_project` | **service role** | co-gestion et transfert, avec l'identité de l'utilisateur en paramètre |

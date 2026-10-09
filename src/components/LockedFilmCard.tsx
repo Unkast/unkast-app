@@ -11,12 +11,32 @@ export type LockedFilm = {
   title: string;
   poster_url: string | null;
   year: number | null;
+  /** Fiche d'une personne : son rôle sur ce film (absent sur la page du film). */
+  role: string | null;
+  /** Fiche d'une personne : elle a publié ce film (elle en est Responsable). */
+  published: boolean;
 };
 
-// Ne garde que les cinq champs autorisés, quoi que renvoie la base : c'est le
-// seul passage entre la réponse de la fonction et le navigateur.
-export function toLockedFilm(row: LockedFilm): LockedFilm {
-  return { id: row.id, slug: row.slug, title: row.title, poster_url: row.poster_url, year: row.year };
+// Ligne de member_only_film_teasers. Les deux dernières colonnes datent de la
+// migration 20261013 : sans elle, la fonction ne renvoie que les films publiés
+// par la personne, d'où `published` vrai par défaut.
+export type LockedFilmRow = Omit<LockedFilm, "role" | "published"> & {
+  role_on_project?: string | null;
+  is_responsible?: boolean | null;
+};
+
+// Ne garde que les champs autorisés, quoi que renvoie la base : c'est le seul
+// passage entre la réponse de la fonction et le navigateur.
+export function toLockedFilm(row: LockedFilmRow): LockedFilm {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    poster_url: row.poster_url,
+    year: row.year,
+    role: row.role_on_project ?? null,
+    published: row.is_responsible ?? true,
+  };
 }
 
 interface Props {
@@ -72,6 +92,12 @@ export default function LockedFilmCard({ film, href, loginHref, className = "" }
         </Link>
       ) : (
         <h1 className={`mt-2 ${titleClass}`}>{film.title}</h1>
+      )}
+
+      {film.role && (
+        <p className="mt-1 line-clamp-1 max-w-full break-words text-xs text-text-secondary sm:text-sm">
+          <span className="text-text-tertiary">Rôle :</span> {film.role}
+        </p>
       )}
 
       <p className="mt-1 text-xs leading-snug text-text-secondary sm:text-sm">
