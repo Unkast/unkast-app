@@ -105,15 +105,6 @@ function parseParams(raw: Record<string, unknown>): SearchParams | NextResponse 
   };
 }
 
-// Type de roles demande (femme / homme). Un profil correspond s'il l'a declare,
-// s'il a declare « sans precision », ou, quand il n'a rien declare, si son
-// metier le dit (Comédienne / Comédien).
-function matchesRoleType(wanted: "femme" | "homme", declared: string | null, roles: string[]): boolean {
-  if (declared) return declared === wanted || declared === "sans_precision";
-  const feminine = roles.includes("Comédienne");
-  return wanted === "femme" ? feminine : !feminine && roles.includes("Comédien");
-}
-
 // Route PUBLIQUE, non authentifiee. `q` est concatene dans un `.or()`
 // PostgREST (postgrest-js ne l'echappe pas — le package le documente comme
 // "utilise tel quel, a sanitizer par l'appelant"), donc sanitizeSearchTerm()
@@ -156,117 +147,145 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
   const supabase = await createClient();
 
   let talents: Record<string, unknown>[] = [];
+  // Profils qui passent les autres filtres mais n'ont pas rempli un champ demande.
+  let otherTalents: Record<string, unknown>[] = [];
   let projects: Record<string, unknown>[] = [];
 
   // --- Talents (single query with joins) ---
   if (type === "all" || type === "talents") {
-    // Le type de roles se departage en partie sur le metier (voir matchesRoleType) :
-    // la colonne n'est lue que si ce filtre est demande, et le tri se fait ici.
-    const withRoleType = Boolean(params.role_type);
+    // Champs DECLARES par la personne (type de roles, age de jeu, langue). Regle
+    // (09/10/2026) : on ne deduit jamais l'un d'eux d'autre chose, et surtout pas le
+    // type de roles du metier. Le filtre ne garde que les profils qui l'ont declare.
+    // Ceux qui passent les autres filtres sans avoir rempli le champ demande sortent
+    // dans une seconde liste, `other_talents`, avec ce qui leur manque.
+    const declared = Boolean(params.role_type || params.playing_age || params.language);
     // Metiers exacts : jointure interne sur un second alias, pour filtrer les profils
     // sans amputer la liste de leurs metiers (`profile_roles`).
     const withRoles = params.roles.length > 0;
+    // « Sans precision » est une declaration : la personne joue les deux.
+    const roleTypes = params.role_type ? [params.role_type, "sans_precision"] : [];
 
-    let query = supabase
-      .from("profiles")
-      .select(`
-        id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio, created_at, plan,
-        ${withRoleType ? "role_type," : ""}
-        profile_roles ( role_name ),
-        ${withRoles ? "wanted_roles:profile_roles!inner ( role_name )," : ""}
-        projects!projects_profile_id_fkey ( id )
-      `)
-      .eq("status", "approved")
-      .not("is_suspended", "is", true); // chantier 3 : suspendus hors vue publique
+    // strict : les champs declares correspondent. Sinon : ils correspondent OU sont
+    // vides (les valeurs viennent de listes fermees, voir parseParams).
+    const talentQuery = (strict: boolean) => {
+      let query = supabase
+        .from("profiles")
+        .select(`
+          id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio, created_at, plan,
+          ${strict ? "" : "role_type, playing_ages, languages,"}
+          profile_roles ( role_name ),
+          ${withRoles ? "wanted_roles:profile_roles!inner ( role_name )," : ""}
+          projects!projects_profile_id_fkey ( id )
+        `)
+        .eq("status", "approved")
+        .not("is_suspended", "is", true); // chantier 3 : suspendus hors vue publique
 
-    if (q) {
-      const term = sanitizeSearchTerm(q);
-      if (term) {
-        // Nom d'affichage uniquement : le vrai nom d'une personne qui affiche un
-        // nom de scene ne la fait pas remonter (colonne fermee aux clients).
-        query = query.or(`display_name.ilike.%${term}%,bio.ilike.%${term}%`);
+      if (q) {
+        const term = sanitizeSearchTerm(q);
+        if (term) {
+          // Nom d'affichage uniquement : le vrai nom d'une personne qui affiche un
+          // nom de scene ne la fait pas remonter (colonne fermee aux clients).
+          query = query.or(`display_name.ilike.%${term}%,bio.ilike.%${term}%`);
+        }
       }
-    }
-    if (location) {
-      query = query.ilike("location", `%${escapeLikeWildcards(location)}%`);
-    }
-    // Avec le feminin de chaque metier : des profils portent encore « Monteuse » ou
-    // « Productrice », saisis avant la liste fermee.
-    if (withRoles) query = query.in("wanted_roles.role_name", withFeminine(params.roles));
-    if (params.playing_age) query = query.overlaps("playing_ages", [params.playing_age]);
-    if (params.language) query = query.contains("languages", [params.language]);
-
-    if (sort === "date") {
-      query = query.order("created_at", { ascending: false });
-    } else {
-      query = query.order("display_name", { ascending: true });
-    }
-    // Coup de pouce Pro : critere SECONDAIRE uniquement (departage a rang egal,
-    // jamais "Pro d'abord"). nullsFirst:false => plan null (legacy) en dernier.
-    query = query.order("plan", { ascending: false, nullsFirst: false });
-
-    // Type de roles : filtre applique apres lecture, on lit plus large.
-    query = query.limit(withRoleType ? 200 : 50);
-    const { data, error } = await query;
-
-    // Filtre du lot 8 demande alors que la migration 20261016 n'est pas passee
-    // (colonne inconnue) : erreur dite, plutot qu'une liste vide trompeuse.
-    if (error && (withRoleType || params.playing_age || params.language)) {
-      console.error("[search] filtres du profil indisponibles:", error.message);
-      return NextResponse.json({ error: "Ce filtre n'est pas encore disponible." }, { status: 503 });
-    }
-
-    if (data) {
-      talents = (data as unknown as Record<string, unknown>[]).map((profile) => {
-        const roles = profile.profile_roles as { role_name: string }[] | null;
-        const profileProjects = profile.projects as { id: string }[] | null;
-        return {
-          id: profile.id,
-          full_name: displayNameOf(profile as DisplayNameRow),
-          slug: profile.slug,
-          avatar_url: profile.avatar_url,
-          location: profile.location,
-          is_available: profile.is_available,
-          bio: profile.bio,
-          created_at: profile.created_at,
-          roles: (roles ?? []).map((r) => r.role_name),
-          project_count: profileProjects?.length ?? 0,
-          plan: profile.plan, // interne au tri, retire de la reponse
-          role_type: profile.role_type ?? null, // interne au filtre, retire de la reponse
-        };
-      });
-
-      // Filter by role if specified
-      if (role) {
-        const roleLower = role.toLowerCase();
-        talents = talents.filter((t) =>
-          (t.roles as string[]).some((r) =>
-            r.toLowerCase().includes(roleLower)
-          )
-        );
+      if (location) {
+        query = query.ilike("location", `%${escapeLikeWildcards(location)}%`);
       }
+      // Avec le feminin de chaque metier : des profils portent encore « Monteuse » ou
+      // « Productrice », saisis avant la liste fermee.
+      if (withRoles) query = query.in("wanted_roles.role_name", withFeminine(params.roles));
 
       if (params.role_type) {
-        const wanted = params.role_type;
-        talents = talents
-          .filter((t) => matchesRoleType(wanted, t.role_type as string | null, t.roles as string[]))
-          .slice(0, 50);
+        query = strict
+          ? query.in("role_type", roleTypes)
+          : query.or(`role_type.is.null,role_type.in.(${roleTypes.join(",")})`);
+      }
+      if (params.playing_age) {
+        query = strict
+          ? query.overlaps("playing_ages", [params.playing_age])
+          : query.or(`playing_ages.is.null,playing_ages.ov.{"${params.playing_age}"}`);
+      }
+      if (params.language) {
+        query = strict
+          ? query.contains("languages", [params.language])
+          : query.or(`languages.is.null,languages.cs.{"${params.language}"}`);
       }
 
-      // Sort by project count if requested (Pro en departage a count egal)
+      if (sort === "date") {
+        query = query.order("created_at", { ascending: false });
+      } else {
+        query = query.order("display_name", { ascending: true });
+      }
+      // Coup de pouce Pro : critere SECONDAIRE uniquement (departage a rang egal,
+      // jamais "Pro d'abord"). nullsFirst:false => plan null (legacy) en dernier.
+      return query.order("plan", { ascending: false, nullsFirst: false }).limit(strict ? 50 : 100);
+    };
+
+    const toTalent = (profile: Record<string, unknown>) => {
+      const roles = profile.profile_roles as { role_name: string }[] | null;
+      const profileProjects = profile.projects as { id: string }[] | null;
+      return {
+        id: profile.id,
+        full_name: displayNameOf(profile as DisplayNameRow),
+        slug: profile.slug,
+        avatar_url: profile.avatar_url,
+        location: profile.location,
+        is_available: profile.is_available,
+        bio: profile.bio,
+        created_at: profile.created_at,
+        roles: (roles ?? []).map((r) => r.role_name),
+        project_count: profileProjects?.length ?? 0,
+        plan: profile.plan, // interne au tri, retire de la reponse
+      } as Record<string, unknown>;
+    };
+    // Filtre historique `role` (sous-chaine d'un metier), applique apres lecture.
+    const byRole = (list: Record<string, unknown>[]) => {
+      if (!role) return list;
+      const roleLower = role.toLowerCase();
+      return list.filter((t) => (t.roles as string[]).some((r) => r.toLowerCase().includes(roleLower)));
+    };
+    // Tri par nombre de films si demande (Pro en departage a nombre egal), puis
+    // retrait de `plan`, interne au tri : il n'est pas expose dans la reponse.
+    const finish = (list: Record<string, unknown>[]) => {
       if (sort === "projets") {
-        talents.sort((a, b) => {
+        list.sort((a, b) => {
           const byCount = (b.project_count as number) - (a.project_count as number);
           if (byCount !== 0) return byCount;
           return (b.plan === "pro" ? 1 : 0) - (a.plan === "pro" ? 1 : 0);
         });
       }
+      list.forEach((t) => { delete (t as { plan?: unknown }).plan; });
+      return list;
+    };
 
-      // plan et role_type sont internes : on ne les expose pas dans la reponse
-      talents.forEach((t) => {
-        delete (t as { plan?: unknown }).plan;
-        delete (t as { role_type?: unknown }).role_type;
-      });
+    const [main, loose] = await Promise.all([talentQuery(true), declared ? talentQuery(false) : null]);
+
+    // Filtre du lot 8 demande alors que la migration 20261016 n'est pas passee
+    // (colonne inconnue) : erreur dite, plutot qu'une liste vide trompeuse.
+    if (declared && (main.error || loose?.error)) {
+      console.error("[search] filtres du profil indisponibles:", (main.error ?? loose?.error)?.message);
+      return NextResponse.json({ error: "Ce filtre n'est pas encore disponible." }, { status: 503 });
+    }
+
+    talents = finish(byRole(((main.data ?? []) as unknown as Record<string, unknown>[]).map(toTalent)));
+
+    if (loose?.data) {
+      // Tout profil de `loose` qui n'est pas dans `main` a au moins un champ demande vide.
+      const exact = new Set(talents.map((t) => t.id));
+      const rows = (loose.data as unknown as Record<string, unknown>[]).filter((p) => !exact.has(p.id));
+      otherTalents = finish(
+        byRole(
+          rows.map((p) => ({
+            ...toTalent(p),
+            // Ce que la personne n'a pas renseigne, parmi ce qui etait demande.
+            missing: [
+              params.role_type && !p.role_type ? "role_type" : null,
+              params.playing_age && !p.playing_ages ? "playing_age" : null,
+              params.language && !p.languages ? "language" : null,
+            ].filter(Boolean),
+          }))
+        )
+      ).slice(0, 50);
     }
   }
 
@@ -341,6 +360,7 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
 
   return NextResponse.json({
     talents,
+    other_talents: otherTalents,
     projects,
     counts: {
       talents: talents.length,

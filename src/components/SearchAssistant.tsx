@@ -45,7 +45,11 @@ interface Props {
 
 type Talent = { id: string; full_name: string; slug: string; avatar_url: string | null; location: string | null; roles: string[]; project_count: number };
 type Film = { id: string; title: string; slug: string; category: ProjectCategory; year: number; director_name: string; poster_url: string | null; preview_url: string | null };
-type Results = { talents: Talent[]; projects: Film[] };
+// `missing` : champs demandés que la personne n'a pas renseignés (liste « Autres … »).
+type OtherTalent = Talent & { missing: string[] };
+type Results = { talents: Talent[]; others: OtherTalent[]; projects: Film[] };
+
+const MISSING_LABELS: Record<string, string> = { role_type: "type de rôles", playing_age: "âge de jeu", language: "langue" };
 
 type FlowKind = "actor" | "tech";
 type View =
@@ -237,16 +241,16 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
           data = await res.json().catch(() => null);
         }
         if (!res.ok) {
-          setResults({ talents: [], projects: [] });
+          setResults({ talents: [], others: [], projects: [] });
           setNotice(data?.error || "Recherche indisponible, réessaie dans un instant.");
         } else {
-          setResults({ talents: data?.talents ?? [], projects: data?.projects ?? [] });
+          setResults({ talents: data?.talents ?? [], others: data?.other_talents ?? [], projects: data?.projects ?? [] });
           setNotice("");
         }
         setLoading(false);
       } catch {
         if (controller.signal.aborted) return; // remplacée par une recherche plus récente
-        setResults({ talents: [], projects: [] });
+        setResults({ talents: [], others: [], projects: [] });
         setNotice("Connexion impossible, réessaie.");
         setLoading(false);
       }
@@ -259,6 +263,7 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
 
   const shown = bodyKey ? results : null;
   const talents = shown?.talents ?? [];
+  const others = shown?.others ?? [];
   const films = shown?.projects ?? [];
 
   // ---- Sections affichées -----------------------------------------------------
@@ -294,11 +299,12 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
       ),
     }));
   const more = (count: number, noun: string): Item => ({
-    id: `more-${noun}`,
+    id: `more-${noun.replace(/ /g, "-")}`,
     run: () => setExpanded(true),
     render: row("arrow", `Voir les ${count} ${noun}`),
   });
-  const resultSections = (emptyText: string) => {
+  // `people` : « comédiens », « techniciens » ou « profils », pour le titre de la seconde liste.
+  const resultSections = (emptyText: string, people = "profils") => {
     if (!bodyKey) return;
     if (!shown) {
       sections.push({ key: "wait", items: [], after: <p className="px-2.5 py-3 text-sm text-text-secondary">Recherche…</p> });
@@ -316,6 +322,19 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
         items: [...talentItems(visible), ...(talents.length > visible.length ? [more(talents.length, "profils")] : [])],
       });
     }
+    // Seconde liste : mêmes critères, mais un champ demandé (type de rôles, âge de jeu,
+    // langue) n'est pas renseigné sur le profil. Rien n'est déduit à leur place.
+    if (others.length > 0) {
+      const visible = expanded ? others : others.slice(0, SHOWN);
+      const missing = Object.keys(MISSING_LABELS).filter((key) => others.some((o) => o.missing.includes(key))).map((key) => MISSING_LABELS[key]);
+      const where = body?.location ? ` à ${body.location}` : "";
+      sections.push({
+        key: "others",
+        before: talents.length === 0 ? <p className="px-2.5 pb-3 text-sm text-text-secondary">Aucun profil n&apos;a déclaré exactement ces critères.</p> : undefined,
+        title: `Autres ${people}${where} (${missing.join(", ")} non ${missing.length > 1 ? "précisés" : "précisé"})`,
+        items: [...talentItems(visible), ...(others.length > visible.length ? [more(others.length, "autres profils")] : [])],
+      });
+    }
     if (films.length > 0) {
       const visible = expanded ? films : films.slice(0, SHOWN);
       sections.push({
@@ -324,7 +343,7 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
         items: [...filmItems(visible), ...(films.length > visible.length ? [more(films.length, "films")] : [])],
       });
     }
-    if (talents.length === 0 && films.length === 0) {
+    if (talents.length === 0 && others.length === 0 && films.length === 0) {
       sections.push({ key: "empty", items: [], after: <p className="px-2.5 py-3 text-sm text-text-secondary">{emptyText}</p> });
     }
   };
@@ -399,7 +418,7 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
     } else {
       question = "Voici ce que j'ai trouvé";
     }
-    resultSections("Aucun profil avec ces critères pour l'instant. Reviens en arrière et essaie « Peu importe ».");
+    resultSections("Aucun profil avec ces critères pour l'instant. Reviens en arrière et essaie « Peu importe ».", kind === "actor" ? "comédiens" : "techniciens");
     if (kind === "actor") {
       const contact = FAQS.find((f) => f.id === "contacter")!;
       sections.push({ key: "contact", items: [], after: <FaqCard title="Comment contacter un comédien ou une comédienne ?">{contact.answer}</FaqCard> });
