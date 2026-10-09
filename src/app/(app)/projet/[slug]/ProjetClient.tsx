@@ -333,7 +333,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
 
             {/* Équipe en générique : rôle, avatar, nom */}
             <EnterItem>
-              <div id="equipe" className="mb-4 mt-12 flex scroll-mt-6 items-baseline justify-between">
+              <div id="equipe" className="mb-4 mt-12 flex scroll-mt-6 items-baseline lg:scroll-mt-20 justify-between">
                 <h2 className={SECTION_TITLE}>Équipe</h2>
                 <span className="text-sm text-text-secondary">{talents}</span>
               </div>
@@ -387,7 +387,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
           </div>
 
           {/* ========= COLONNE COLLANTE (sous le contenu en mobile) ========= */}
-          <aside className="flex flex-col gap-3.5 lg:sticky lg:top-8 lg:self-start">
+          <aside className="flex flex-col gap-3.5 lg:sticky lg:top-[88px] lg:self-start">
             {/* Réalisé par */}
             {directors.length > 0 && (
               <EnterItem>

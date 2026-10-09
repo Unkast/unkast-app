@@ -651,9 +651,12 @@ export default function AppShell({
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Masque en mobile dans une conversation : elle a son propre header (retour, avatar, nom). */}
-        <header className={`sticky top-0 z-[9991] flex items-center justify-between px-5 glass-strong rounded-none border-x-0 border-t-0 flex-shrink-0 ${inConversation ? "max-lg:hidden" : ""}`} style={{ paddingTop: "env(safe-area-inset-top, 16px)", minHeight: "calc(56px + env(safe-area-inset-top, 16px))" }}>
+        {/* Desktop (.app-header, globals.css) : barre transparente posee par-dessus le contenu,
+            sans fond ni bordure ; seul le champ de recherche flotte. Le contenu qui defile
+            dessous est floute, flou qui s'efface en degrade vers le bas. Mobile : inchange. */}
+        <header className={`app-header sticky top-0 z-[9991] flex items-center justify-between px-5 glass-strong rounded-none border-x-0 border-t-0 flex-shrink-0 ${inConversation ? "max-lg:hidden" : ""}`} style={{ paddingTop: "env(safe-area-inset-top, 16px)", minHeight: "calc(56px + env(safe-area-inset-top, 16px))" }}>
           {/* Mobile: back button or logo */}
           <div className="lg:hidden flex items-center gap-2">
             {showBack ? (
@@ -756,7 +759,8 @@ export default function AppShell({
             de l'app installee (marge 10 + barre 56 + collerette 22 = 88 px, + 4 px d'air).
             Dans une conversation, la navigation est masquee et la page occupe toute la
             hauteur sans defiler elle-meme (seule la liste des messages defile). */}
-        <main className={`flex-1 overflow-y-auto ${inConversation ? "max-lg:overflow-hidden" : "pb-tabbar"}`}>
+        {/* lg:pt-14 : en desktop l'en-tete (56 px) est pose par-dessus, le contenu commence dessous. */}
+        <main className={`flex-1 overflow-y-auto lg:pt-14 ${inConversation ? "max-lg:overflow-hidden" : "pb-tabbar"}`}>
           {children}
         </main>
       </div>

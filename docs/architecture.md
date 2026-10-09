@@ -49,6 +49,11 @@ CORE  AppShell (src/components/AppShell.tsx)
   En-tete desktop (lot 7, 09/10/2026) : champ de recherche centre « Un film, un talent, un metier »
   (Ctrl K ou Cmd K), Entree envoie vers /recherche?q= ; absent sur /recherche. Remplace le libelle
   de section et l'icone loupe.
+  En-tete desktop sans barre (09/10/2026) : `.app-header` (globals.css) le rend transparent et le
+  pose PAR-DESSUS le contenu (position absolute, sans fond ni bordure) ; le <main> reserve ses
+  56 px (lg:pt-14). Le contenu qui defile dessous est floute par ::before, flou efface en degrade
+  (mask). Consequence : toute colonne lg:sticky doit ajouter 56 px a son `top` (ProfileClient
+  lg:top-20, ProjetClient lg:top-[88px]). En mobile l'en-tete reste dans le flux, en verre.
   [utilise] framer-motion, LiquidDock, MobileTabBar ; [depend de] next/navigation (usePathname)
   Deux rendus de navigation mobile (07/10/2026), choisis en CSS par la classe app-installed
   sur <html> : LiquidDock si l'app est installee (Capacitor natif ou PWA standalone),

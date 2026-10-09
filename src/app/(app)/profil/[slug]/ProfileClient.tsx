@@ -282,7 +282,7 @@ export default function ProfileClient({
         <EnterList className="flex flex-col lg:flex-row lg:gap-12 lg:items-start">
         {/* Left column — profile info (panneau verre ; le verre est porté par
             l'EnterItem lui-même pour que son flou voie les halos du fond) */}
-        <EnterItem className="glass rounded-panel p-5 sm:p-6 lg:w-80 lg:flex-shrink-0 lg:sticky lg:top-6 mb-8 lg:mb-0">
+        <EnterItem className="glass rounded-panel p-5 sm:p-6 lg:w-80 lg:flex-shrink-0 lg:sticky lg:top-20 mb-8 lg:mb-0">
           {/* Avatar + halo */}
           <div className="mb-5">
             <Avatar url={profile.avatar_url} name={profile.full_name} size={112} style={{ background: "rgba(255,255,255,0.03)", border: "2px solid rgba(200,255,0,0.35)", boxShadow: "0 0 0 6px rgba(200,255,0,0.06), 0 0 56px rgba(200,255,0,0.3)" }} />

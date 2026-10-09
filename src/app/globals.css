@@ -436,3 +436,47 @@ body {
 html.lite::view-transition-group(*) {
   animation: none !important;
 }
+
+/* En-tete desktop d'AppShell : pas de barre. Transparent, pose par-dessus le contenu
+   (le <main> reserve sa hauteur), seul le champ de recherche flotte. Le contenu qui
+   defile dessous est floute par ::before, flou qui s'efface en degrade vers le bas :
+   aucune ligne nette. En haut de page il n'y a que le fond dessous, donc rien ne se voit.
+   !important : passe aussi devant les regles .lite de .glass-strong. */
+@media (min-width: 1024px) {
+  .app-header {
+    position: absolute;
+    inset: 0 0 auto 0;
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    pointer-events: none;
+  }
+  .app-header > * {
+    pointer-events: auto;
+  }
+  .app-header::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 84px;
+    z-index: -1;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-mask-image: linear-gradient(#000 0%, #000 35%, transparent 100%);
+    mask-image: linear-gradient(#000 0%, #000 35%, transparent 100%);
+  }
+  /* Sans flou d'arriere-plan (ou .lite) : voile sombre en degrade a la place */
+  .lite .app-header::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(var(--color-canvas), transparent);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .app-header::before {
+      background: linear-gradient(var(--color-canvas), transparent);
+    }
+  }
+}
