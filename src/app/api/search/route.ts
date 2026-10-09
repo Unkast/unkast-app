@@ -41,6 +41,9 @@ type SearchParams = {
   roles: string[]; // metiers exacts (ALL_ROLES) : le profil en a au moins un
   playing_age: PlayingAge | "";
   role_type: "femme" | "homme" | "";
+  // Saisie libre (« comédienne ») : ne filtre RIEN, fait seulement passer en premier
+  // les profils qui ont declare ce type de roles.
+  prefer_role_type: "femme" | "homme" | "";
   language: Language | "";
   year: number | null;
   since_days: number | null; // films publies depuis N jours
@@ -61,7 +64,7 @@ function parseParams(raw: Record<string, unknown>): SearchParams | NextResponse 
   };
 
   const out: Record<string, string> = {};
-  for (const name of ["q", "type", "category", "location", "role", "sort", "playing_age", "role_type", "language"]) {
+  for (const name of ["q", "type", "category", "location", "role", "sort", "playing_age", "role_type", "prefer_role_type", "language"]) {
     const value = text(name);
     if (value instanceof NextResponse) return value;
     out[name] = value;
@@ -69,7 +72,9 @@ function parseParams(raw: Record<string, unknown>): SearchParams | NextResponse 
 
   if (out.category && !(out.category in CATEGORY_LABELS)) return fail("Catégorie inconnue.");
   if (out.playing_age && !PLAYING_AGES.includes(out.playing_age as PlayingAge)) return fail("Âge de jeu inconnu.");
-  if (out.role_type && out.role_type !== "femme" && out.role_type !== "homme") return fail("Type de rôles inconnu.");
+  for (const name of ["role_type", "prefer_role_type"]) {
+    if (out[name] && out[name] !== "femme" && out[name] !== "homme") return fail("Type de rôles inconnu.");
+  }
   if (out.language && !LANGUAGES.includes(out.language as Language)) return fail("Langue inconnue.");
 
   // Metiers exacts : liste (POST) ou chaine separee par des virgules (GET).
@@ -99,6 +104,7 @@ function parseParams(raw: Record<string, unknown>): SearchParams | NextResponse 
     roles,
     playing_age: out.playing_age as SearchParams["playing_age"],
     role_type: out.role_type as SearchParams["role_type"],
+    prefer_role_type: out.prefer_role_type as SearchParams["prefer_role_type"],
     language: out.language as SearchParams["language"],
     year,
     since_days: sinceDays,
@@ -164,6 +170,15 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
     const withRoles = params.roles.length > 0;
     // « Sans precision » est une declaration : la personne joue les deux.
     const roleTypes = params.role_type ? [params.role_type, "sans_precision"] : [];
+    // Saisie libre : le mot « comédienne » designe un metier. Le type de roles ne filtre
+    // pas, il classe : les profils qui ont declare ce type (ou « sans precision »)
+    // d'abord, les autres ensuite, dans la meme liste. L'ordre de depart est conserve
+    // a l'interieur de chaque groupe.
+    const preferred = params.prefer_role_type ? [params.prefer_role_type, "sans_precision"] : null;
+    const declaredFirst = (rows: Record<string, unknown>[]) =>
+      preferred
+        ? [...rows.filter((p) => preferred.includes(p.role_type as string)), ...rows.filter((p) => !preferred.includes(p.role_type as string))]
+        : rows;
 
     // strict : les champs declares correspondent. Sinon : ils correspondent OU sont
     // vides (les valeurs viennent de listes fermees, voir parseParams).
@@ -172,7 +187,7 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
         .from("profiles")
         .select(`
           id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio, created_at, plan,
-          ${strict ? "" : "role_type, playing_ages, languages,"}
+          ${strict ? (preferred ? "role_type," : "") : "role_type, playing_ages, languages,"}
           profile_roles ( role_name ),
           ${withRoles ? "wanted_roles:profile_roles!inner ( role_name )," : ""}
           projects!projects_profile_id_fkey ( id )
@@ -262,17 +277,17 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
 
     // Filtre du lot 8 demande alors que la migration 20261016 n'est pas passee
     // (colonne inconnue) : erreur dite, plutot qu'une liste vide trompeuse.
-    if (declared && (main.error || loose?.error)) {
+    if ((declared || preferred) && (main.error || loose?.error)) {
       console.error("[search] filtres du profil indisponibles:", (main.error ?? loose?.error)?.message);
       return NextResponse.json({ error: "Ce filtre n'est pas encore disponible." }, { status: 503 });
     }
 
-    talents = finish(byRole(((main.data ?? []) as unknown as Record<string, unknown>[]).map(toTalent)));
+    talents = finish(byRole(declaredFirst((main.data ?? []) as unknown as Record<string, unknown>[]).map(toTalent)));
 
     if (loose?.data) {
       // Tout profil de `loose` qui n'est pas dans `main` a au moins un champ demande vide.
       const exact = new Set(talents.map((t) => t.id));
-      const rows = (loose.data as unknown as Record<string, unknown>[]).filter((p) => !exact.has(p.id));
+      const rows = declaredFirst((loose.data as unknown as Record<string, unknown>[]).filter((p) => !exact.has(p.id)));
       otherTalents = finish(
         byRole(
           rows.map((p) => ({

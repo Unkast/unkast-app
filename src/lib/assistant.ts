@@ -150,7 +150,9 @@ const ROLE_SYNONYMS: Record<string, string[]> = {
   "Chef opérateur son": ["chef op son", "chef operatrice son"],
 };
 
-// Comedien, comedienne et leurs synonymes : le mot employe donne le type de roles.
+// Comedien, comedienne et leurs synonymes : le mot designe le METIER (les deux sont
+// cherches ensemble). Le genre du mot ne filtre personne : il fait seulement passer
+// en premier les profils qui ont declare ce type de roles.
 const ACTOR_WORDS: Record<string, "femme" | "homme" | null> = {
   comedien: null, comediens: null, acteur: null, acteurs: null, comedienne: "femme", comediennes: "femme",
   actrice: "femme", actrices: "femme",
@@ -393,6 +395,8 @@ export type SearchBody = {
   roles?: string[];
   location?: string;
   role_type?: "femme" | "homme";
+  /** Classe sans filtrer : les profils qui ont déclaré ce type de rôles d'abord. */
+  prefer_role_type?: "femme" | "homme";
   playing_age?: string;
   language?: string;
   category?: string;
@@ -408,7 +412,8 @@ export function searchBodyFromQuery(parsed: ParsedQuery): SearchBody {
   const body: SearchBody = { type: wantsTalents === wantsProjects ? "all" : wantsTalents ? "talents" : "projets" };
   if (parsed.rest) body.q = parsed.rest;
   if (parsed.roles.length) body.roles = parsed.roles;
-  if (parsed.roleType) body.role_type = parsed.roleType;
+  // « comédienne » est un métier : le type de rôles ne filtre pas, il classe.
+  if (parsed.roleType) body.prefer_role_type = parsed.roleType;
   if (parsed.city) body.location = parsed.city;
   if (parsed.language) body.language = parsed.language;
   if (parsed.category) body.category = parsed.category;

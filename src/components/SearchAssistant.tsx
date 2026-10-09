@@ -262,8 +262,11 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
   }, [bodyKey, fallbackKey, delay]);
 
   const shown = bodyKey ? results : null;
-  const talents = shown?.talents ?? [];
-  const others = shown?.others ?? [];
+  // Parcours guidé : filtre strict, et seconde liste pour les profils qui n'ont pas
+  // rempli un champ demandé. Saisie libre : une seule liste, ces profils à la suite.
+  const guided = view.name === "flow";
+  const talents = guided ? shown?.talents ?? [] : [...(shown?.talents ?? []), ...(shown?.others ?? [])];
+  const others = guided ? shown?.others ?? [] : [];
   const films = shown?.projects ?? [];
 
   // ---- Sections affichées -----------------------------------------------------
