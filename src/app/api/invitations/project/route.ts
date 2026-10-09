@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
-import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText, MAX_NOTE_LENGTH, MAX_ROLE_LENGTH } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST: create a project invitation (gestionnaires du film)
 export async function POST(request: NextRequest) {
@@ -24,6 +25,16 @@ export async function POST(request: NextRequest) {
 
   if (!project_id || !invited_profile_id || !role) {
     return NextResponse.json({ error: "project_id, invited_profile_id et role requis." }, { status: 400 });
+  }
+  if (
+    !isText(project_id, 64) || !isText(invited_profile_id, 64) ||
+    !isText(role, MAX_ROLE_LENGTH) || !isText(message, MAX_NOTE_LENGTH, true)
+  ) {
+    return NextResponse.json({ error: "Rôle ou message trop long." }, { status: 400 });
+  }
+  // Chaque invitation envoie une notification : 30 par heure et par compte.
+  if (!(await checkRateLimit(`invite-member:${user.id}`, 30, 3600))) {
+    return NextResponse.json({ error: "Trop d'invitations. Réessaie plus tard." }, { status: 429 });
   }
 
   // Le film doit etre gere par l'utilisateur (Responsable ou co-gestionnaire).

@@ -39,3 +39,23 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+// DELETE { token } : l'appareil ne recoit plus les notifications de ce compte.
+// Appelee a la deconnexion. Session simple (pas getActiveUser) : un compte suspendu
+// doit lui aussi pouvoir detacher son appareil. La RLS limite la suppression aux
+// jetons du compte.
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+
+  const body = await readJsonBody(request);
+  if (!body || typeof body.token !== "string" || !body.token) return invalidBodyResponse();
+
+  const { error } = await supabase.from("push_tokens").delete().eq("profile_id", user.id).eq("token", body.token);
+  if (error) {
+    console.error("[notifications] retrait du jeton impossible :", error);
+    return NextResponse.json({ error: "Retrait impossible." }, { status: 500 });
+  }
+  return NextResponse.json({ success: true });
+}

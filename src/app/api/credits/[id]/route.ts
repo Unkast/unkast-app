@@ -38,6 +38,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
   }
 
+  // Une demande ne se decide qu'une fois : sinon un second appel creerait un credit
+  // en double, ou accepterait une demande deja refusee.
+  if (creditReq.status !== "pending") {
+    return NextResponse.json({ error: "Demande déjà traitée." }, { status: 409 });
+  }
+
   // Gestionnaire du film : Responsable ou co-gestionnaire (la fonction parle de
   // l'appelant, d'ou le client utilisateur).
   const { data: isManager } = await supabase.rpc("is_project_manager", { p_project_id: creditReq.project_id });

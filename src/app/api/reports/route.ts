@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText, MAX_NOTE_LENGTH } from "@/lib/api";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -33,6 +33,10 @@ export async function POST(request: NextRequest) {
 
   if (!["spam", "inappropriate", "fake", "harassment", "copyright", "other"].includes(reason)) {
     return NextResponse.json({ error: "reason invalide." }, { status: 400 });
+  }
+
+  if (!isText(target_id, 64) || !isText(description, MAX_NOTE_LENGTH, true)) {
+    return NextResponse.json({ error: "Description trop longue (1 000 caractères maximum)." }, { status: 400 });
   }
 
   const admin = createAdminClient();

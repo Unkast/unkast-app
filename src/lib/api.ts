@@ -21,3 +21,16 @@ export async function readJsonBody(request: Request): Promise<Record<string, any
 export function invalidBodyResponse() {
   return NextResponse.json({ error: "Corps de requête invalide." }, { status: 400 });
 }
+
+/**
+ * Texte libre recu d'un client : une chaine d'au plus `max` caracteres. Absent ou
+ * vide : accepte seulement si `optional`. Toute autre valeur (nombre, objet) est refusee.
+ */
+export function isText(value: unknown, max: number, optional = false): boolean {
+  if (value === undefined || value === null || value === "") return optional;
+  return typeof value === "string" && value.length <= max;
+}
+
+export const MAX_MESSAGE_LENGTH = 4000;
+export const MAX_NOTE_LENGTH = 1000;
+export const MAX_ROLE_LENGTH = 80;

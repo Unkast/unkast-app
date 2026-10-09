@@ -17,7 +17,7 @@ import {
   FREE_CONTACT_LIMIT_MESSAGE,
   type ConversationRow,
 } from "@/lib/messaging";
-import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText, MAX_MESSAGE_LENGTH } from "@/lib/api";
 import { detectContact, type ContactVerdict } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
 
@@ -62,8 +62,11 @@ export async function POST(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { conversation_id, recipient_id, content } = body;
 
-  if (!content?.trim()) {
+  if (typeof content !== "string" || !content.trim()) {
     return NextResponse.json({ error: "Message vide." }, { status: 400 });
+  }
+  if (!isText(content, MAX_MESSAGE_LENGTH)) {
+    return NextResponse.json({ error: "Message trop long (4 000 caractères maximum)." }, { status: 400 });
   }
 
   let convId: string | null = conversation_id ?? null;

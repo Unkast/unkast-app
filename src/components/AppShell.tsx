@@ -15,6 +15,7 @@ import Button from "@/components/ui/Button";
 import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
 import { LEGAL_LINKS } from "@/lib/legal";
 import { VIEW_COOKIE } from "@/lib/adminSession";
+import { PUSH_TOKEN_KEY } from "@/hooks/usePushNotifications";
 
 // Assistant de recherche (lot 8) : charge seulement a sa premiere ouverture.
 const SearchAssistant = dynamic(() => import("@/components/SearchAssistant"), { ssr: false });
@@ -470,6 +471,18 @@ export default function AppShell({
   }, []);
 
   async function handleSignOut() {
+    // Avant de fermer la session : l'appareil ne doit plus recevoir les notifications
+    // de ce compte (telephone partage ou prete). Jamais bloquant.
+    try {
+      const pushToken = localStorage.getItem(PUSH_TOKEN_KEY);
+      if (pushToken) {
+        await fetch("/api/notifications/register", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: pushToken }),
+        });
+      }
+    } catch {}
     await supabase.auth.signOut();
     await fetch("/api/logout", { method: "POST" });
     document.cookie = `${VIEW_COOKIE}=; path=/; max-age=0`;

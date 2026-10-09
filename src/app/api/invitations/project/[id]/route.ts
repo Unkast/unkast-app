@@ -33,17 +33,40 @@ export async function PATCH(
   const { data: inv } = await admin.from("project_invitations").select("*").eq("id", id).single();
   if (!inv) return NextResponse.json({ error: "Invitation introuvable." }, { status: 404 });
   if (inv.invited_profile_id !== user.id) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+  // Une invitation ne se decide qu'une fois : sinon un second appel creerait un
+  // credit en double, ou accepterait une invitation deja refusee.
+  if (inv.status !== "pending") {
+    return NextResponse.json({ error: "Invitation déjà traitée." }, { status: 409 });
+  }
 
-  // Update status
-  await admin.from("project_invitations").update({ status }).eq("id", id);
+  // Le filtre sur le statut ferme aussi la course entre deux appels simultanes.
+  const { data: decided, error: decideError } = await admin
+    .from("project_invitations")
+    .update({ status })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id");
+  if (decideError) {
+    console.error("[invitations/project] decision impossible :", decideError);
+    return NextResponse.json({ error: "Enregistrement impossible, réessaie." }, { status: 500 });
+  }
+  if (!decided || decided.length === 0) {
+    return NextResponse.json({ error: "Invitation déjà traitée." }, { status: 409 });
+  }
 
   if (status === "accepted") {
     // Add to project credits
-    await admin.from("project_credits").insert({
+    const { error: creditError } = await admin.from("project_credits").insert({
       project_id: inv.project_id,
       profile_id: user.id,
       role_on_project: inv.role,
     });
+    if (creditError) {
+      console.error("[invitations/project] credit impossible :", creditError);
+      // L'invitation repasse en attente : la personne peut reessayer.
+      await admin.from("project_invitations").update({ status: "pending" }).eq("id", id);
+      return NextResponse.json({ error: "Crédit impossible à enregistrer, réessaie." }, { status: 500 });
+    }
 
     // Notify creator
     const { data: project } = await admin.from("projects").select("title").eq("id", inv.project_id).single();

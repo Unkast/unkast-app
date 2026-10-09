@@ -29,9 +29,16 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_customer_id, full_name")
+    .select("stripe_customer_id, full_name, is_admin")
     .eq("id", user.id)
     .single();
+
+  // Meme regle que la page /pro (showCheckout), appliquee ICI : tant que les
+  // abonnements ne sont pas ouverts, seul un admin peut creer une session. Sans ce
+  // controle, la route restait appelable a la main alors que les boutons sont masques.
+  if (process.env.NEXT_PUBLIC_BILLING_ENABLED !== "true" && profile?.is_admin !== true) {
+    return NextResponse.json({ error: "Les abonnements ne sont pas encore ouverts." }, { status: 403 });
+  }
 
   const stripe = getStripe();
 

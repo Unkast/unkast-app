@@ -1,10 +1,30 @@
 import { useEffect, useRef } from "react";
 
+// Jeton de l'appareil, garde pour le detacher du compte a la deconnexion (AppShell)
+// et le rattacher au compte suivant sans redemander l'enregistrement.
+export const PUSH_TOKEN_KEY = "unkast_push_token";
+
+function sendToken(token: string) {
+  return fetch("/api/notifications/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, platform: "android" }),
+  });
+}
+
 export function usePushNotifications(isLoggedIn: boolean) {
   const registered = useRef(false);
 
   useEffect(() => {
-    if (!isLoggedIn || registered.current) return;
+    if (!isLoggedIn) return;
+    if (registered.current) {
+      // Reconnexion sans rechargement : le jeton a ete detache a la deconnexion.
+      try {
+        const token = localStorage.getItem(PUSH_TOKEN_KEY);
+        if (token) sendToken(token).catch(() => {});
+      } catch {}
+      return;
+    }
     // Only run on native (Capacitor)
     if (typeof window === "undefined") return;
 
@@ -22,12 +42,11 @@ export function usePushNotifications(isLoggedIn: boolean) {
         // Listen for token
         PushNotifications.addListener("registration", async (token) => {
           registered.current = true;
+          try {
+            localStorage.setItem(PUSH_TOKEN_KEY, token.value);
+          } catch {}
           // Send token to our API
-          await fetch("/api/notifications/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: token.value, platform: "android" }),
-          });
+          await sendToken(token.value);
         });
 
         // Handle registration error

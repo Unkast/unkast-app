@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
-import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText, MAX_NOTE_LENGTH, MAX_ROLE_LENGTH } from "@/lib/api";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/credits/request
 // Body: { project_id, role, message? }
@@ -22,6 +23,13 @@ export async function POST(request: NextRequest) {
 
   if (!project_id || !role) {
     return NextResponse.json({ error: "project_id et role requis." }, { status: 400 });
+  }
+  if (!isText(project_id, 64) || !isText(role, MAX_ROLE_LENGTH) || !isText(message, MAX_NOTE_LENGTH, true)) {
+    return NextResponse.json({ error: "Rôle ou message trop long." }, { status: 400 });
+  }
+  // Chaque demande notifie les gestionnaires du film : 20 par heure et par compte.
+  if (!(await checkRateLimit(`credit-request:${user.id}`, 20, 3600))) {
+    return NextResponse.json({ error: "Trop de demandes. Réessaie plus tard." }, { status: 429 });
   }
 
   // Check user is not already credited
