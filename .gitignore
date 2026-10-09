@@ -48,3 +48,6 @@ android/.gradle/
 android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/
+
+# outils perso Claude Code
+.claude/skills/
