@@ -180,7 +180,7 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `POST /api/reports` | [persiste dans] | `reports`, `admin_logs` (ecriture) |
 | **Admin** | | |
 | `AdminClient` (`/admin`, `src/app/admin/`) | [declenche] | `GET/PATCH /api/admin` |
-| `src/app/admin/layout.tsx` (garde serveur) | [depend de] | `lib/adminGuard.ts` (`getAdminId()`) |
+| `src/app/admin/(panel)/layout.tsx` (garde serveur), `src/app/admin/mfa/page.tsx` | [depend de] | `lib/adminGuard.ts` (`getAdminId()`) |
 | `/api/admin` | [persiste dans] | `profiles`, `projects`, `reports`, `admin_logs` (ecriture) |
 | `/api/admin` | [depend de] | `lib/adminGuard.ts` (`getAdminId()`) → `lib/supabase/admin.ts` (service role) + `profiles.is_admin` |
 | `AppShell` (menu utilisateur desktop) | [utilise] | `GET /api/me` (`is_admin`) pour afficher le lien « Administration » |
@@ -222,3 +222,8 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `project_credits.project_id` | → | `projects.id` | CASCADE |
 | `project_credits.profile_id` | → | `profiles.id` | SET NULL |
 | `contact_requests.to_profile_id` | → | `profiles.id` | CASCADE |
+
+| `lib/adminGuard.ts`, `lib/supabase/middleware.ts` | [depend de] | `lib/adminSession.ts` (`sessionStrength` : mot de passe + aal2) |
+| `lib/supabase/server.ts` (`createClient`) | [depend de] | cookie `unkast_view` (`lib/adminSession.ts`) : vue visiteur = session ignoree |
+| `lib/auth-guard.ts` (`getActiveUser`) | [bloque] | compte `account_type='admin'` (403 sur toutes les routes d'ecriture) |
+| `admin/(panel)/ViewAs` | [declenche] | cookie de vue puis `/feed` ; `AppShell` (`adminView`) affiche le bandeau de retour |

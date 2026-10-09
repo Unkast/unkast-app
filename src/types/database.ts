@@ -34,7 +34,8 @@ export type ContactStatus = 'pending' | 'accepted' | 'declined'
 // account_type = ROLE (independant du plan). Valeurs canoniques contraintes par
 // le CHECK `profiles_account_type_check` en base. Defaut 'talent'. 'member' supprime
 // du modele (migre vers 'talent'). Regle metier : recruiter => plan 'pro' (cote code).
-export type AccountType = 'talent' | 'creator' | 'recruiter'
+// 'admin' : compte admin dedie (lot 9), sans profil public ni ecriture.
+export type AccountType = 'talent' | 'creator' | 'recruiter' | 'admin'
 
 // plan : 'free'/'pro'. 'pro' accordable manuellement (admin) ou par abonnement Stripe.
 export type Plan = 'free' | 'pro' | (string & {})

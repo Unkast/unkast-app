@@ -14,6 +14,7 @@ import MobileTabBar from "@/components/MobileTabBar";
 import Button from "@/components/ui/Button";
 import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
 import { LEGAL_LINKS } from "@/lib/legal";
+import { VIEW_COOKIE } from "@/lib/adminSession";
 
 // Assistant de recherche (lot 8) : charge seulement a sa premiere ouverture.
 const SearchAssistant = dynamic(() => import("@/components/SearchAssistant"), { ssr: false });
@@ -189,6 +190,7 @@ export default function AppShell({
   initialUnread = 0,
   needsTerms = false,
   sessionHint = false,
+  adminView = null,
 }: {
   children: React.ReactNode;
   initialUser?: UserProfile | null;
@@ -196,6 +198,9 @@ export default function AppShell({
   // Vrai si le serveur n'a pas pu resoudre le compte alors qu'un cookie de session
   // existe : la navigation attend le navigateur au lieu d'afficher le mode visiteur.
   sessionHint?: boolean;
+  // Le compte admin regarde le site : "member" (connecte, sans profil ni ecriture) ou
+  // "visitor" (le serveur ignore la session). Affiche le bandeau de retour a l'admin.
+  adminView?: "member" | "visitor" | null;
   // Vrai si le membre connecte n'a pas accepte la version en vigueur des CGU
   // (calcule cote serveur par (app)/layout.tsx).
   needsTerms?: boolean;
@@ -467,6 +472,7 @@ export default function AppShell({
   async function handleSignOut() {
     await supabase.auth.signOut();
     await fetch("/api/logout", { method: "POST" });
+    document.cookie = `${VIEW_COOKIE}=; path=/; max-age=0`;
     sessionStorage.removeItem("unkast_has_explored");
     localStorage.removeItem("unkast_splash_time");
     setUser(null);
@@ -804,6 +810,19 @@ export default function AppShell({
       )}
     </div>
 
+    {adminView && (
+      <div className="glass-strong fixed bottom-24 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-pill px-4 py-2 text-[13px] text-text-primary shadow-xl shadow-black/60 lg:bottom-5">
+        <span>Compte admin · vue {adminView === "visitor" ? "visiteur" : "membre"}</span>
+        {/* Lien simple (pas <Link>) : navigation complete, le proxy verifie l'acces admin */}
+        <a
+          href="/admin"
+          onClick={() => { document.cookie = `${VIEW_COOKIE}=; path=/; max-age=0`; }}
+          className="font-semibold text-lime underline-offset-4 hover:underline"
+        >
+          Retour à l&apos;admin
+        </a>
+      </div>
+    )}
     {assistantOpen && <SearchAssistant onClose={() => setAssistantOpen(false)} isLoggedIn={!!user} />}
 
     {/* Ecran bloquant : aucune fermeture au clic sur le fond ni avec Echap. Seules

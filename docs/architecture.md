@@ -299,7 +299,7 @@ FEATURE  Compte introuvable — /compte-introuvable (src/app/(app)/compte-introu
 
 FEATURE  Admin — /admin (src/app/admin/ + AdminClient) — HORS groupe (app) depuis le 07/08/2026
   Espace structurellement separe de la vue client : pas d'AppShell, layout propre
-  (src/app/admin/layout.tsx) avec garde serveur getAdminId() (lib/adminGuard.ts,
+  (src/app/admin/(panel)/layout.tsx) avec garde serveur getAdminId() (lib/adminGuard.ts,
   helper partage avec /api/admin) + lien « Retour a l'app ». Entree cote client :
   lien « Administration » dans le menu utilisateur desktop d'AppShell (visible si
   is_admin via fetch /api/me).
@@ -427,3 +427,18 @@ UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — H
 7. **`Navbar.tsx` n'existe plus** — le fichier a ete supprime (remplace par AppShell). *(ancienne entree ORPHELIN : obsolete)*
 8. **`database.ts` est desormais la source de verite** (15 tables, profiles 35 col., projects 12 col., introspecte). En revanche **`supabase/schema.sql` reste en retard** (5 tables seulement) et doit etre regenere — voir docs/database.md.
 9. **`account_type` (ROLE) et `plan` contraints par CHECK** — `account_type` ∈ {talent, creator, recruiter} (defaut talent, `member` supprime), `plan` ∈ {free, pro}. **Role et plan totalement independants depuis le 10/08/2026** : la regle `recruiter ⇒ pro` n'existe plus (`approve_recruiter` ne donne plus le Pro). Restent NON contraints : `projects.status`, `recruiter_status`, `display_name_preference`, `show_*_to`, statuts invitations/credits/reports/waitlist (dette technique).
+
+FEATURE  Compte admin dedie (lot 9, 10/2026) — voir docs/adr/0015-compte-admin-dedie.md
+  Droits admin = profiles.is_admin + session par mot de passe + MFA TOTP (aal2), verifies
+  cote serveur par getAdminId() (lib/adminGuard.ts) et par le proxy (lib/supabase/middleware.ts).
+  src/lib/adminSession.ts (UTILITY, sans next/headers) : sessionStrength(), ADMIN_ACCOUNT_TYPE,
+  cookie de vue VIEW_COOKIE, pages fermees au compte admin, adminNext().
+  Pages : /admin/connexion (email + mot de passe, pas de Google), /admin/mfa (inscription du
+  facteur sur demande, puis code), panneau dans le groupe src/app/admin/(panel)/ (layout garde,
+  page, AdminClient, ViewAs).
+  Compte sans existence publique : account_type='admin' (policy RLS restrictive + triggers,
+  migration 20261017), refuse par getActiveUser() (aucune ecriture), pas de finalisation ni
+  d'ecran CGU, /moi /messages /dashboard /rejoindre /pro renvoient vers /admin.
+  « Voir le site comme » (ViewAs) : membre = le compte admin sur le site ; visiteur = cookie
+  unkast_view=visitor, lib/supabase/server.ts ignore alors la session (sauf ignoreView, reserve
+  a la garde admin). AppShell affiche le bandeau « Compte admin · vue ... · Retour a l'admin ».

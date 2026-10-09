@@ -1,18 +1,20 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminId } from "@/lib/adminGuard";
+import ViewAs from "./ViewAs";
 
 // Espace admin hors du groupe (app) : pas d'AppShell (ni sidebar, ni tab bar).
-// Double garde : le middleware redirige deja /admin (non connecte -> /connexion,
-// non admin -> /feed), mais son matcher exclut le prefetch — ce layout serveur
-// est le mur infranchissable, via le MEME helper que /api/admin (getAdminId).
+// Double garde : le proxy redirige deja /admin (non connecte -> /admin/connexion,
+// non admin -> /feed, sans double authentification -> /admin/mfa), mais son matcher
+// exclut le prefetch — ce layout serveur est le mur infranchissable, via le MEME
+// helper que /api/admin (getAdminId : is_admin + mot de passe + MFA).
+// Groupe (panel) : /admin/connexion et /admin/mfa sont hors de ce layout.
 export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const adminId = await getAdminId();
-  if (!adminId) redirect("/feed");
+  if (!adminId) redirect("/admin/connexion");
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
@@ -35,9 +37,7 @@ export default async function AdminLayout({
           Unkast<span style={{ color: "#C8FF00" }}>.</span>{" "}
           <span style={{ fontWeight: 400, color: "#555" }}>Admin</span>
         </span>
-        <Link href="/feed" style={{ fontSize: 13, color: "#888", textDecoration: "none" }}>
-          ← Retour à l&apos;app
-        </Link>
+        <ViewAs />
       </header>
       {children}
     </div>

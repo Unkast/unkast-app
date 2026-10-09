@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
+import { ADMIN_ACCOUNT_TYPE } from "@/lib/adminSession";
 
 // Garde commun aux routes API sensibles (chantier 3 — moderation).
 // Authentifie l'utilisateur ET verifie qu'il n'est PAS suspendu.
@@ -92,6 +93,12 @@ export async function getActiveUser(
 
   if (profile.is_suspended) {
     return { user: null, profile: null, error: "Compte suspendu.", status: 403 };
+  }
+
+  // Compte admin dedie (lot 9) : il modere depuis /api/admin (qui a sa propre garde)
+  // et n'ecrit rien ailleurs. Ni film, ni credit, ni message, ni profil.
+  if (profile.account_type === ADMIN_ACCOUNT_TYPE) {
+    return { user: null, profile: null, error: "Le compte admin ne peut ni publier ni écrire.", status: 403 };
   }
 
   // `profile` est garanti non-null ici (toute erreur est sortie plus haut) : plus

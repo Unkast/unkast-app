@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { TERMS_VERSION } from "@/lib/legal";
+import { ADMIN_ACCOUNT_TYPE, VIEW_COOKIE, VIEW_VISITOR } from "@/lib/adminSession";
 
 // On résout l'utilisateur + son profil + le compteur de non-lus CÔTÉ SERVEUR,
 // puis on les passe à AppShell en props. Évite le waterfall client au montage
@@ -23,6 +24,9 @@ export default async function AppLayout({
   // affiche alors l'ecran « Les CGU ont ete mises a jour ». Si la lecture echoue,
   // on ne bloque pas (false) : l'ecran reviendra a la page suivante.
   let needsTerms = false;
+  // Bandeau d'AppShell : le compte admin regarde le site (vue membre ou visiteur).
+  let adminView: "member" | "visitor" | null = null;
+  const cookieStore = await cookies();
 
   if (user) {
     // is_admin est revoque en SELECT pour `authenticated` (migration
@@ -58,15 +62,20 @@ export default async function AppLayout({
       };
     }
     initialUnread = count ?? 0;
-    needsTerms = !!adminRow && adminRow.terms_version !== TERMS_VERSION;
+    // Compte admin dedie : pas d'ecran CGU (il n'utilise pas le service comme membre).
+    const isAdminAccount = profile?.account_type === ADMIN_ACCOUNT_TYPE;
+    needsTerms = !isAdminAccount && !!adminRow && adminRow.terms_version !== TERMS_VERSION;
+    if (isAdminAccount) adminView = "member";
   }
+  // « Voir le site comme : visiteur » : createClient() a deja lu le site sans session.
+  if (cookieStore.get(VIEW_COOKIE)?.value === VIEW_VISITOR) adminView = "visitor";
 
   // Compte non resolu alors qu'un cookie de session existe (lecture en echec, jeton a
   // renouveler) : AppShell attend le navigateur au lieu d'afficher le mode visiteur.
-  const sessionHint = !initialUser && (await cookies()).getAll().some((c) => /^sb-.+-auth-token/.test(c.name));
+  const sessionHint = !initialUser && adminView !== "visitor" && cookieStore.getAll().some((c) => /^sb-.+-auth-token/.test(c.name));
 
   return (
-    <AppShell initialUser={initialUser} initialUnread={initialUnread} needsTerms={needsTerms} sessionHint={sessionHint}>
+    <AppShell initialUser={initialUser} initialUnread={initialUnread} needsTerms={needsTerms} sessionHint={sessionHint} adminView={adminView}>
       {children}
     </AppShell>
   );

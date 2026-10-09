@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ADMIN_ACCOUNT_BLOCKED_PATHS, ADMIN_ACCOUNT_TYPE, sessionStrength } from "@/lib/adminSession";
 
 // Pages ouvertes a un compte connecte dont l'inscription n'est pas finalisee.
 const FINALIZE_EXEMPT = [
@@ -50,26 +51,44 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Protect /admin — must be authenticated + is_admin
+  // /admin (lot 9) : compte admin, connecte par mot de passe, double authentification
+  // validee. /admin/connexion reste ouverte ; /admin/mfa demande le compte admin et
+  // le mot de passe. La garde serveur (lib/adminGuard.ts) refait le meme controle.
   if (pathname.startsWith("/admin")) {
-    if (!user) {
+    const isLogin = pathname === "/admin/connexion";
+    const isMfa = pathname === "/admin/mfa";
+    const to = (path: string, keepNext = false) => {
+      const url = request.nextUrl.clone();
       // La destination est gardee dans ?next= : le lien de l'email d'alerte
       // (/admin?tab=films) ramene sur l'onglet demande apres la connexion.
-      const url = request.nextUrl.clone();
-      url.pathname = "/connexion";
-      url.search = `?next=${encodeURIComponent(pathname + request.nextUrl.search)}`;
+      const next = isLogin || isMfa ? request.nextUrl.searchParams.get("next") : pathname + request.nextUrl.search;
+      url.pathname = path;
+      url.search = keepNext && next ? `?next=${encodeURIComponent(next)}` : "";
       return NextResponse.redirect(url);
-    }
-    // is_admin est revoque pour anon/authenticated : lecture via le client de
-    // confiance (service role), scope sur la ligne de l'utilisateur courant.
-    // Le proxy tourne sur le runtime Node.js par defaut (Next 16), donc la cle
-    // service role y est disponible.
-    const admin = createAdminClient();
-    const { data: profile } = await admin.from("profiles").select("is_admin").eq("id", user.id).single();
-    if (!profile?.is_admin) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/feed";
-      return NextResponse.redirect(url);
+    };
+    if (!user) {
+      if (!isLogin) return to("/admin/connexion", true);
+    } else {
+      // is_admin est revoque pour anon/authenticated : lecture via le client de
+      // confiance (service role), scope sur la ligne de l'utilisateur courant.
+      // Le proxy tourne sur le runtime Node.js par defaut (Next 16), donc la cle
+      // service role y est disponible.
+      const admin = createAdminClient();
+      const { data: profile } = await admin.from("profiles").select("is_admin").eq("id", user.id).single();
+      if (!profile?.is_admin) {
+        // Un autre compte peut ouvrir la page de connexion admin pour changer de compte.
+        if (!isLogin) return to("/feed");
+      } else {
+        const { password, mfa } = await sessionStrength(supabase);
+        if (!password) {
+          // Session Google ou lien : aucun droit admin, il faut le mot de passe.
+          if (!isLogin) return to("/admin/connexion", true);
+        } else if (!mfa) {
+          if (!isMfa) return to("/admin/mfa", true);
+        } else if (isLogin) {
+          return to("/admin");
+        }
+      }
     }
   }
 
@@ -121,6 +140,15 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/suspended";
       return NextResponse.redirect(url);
+    } else if (profile?.account_type === ADMIN_ACCOUNT_TYPE) {
+      // Compte admin : ni finalisation, ni profil, ni messages, ni offre. Ces pages
+      // le renvoient vers l'admin ; le reste du site lui est ouvert en lecture.
+      if (ADMIN_ACCOUNT_BLOCKED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
     } else if (
       // Compte connecte SANS METIER = inscription non finalisee (compte cree par
       // Google) : renvoye vers la finalisation, quelle que soit la page ouverte.

@@ -26,7 +26,7 @@ contraints en base, independants l'un de l'autre.
 
 | Colonne | Type TS | Valeurs autorisees | Contrainte base |
 |---|---|---|---|
-| `profiles.account_type` | `AccountType` | `talent` (defaut), `creator`, `recruiter` | ✅ `profiles_account_type_check` ; bascule **talent↔creator** par l'utilisateur (`api/dashboard/profile`), `recruiter` reserve a l'admin |
+| `profiles.account_type` | `AccountType` | `talent` (defaut), `creator`, `recruiter`, `admin` (compte admin dedie, lot 9 : aucun droit, aucun profil public) | ✅ `profiles_account_type_check` ; bascule **talent↔creator** par l'utilisateur (`api/dashboard/profile`), `recruiter` reserve a l'admin |
 | `profiles.plan` | `Plan` | `free` (defaut), `pro` | ✅ `profiles_plan_check` |
 
 > `member` a ete supprime du modele (migre vers `talent`). `NULL` reste tolere par le CHECK (defaut
@@ -583,3 +583,5 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 2. ✅ **`account_type` tranche** (decision produit, migration faite) : ROLE = `talent`/`creator`/`recruiter`, defaut `talent` ; `member` supprime. `plan` = `free`/`pro`, **totalement independant du role** depuis le 10/08/2026 (la regle `recruiter ⇒ pro` n'existe plus, ni en base ni cote code).
 3. **`is_looking_for`, `recruiter_*`** : colonnes creees mais jamais alimentees en prod. Verifier si le code les ecrit.
 4. **`schema.sql` a regenerer** depuis la base (10 tables + colonnes manquantes + RLS des nouvelles tables).
+
+> **Compte admin dedie (migration `20261017_admin_account.sql`).** `account_type='admin'` ajoute a `profiles_account_type_check`. Policy RESTRICTIVE `"Admin accounts are private"` sur `profiles` (SELECT, anon et authenticated) : une ligne admin n'est lisible que par son compte. Fonction `reject_admin_account()` + triggers du meme nom sur `conversations` (participants) et `project_credits` (`profile_id`) : un compte admin ne peut pas y figurer. Les droits restent portes par `is_admin`.
