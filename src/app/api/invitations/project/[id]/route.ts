@@ -61,7 +61,8 @@ export async function PATCH(
       profile_id: user.id,
       role_on_project: inv.role,
     });
-    if (creditError) {
+    // 23505 : la personne a deja ce role sur ce film (unicite en base), rien a faire.
+    if (creditError && creditError.code !== "23505") {
       console.error("[invitations/project] credit impossible :", creditError);
       // L'invitation repasse en attente : la personne peut reessayer.
       await admin.from("project_invitations").update({ status: "pending" }).eq("id", id);

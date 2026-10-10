@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 
@@ -19,9 +20,19 @@ export async function POST(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { token, platform } = body;
 
-  if (!token) {
+  if (typeof token !== "string" || !token) {
     return NextResponse.json({ error: "Token requis." }, { status: 400 });
   }
+
+  // Un appareil n'est lie qu'a un seul compte : le jeton est detache de tout autre
+  // compte (deconnexion ratee, session expiree). Service role : la RLS ne laisse voir
+  // que ses propres jetons. Jamais bloquant.
+  const { error: detachError } = await createAdminClient()
+    .from("push_tokens")
+    .delete()
+    .eq("token", token)
+    .neq("profile_id", user.id);
+  if (detachError) console.error("[notifications] detachement du jeton impossible :", detachError);
 
   // Upsert: if this token already exists for this user, do nothing
   const { error } = await supabase.from("push_tokens").upsert(

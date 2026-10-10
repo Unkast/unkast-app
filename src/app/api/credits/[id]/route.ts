@@ -51,6 +51,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Non autorise." }, { status: 403 });
   }
 
+  // La decision est posee AVANT le credit, filtree sur le statut : deux appels
+  // simultanes ne passent pas tous les deux.
+  const { data: decided, error: updateError } = await supabase
+    .from("credit_requests")
+    .update({ status })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id");
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+  if (!decided || decided.length === 0) {
+    return NextResponse.json({ error: "Demande déjà traitée." }, { status: 409 });
+  }
+
   if (status === "accepted") {
     // Aucun client n'a le droit d'inserer un credit (migration 20261020) : la route
     // l'ecrit en service role, APRES avoir verifie ci-dessus que l'appelant gere le
@@ -61,21 +77,14 @@ export async function PATCH(
       profile_id: creditReq.requester_id,
       role_on_project: creditReq.role,
     });
-    if (creditError) {
+    // 23505 : la personne a deja ce role sur ce film (unicite en base), rien a faire.
+    if (creditError && creditError.code !== "23505") {
       console.error("[credits] insertion du credit impossible :", creditError);
+      // La demande repasse en attente : le gestionnaire peut reessayer.
+      await admin.from("credit_requests").update({ status: "pending" }).eq("id", id);
       return NextResponse.json({ error: "Crédit impossible à enregistrer, réessaie." }, { status: 500 });
     }
     await markProjectEdited(admin, creditReq.project_id, guard.user.id);
-  }
-
-  // Update credit request status
-  const { error: updateError } = await supabase
-    .from("credit_requests")
-    .update({ status })
-    .eq("id", id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
   // Notify requester
