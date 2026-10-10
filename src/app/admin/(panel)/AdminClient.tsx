@@ -170,7 +170,7 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
 
         <p style={{ fontSize: 11, color: "#868686", marginTop: 8 }}>
           Proposé le {new Date(f.created_at).toLocaleDateString("fr-FR")} ·{" "}
-          <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#888" }}>Lien vidéo</a>
+          <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#A8A8B0" }}>Lien vidéo</a>
         </p>
 
         {!refusing ? (
@@ -180,7 +180,7 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
           </div>
         ) : (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Motif du refus (un ou plusieurs)</p>
+            <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 10 }}>Motif du refus (un ou plusieurs)</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {REFUSAL_REASONS.map((r) => {
                 const checked = reasons.includes(r.value);
@@ -213,14 +213,14 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
                 style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 12, padding: 12, background: "#1a1a1a", border: `1px solid ${other && !note.trim() ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, fontSize: 16, color: "#f0f0f0", resize: "vertical", minHeight: 80, outline: "none" }}
               />
             ) : (
-              <button type="button" onClick={() => setNoteOpen(true)} style={{ display: "block", marginTop: 4, padding: "12px 0", background: "none", border: "none", color: "#888", fontSize: 13, textDecoration: "underline", cursor: "pointer" }}>
+              <button type="button" onClick={() => setNoteOpen(true)} style={{ display: "block", marginTop: 4, padding: "12px 0", background: "none", border: "none", color: "#A8A8B0", fontSize: 13, textDecoration: "underline", cursor: "pointer" }}>
                 Ajouter une précision
               </button>
             )}
 
             <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
               <button onClick={() => onRefuse(reasons, note.trim())} disabled={!canConfirm} style={{ ...bigBtn, flex: 2, background: "#ef4444", border: "none", color: "#fff", opacity: canConfirm ? 1 : 0.4, cursor: canConfirm ? "pointer" : "default" }}>Confirmer le refus</button>
-              <button onClick={() => setRefusing(false)} disabled={busy} style={{ ...bigBtn, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
+              <button onClick={() => setRefusing(false)} disabled={busy} style={{ ...bigBtn, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Annuler</button>
             </div>
           </div>
         )}
@@ -458,10 +458,10 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
 
   const btnApprove = { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
   const btnDanger = { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
-  const btnNeutral = { ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" } as const;
+  const btnNeutral = { ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" } as const;
   const card = { background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 16, marginBottom: 12 } as const;
   const sectionTitle = { fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 14 } as const;
-  const pill = { fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#888", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace", whiteSpace: "nowrap" } as const;
+  const pill = { fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#A8A8B0", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace", whiteSpace: "nowrap" } as const;
 
   return (
     <div style={{ padding: "20px 16px 120px", maxWidth: 900, margin: "0 auto" }}>
@@ -520,8 +520,8 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                 </div>
                 <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
               </div>
-              {r.recruiter_company && <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Société : {r.recruiter_company}</p>}
-              {r.recruiter_role && <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Poste : {r.recruiter_role}</p>}
+              {r.recruiter_company && <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 4 }}>Société : {r.recruiter_company}</p>}
+              {r.recruiter_role && <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 4 }}>Poste : {r.recruiter_role}</p>}
               {r.recruiter_website && <a href={r.recruiter_website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#C8FF00" }}>{r.recruiter_website}</a>}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <button onClick={() => doAction("approve_recruiter", r.id)} disabled={actionLoading === r.id} style={btnApprove}>Approuver</button>
@@ -551,7 +551,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                     <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 10 }}>
                       <p style={{ fontSize: 10, color: "#868686", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Actuelle (publique)</p>
-                      <p style={{ fontSize: 12.5, color: "#888", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio || <span style={{ color: "#868686" }}>— vide —</span>}</p>
+                      <p style={{ fontSize: 12.5, color: "#A8A8B0", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio || <span style={{ color: "#868686" }}>— vide —</span>}</p>
                     </div>
                     <div style={{ background: "rgba(200,255,0,0.03)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 8, padding: 10 }}>
                       <p style={{ fontSize: 10, color: "#8aa800", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Proposée</p>
@@ -582,7 +582,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {r.recruiter_verified
-                      ? <button onClick={() => confirmAction("revoke_recruiter_verified", r.id, `Retirer la vérification de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Retirer vérif.</button>
+                      ? <button onClick={() => confirmAction("revoke_recruiter_verified", r.id, `Retirer la vérification de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Retirer vérif.</button>
                       : <button onClick={() => doAction("grant_recruiter_verified", r.id)} disabled={actionLoading === r.id} style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Vérifier</button>
                     }
                     <button onClick={() => confirmAction("suspend_user", r.id, `Suspendre ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12 }}>Suspendre</button>
@@ -592,7 +592,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                         ne fait plus que retirer le statut (le grant 'recruiter'
                         qu'elle nettoyait par le passe a ete purge et retire du
                         modele — voir revoke_recruiter_approval). */}
-                    <button onClick={() => confirmAction("revoke_recruiter_approval", r.id, `Révoquer le statut recruteur de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Révoquer statut</button>
+                    <button onClick={() => confirmAction("revoke_recruiter_approval", r.id, `Révoquer le statut recruteur de ${r.full_name}`)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Révoquer statut</button>
                   </div>
                 </div>
               ))}
@@ -611,7 +611,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     {r.urgent && <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", letterSpacing: "0.05em" }}>URGENT</span>}
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#888", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{TARGET_LABELS[r.target_type] || r.target_type}</span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#A8A8B0", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{TARGET_LABELS[r.target_type] || r.target_type}</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.target_name}</span>
                     {r.total_reports >= 3 && <span style={{ padding: "2px 6px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff" }}>{r.total_reports} signalements</span>}
                   </div>
@@ -621,7 +621,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               </div>
               {/* Entree du Parcours : son contenu (target_name = profil concerne). */}
               {r.target_type === "career_entry" && (
-                <p style={{ fontSize: 13, color: "#888", marginBottom: 8, overflowWrap: "anywhere" }}>
+                <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 8, overflowWrap: "anywhere" }}>
                   {r.career_entry
                     ? <>Entrée du Parcours : <span style={{ color: "#f0f0f0" }}>{r.career_entry.title}</span> · {r.career_entry.role} · {r.career_entry.year}{r.career_entry.production ? ` · ${r.career_entry.production}` : ""}</>
                     : "Entrée du Parcours déjà supprimée."}
@@ -629,7 +629,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               )}
               {/* Message : target_name = expediteur. */}
               {r.target_type === "message" && (
-                <p style={{ fontSize: 13, color: "#888", marginBottom: 8, overflowWrap: "anywhere" }}>
+                <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 8, overflowWrap: "anywhere" }}>
                   Message de <span style={{ color: "#f0f0f0" }}>{r.target_name || "expéditeur introuvable"}</span> à <span style={{ color: "#f0f0f0" }}>{r.message_recipient || "destinataire introuvable"}</span>
                 </p>
               )}
@@ -637,10 +637,10 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {(r.target_type === "career_entry" || r.target_type === "message") && r.target_slug && <Link href={`/profil/${r.target_slug}`} target="_blank" style={{ ...btnNeutral, textDecoration: "none", display: "inline-block" }}>Voir le profil</Link>}
                 {r.target_type === "career_entry" && r.career_entry && <button onClick={() => confirmAction("delete_career_entry", r.target_id, `Supprimer l'entrée « ${r.career_entry?.title} »`)} style={btnDanger}>Supprimer l&apos;entrée</button>}
-                {r.target_type === "profile" && <Link href={`/profil/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Voir le profil</Link>}
-                {r.target_type === "project" && <Link href={`/projet/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Voir le film</Link>}
+                {r.target_type === "profile" && <Link href={`/profil/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Voir le profil</Link>}
+                {r.target_type === "project" && <Link href={`/projet/${r.target_slug}`} target="_blank" style={{ ...btnApprove, textDecoration: "none", display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Voir le film</Link>}
                 {r.target_owner_id && <button onClick={() => confirmAction("suspend_user", r.target_owner_id, `Suspendre le compte`)} style={btnDanger}>Suspendre</button>}
-                <button onClick={() => doAction("dismiss_report", r.id)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Ignorer</button>
+                <button onClick={() => doAction("dismiss_report", r.id)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Ignorer</button>
               </div>
             </div>
           ))}
@@ -755,7 +755,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               Vérifier les adresses de profil
             </button>
             {slugFixes && slugFixes.length === 0 && (
-              <p style={{ marginTop: 10, fontSize: 12, color: "#888" }}>Aucune adresse ne contient un vrai nom masqué.</p>
+              <p style={{ marginTop: 10, fontSize: 12, color: "#A8A8B0" }}>Aucune adresse ne contient un vrai nom masqué.</p>
             )}
             {slugFixes && slugFixes.length > 0 && (
               <div style={{ marginTop: 12 }}>
@@ -795,12 +795,12 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                     <Link href={`/projet/${c.project_slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{c.project_title || "Film introuvable"}</Link>
                   </div>
                   <p style={{ fontSize: 12, color: "#868686", marginTop: 4 }}>
-                    Demandé par <Link href={`/profil/${c.claimant_slug}`} target="_blank" style={{ color: "#888", textDecoration: "none" }}>{c.claimant_name || "compte introuvable"}</Link>
+                    Demandé par <Link href={`/profil/${c.claimant_slug}`} target="_blank" style={{ color: "#A8A8B0", textDecoration: "none" }}>{c.claimant_name || "compte introuvable"}</Link>
                   </p>
                 </div>
                 <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{new Date(c.created_at).toLocaleDateString("fr-FR")}</p>
               </div>
-              <p style={{ fontSize: 13, color: "#888", marginBottom: 8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.message}</p>
+              <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.message}</p>
               <p style={{ fontSize: 12, color: "#868686", marginBottom: 12 }}>
                 {c.document_url
                   ? <><a href={c.document_url} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00" }}>Ouvrir le justificatif</a> (lien valable 10 minutes, recharge l&apos;onglet s&apos;il a expiré)</>
@@ -872,7 +872,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
             />
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={executeModal} disabled={!modalReason.trim()} style={{ ...btnDanger, flex: 1, opacity: modalReason.trim() ? 1 : 0.4 }}>Confirmer</button>
-              <button onClick={() => setModalAction(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
+              <button onClick={() => setModalAction(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Annuler</button>
             </div>
           </div>
         </div>
@@ -919,7 +919,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={executeGrant} disabled={actionLoading === grantModal.targetId || !!grantValidationError} style={{ ...btnApprove, flex: 1, opacity: (actionLoading === grantModal.targetId || grantValidationError) ? 0.5 : 1 }}>Confirmer</button>
-              <button onClick={() => setGrantModal(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#888" }}>Annuler</button>
+              <button onClick={() => setGrantModal(null)} style={{ ...btnApprove, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Annuler</button>
             </div>
           </div>
         </div>

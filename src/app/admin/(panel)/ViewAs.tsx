@@ -18,7 +18,7 @@ export default function ViewAs() {
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-      <span style={{ fontSize: 13, color: "#888" }}>Voir le site comme :</span>
+      <span style={{ fontSize: 13, color: "#A8A8B0" }}>Voir le site comme :</span>
       <button type="button" style={button} onClick={() => open(true)}>visiteur</button>
       <button type="button" style={button} onClick={() => open(false)}>membre</button>
     </div>

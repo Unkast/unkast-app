@@ -456,7 +456,7 @@ export default function ConversationPage({
           <p
             style={{
               fontSize: 12.5,
-              color: "#8a8a8a",
+              color: "#A8A8B0",
               lineHeight: 1.5,
               marginBottom: 10,
             }}
@@ -640,7 +640,7 @@ export default function ConversationPage({
             style={{ padding: 24, width: "100%", maxWidth: 380 }}
           >
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", margin: 0, marginBottom: 10 }}>Confirmer l&apos;envoi</h3>
-            <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, margin: 0, marginBottom: 20 }}>
+            <p style={{ fontSize: 13, color: "#A8A8B0", lineHeight: 1.6, margin: 0, marginBottom: 20 }}>
               Ton message va être envoyé. Tu devras attendre la réponse avant de pouvoir en envoyer un autre. Es-tu sûr de ton message, ou veux-tu le modifier ?
             </p>
             <div style={{ display: "flex", gap: 8 }}>

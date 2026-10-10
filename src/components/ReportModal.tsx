@@ -100,7 +100,7 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
                       display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
                       padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
                       background: "none", border: "none", borderBottomStyle: "solid", cursor: "pointer",
-                      fontSize: 14, color: reason === r.value ? "#f0f0f0" : "#888", textAlign: "left",
+                      fontSize: 14, color: reason === r.value ? "#f0f0f0" : "#A8A8B0", textAlign: "left",
                     }}
                   >
                     {r.label}
