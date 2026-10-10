@@ -6,7 +6,7 @@ Plateforme web ou les professionnels du cinema et de l'audiovisuel francais cree
 
 ## Stack technique
 
-- Next.js 16.2.0 (App Router) + React 19 + TypeScript 5
+- Next.js 16.4.0 (App Router) + React 19 + TypeScript 5
 - Supabase (PostgreSQL + Auth + Row Level Security)
 - Tailwind CSS 4
 - framer-motion 12 (animations)

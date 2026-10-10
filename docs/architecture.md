@@ -6,7 +6,7 @@
 
 ## Stack technique
 
-- **Framework** : Next.js 16.2.0 (App Router) + React 19 + TypeScript 5
+- **Framework** : Next.js 16.4.0 (App Router) + React 19 + TypeScript 5
 - **Backend / BDD / Auth** : Supabase (PostgreSQL + Auth + RLS)
 - **Hosting** : Vercel
 - **Styling** : Tailwind CSS 4
