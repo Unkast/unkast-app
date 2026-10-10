@@ -318,7 +318,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed top-4 right-4 z-50 px-4 py-2.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-sm text-text-primary shadow-lg max-w-sm"
+              className="fixed top-[calc(1rem+env(safe-area-inset-top,0px))] right-4 z-50 px-4 py-2.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-sm text-text-primary shadow-lg max-w-sm"
             >
               {toast}
             </motion.div>

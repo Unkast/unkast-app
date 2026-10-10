@@ -503,7 +503,7 @@ export default function SearchAssistant({ onClose, isLoggedIn }: Props) {
         aria-label="Assistant de recherche"
         onKeyDown={onKeyDown}
         className="glass-strong mx-auto flex h-full w-full flex-col overflow-hidden rounded-none border-0 bg-glass-solid/92 lg:h-auto lg:max-h-[80vh] lg:max-w-[640px] lg:rounded-[28px] lg:border lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_40px_120px_rgba(0,0,0,0.7)]"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {/* Champ de saisie */}
         <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/[0.08] px-5 text-text-secondary">

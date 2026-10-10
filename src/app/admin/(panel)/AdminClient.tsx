@@ -478,7 +478,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
     <div style={{ padding: "20px 16px 120px", maxWidth: 900, margin: "0 auto" }}>
       {/* Toast */}
       {toast && (
-        <div style={{ position: "fixed", top: 16, right: 16, zIndex: 150, maxWidth: "calc(100vw - 32px)", padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
+        <div style={{ position: "fixed", top: "calc(16px + env(safe-area-inset-top, 0px))", right: 16, zIndex: 150, maxWidth: "calc(100vw - 32px)", padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
           {toast}
         </div>
       )}

@@ -228,7 +228,7 @@ export default function AvatarUpload({ currentAvatarUrl, onUploadComplete, initi
 
       {/* Cropper fullscreen */}
       {imageToCrop && createPortal(
-        <div className="fixed inset-0 z-[9999] flex flex-col bg-black">
+        <div className="fixed inset-0 z-[9999] flex flex-col bg-black pt-[env(safe-area-inset-top,0px)]">
           <div className="relative flex-1">
             <Cropper
               image={imageToCrop}

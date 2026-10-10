@@ -559,14 +559,14 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             }}
             style={{ position: "fixed", inset: 0, zIndex: 9998, background: "black", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            <Button variant="icon" aria-label="Fermer" onClick={() => setShowVideo(false)} className="absolute top-5 right-5" style={{ zIndex: 9999 }}>
+            <Button variant="icon" aria-label="Fermer" onClick={() => setShowVideo(false)} className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-5" style={{ zIndex: 9999 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
             </Button>
             {/* Panneau arrondi à partir de lg seulement : en mobile la vidéo est bord à bord,
                 l'arrondi rognerait les contrôles du lecteur. */}
             {/* Série : épisode suivant, en haut à gauche (les commandes du lecteur sont en bas) */}
             {hasNext && (
-              <Button variant="glass" size="sm" onClick={nextEpisode} className="absolute top-5 left-5" style={{ zIndex: 9999 }}>
+              <Button variant="glass" size="sm" onClick={nextEpisode} className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] left-5" style={{ zIndex: 9999 }}>
                 Épisode {episodeIndex + 2}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
               </Button>
@@ -581,7 +581,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
       {/* Toast */}
       <AnimatePresence>
         {creditToast && (
-          <motion.div initial={{ opacity: 0, y: reduced ? 0 : -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -20 }} className="glass-strong rounded-card fixed top-4 right-4 z-50 max-w-[280px] px-4 py-2.5 text-[13px] text-text-primary">
+          <motion.div initial={{ opacity: 0, y: reduced ? 0 : -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -20 }} className="glass-strong rounded-card fixed top-[calc(1rem+env(safe-area-inset-top,0px))] right-4 z-50 max-w-[280px] px-4 py-2.5 text-[13px] text-text-primary">
             {creditToast}
           </motion.div>
         )}

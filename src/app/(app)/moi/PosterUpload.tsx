@@ -255,7 +255,7 @@ export default function PosterUpload({
       {/* Recadrage plein ecran. Porte dans <body> : un ancetre en verre
           (backdrop-filter) deviendrait sinon le bloc conteneur de ce position: fixed. */}
       {source && createPortal(
-        <div role="dialog" aria-modal="true" aria-label="Recadrer l'image du film" className="fixed inset-0 z-[9999] flex flex-col bg-black">
+        <div role="dialog" aria-modal="true" aria-label="Recadrer l'image du film" className="fixed inset-0 z-[9999] flex flex-col bg-black pt-[env(safe-area-inset-top,0px)]">
           <div className="relative min-h-[160px] flex-1">
             <Cropper
               image={source}

@@ -26,8 +26,9 @@ export default async function AdminLayout({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 16px",
-          minHeight: 52,
+          // Zone sure : dans l'app Android la page passe sous la barre d'etat.
+          padding: "env(safe-area-inset-top, 0px) 16px 0",
+          minHeight: "calc(52px + env(safe-area-inset-top, 0px))",
           background: "rgba(13,13,13,0.9)",
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
