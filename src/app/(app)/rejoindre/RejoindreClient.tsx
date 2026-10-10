@@ -183,12 +183,15 @@ export default function RejoindreClient() {
     })();
   }, []);
 
+  // Sous 2 caracteres, la liste est videe a la saisie (pas dans l'effet de recherche).
+  function updateSearchQuery(value: string) {
+    setSearchQuery(value);
+    if (value.length < 2) setSearchResults([]);
+  }
+
   // Search projects for talent flow
   useEffect(() => {
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
+    if (searchQuery.length < 2) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
@@ -690,8 +693,8 @@ export default function RejoindreClient() {
                       aria-label="Rechercher un projet"
                       type="text"
                       value={searchQuery}
-                      onChange={(e) => { setSearchQuery(e.target.value); }}
-                      onClear={() => setSearchQuery("")}
+                      onChange={(e) => updateSearchQuery(e.target.value)}
+                      onClear={() => updateSearchQuery("")}
                       placeholder="Rechercher un projet..."
                       icon={
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

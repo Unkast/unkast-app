@@ -62,7 +62,7 @@ export default function ProfileClient({
   const [reportTarget, setReportTarget] = useState<{ type: "profile" | "career_entry"; id: string } | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteProjects, setInviteProjects] = useState<any[]>([]);
+  const [inviteProjects, setInviteProjects] = useState<{ id: string; title: string; year: number | null }[]>([]);
   const [inviteSelectedProject, setInviteSelectedProject] = useState<string | null>(null);
   const [inviteRole, setInviteRole] = useState("");
   const [inviteMessage, setInviteMessage] = useState("");
@@ -340,14 +340,14 @@ export default function ProfileClient({
             )}
 
             {/* Recruiting badge */}
-            {(profile as any).is_recruiting && (profile as any).recruiting_roles?.length > 0 && (
+            {isRecruiting && recruitingRoles.length > 0 && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 20, padding: "6px 14px", marginTop: 2, marginBottom: 8 }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", animation: "recruiting-pulse 2s ease infinite", flexShrink: 0 }} />
                 <span style={{ fontSize: 12, fontWeight: 500, color: "#22c55e" }}>Je recrute</span>
                 <span style={{ color: "rgba(34,197,94,0.4)", fontSize: 12 }}>·</span>
                 <span style={{ fontSize: 12, color: "rgba(34,197,94,0.8)" }}>
                   {(() => {
-                    const roles = (profile as any).recruiting_roles as string[];
+                    const roles = recruitingRoles;
                     if (roles.length === 1) return roles[0];
                     if (roles.length === 2) return roles.join(" · ");
                     return `${roles[0]} · ${roles[1]} +${roles.length - 2}`;
@@ -654,7 +654,7 @@ export default function ProfileClient({
               <>
                 <p style={{ fontSize: 13, color: "#868686", marginBottom: 10 }}>Dans quel projet ?</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-                  {inviteProjects.map((p: any) => (
+                  {inviteProjects.map((p) => (
                     <button key={p.id} onClick={() => setInviteSelectedProject(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, background: inviteSelectedProject === p.id ? "rgba(200,255,0,0.06)" : "rgba(255,255,255,0.04)", border: inviteSelectedProject === p.id ? "1px solid rgba(200,255,0,0.3)" : "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left" }}>
                       <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
                       <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", margin: 0 }}>{p.title}</p><p style={{ fontSize: 11, color: "#868686", margin: 0 }}>{p.year}</p></div>
