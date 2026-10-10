@@ -456,18 +456,24 @@ export default function AppShell({
     }
   }, []);
 
-  // Set status bar style (dark = white icons on dark bg)
+  // App Android : barres systeme transparentes, posees par-dessus la page (les marges
+  // env(safe-area-inset-*) degagent le contenu). Theme sombre, le seul de l'app : icones
+  // claires (Style.Dark) en haut comme en bas. Un theme clair passerait Style.Light.
   useEffect(() => {
-    async function initStatusBar() {
+    async function initSystemBars() {
       try {
+        const { Capacitor, SystemBars, SystemBarsStyle } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
         const { StatusBar, Style } = await import("@capacitor/status-bar");
+        await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: "#0d0d0d" });
+        // Barre d'etat et barre de navigation (plugin du coeur de Capacitor 8)
+        await SystemBars.setStyle({ style: SystemBarsStyle.Dark });
       } catch {
-        // Not running in Capacitor
+        // Hors Capacitor, ou APK sans le plugin
       }
     }
-    initStatusBar();
+    initSystemBars();
   }, []);
 
   async function handleSignOut() {
@@ -825,7 +831,7 @@ export default function AppShell({
     </div>
 
     {adminView && (
-      <div className="glass-strong fixed bottom-24 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-pill px-4 py-2 text-[13px] text-text-primary shadow-xl shadow-black/60 lg:bottom-5">
+      <div className="glass-strong fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-pill px-4 py-2 text-[13px] text-text-primary shadow-xl shadow-black/60 lg:bottom-5">
         <span>Compte admin · vue {adminView === "visitor" ? "visiteur" : "membre"}</span>
         {/* Lien simple (pas <Link>) : navigation complete, le proxy verifie l'acces admin */}
         <a

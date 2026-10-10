@@ -21,9 +21,18 @@ const config: CapacitorConfig = {
         twitter: false,
       },
     },
+    // Barres systeme transparentes par-dessus la page ; icones claires (theme sombre).
+    // Le site reserve la place avec env(safe-area-inset-*) (viewport-fit=cover).
     StatusBar: {
       style: "DARK",
-      backgroundColor: "#0d0d0d",
+      overlaysWebView: true,
+    },
+    // Plugin du coeur de Capacitor 8 : style des deux barres (etat et navigation) et
+    // gestion des marges sur Android 15+ (bord a bord impose).
+    SystemBars: {
+      style: "DARK",
+      insetsHandling: "css",
+      initialViewportFitValueHint: "cover",
     },
   },
 };

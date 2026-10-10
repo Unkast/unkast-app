@@ -20,7 +20,8 @@ L'app Android est une coque Capacitor 8 autour du site en production : `capacito
 | `@capacitor/camera` | photo de profil | `AvatarUpload` |
 | `@capacitor/push-notifications` (FCM, `google-services.json`) | notifications | `usePushNotifications` |
 | `@capacitor/share` | partage natif | `ShareButton` |
-| `@capacitor/status-bar` | barre d'état sombre | configuration |
+| `@capacitor/status-bar` | barre d'état transparente par-dessus la page, icônes claires | configuration, `AppShell` |
+| `SystemBars` (cœur de Capacitor 8, rien à installer) | style des deux barres (état et navigation), marges de zone sûre | configuration, `AppShell` |
 | `@capgo/capacitor-social-login` | connexion Google native (lot 11) | `GoogleSignInButton` |
 
 Règle commune : le code web charge un plugin par import dynamique et teste `Capacitor.isNativePlatform()`, de sorte que le même code tourne dans un navigateur.
@@ -34,3 +35,14 @@ Règle commune : le code web charge un plugin par import dynamique et teste `Cap
 - Aucun intent-filter, aucune modification de `MainActivity` ni du manifeste.
 - Diagnostic d'un échec : Logcat filtré sur `GoogleProvider`. Le plugin y écrit le package, l'empreinte de signature et l'identifiant client utilisés, à comparer avec Google Cloud.
 - Un APK construit avant le lot 11 n'a pas le plugin : `Capacitor.isPluginAvailable("SocialLogin")` est faux et le bouton Google n'est pas affiché.
+
+## Barres système et zone sûre (10/10/2026)
+
+- `targetSdkVersion` 36 : sur Android 15 et plus, le bord à bord est imposé, sans dérogation possible. La page occupe tout l'écran, barre d'état et barre de navigation posées par-dessus, transparentes.
+- Le site déclare `viewport-fit=cover` (`src/app/layout.tsx`). Avec ce réglage, le plugin `SystemBars` (`insetsHandling: "css"`) laisse la page passer sous les barres et renseigne `env(safe-area-inset-*)` (WebView 140 et plus). Sur une WebView plus ancienne, il décale la page lui-même et ces valeurs valent 0.
+- Règle : tout élément collé en haut ou en bas de l'écran ajoute `env(safe-area-inset-top, 0px)` ou `env(safe-area-inset-bottom, 0px)` à sa marge. Dans un navigateur ces valeurs valent 0 : rien ne change.
+- Éléments couverts : en-tête, barre d'onglets, dock et pilule « vue admin » d'`AppShell`, en-tête et message de l'espace admin (hors `AppShell`), conversation, assistant de recherche (haut et bas), `Toast`, messages flottants de `ProjetClient` et `DashboardClient`, lecteur plein écran de `ProjetClient`, recadrages plein écran (`AvatarUpload`, `PosterUpload`), feuilles basses (`RoleSelector`, `AvatarUpload`, `PosterUpload`), bandeaux flottants (`ConversionBanner`, `RecruitmentSpace`).
+- Style : `capacitor.config.ts` (`StatusBar.overlaysWebView`, `StatusBar.style` et `SystemBars.style` à `DARK` = icônes claires) au lancement, puis `AppShell` au montage (`StatusBar.setOverlaysWebView`, `StatusBar.setStyle`, `SystemBars.setStyle`). L'app n'a qu'un thème sombre ; un thème clair passerait `Style.Light`.
+- `WelcomeClient` ne règle plus la barre d'état (il la repassait en mode non superposé en quittant l'accueil).
+- Un changement de `capacitor.config.ts` demande `npx cap sync android` puis un nouvel APK. Les marges CSS et le code d'`AppShell` arrivent avec le déploiement du site.
+- Non vérifié sur appareil à cette date (aucun test sur Android 15 réel ou émulé) : à contrôler après le prochain APK, y compris la navigation à 3 boutons, sous laquelle Android garde un voile translucide.

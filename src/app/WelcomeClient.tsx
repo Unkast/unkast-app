@@ -11,27 +11,8 @@ export default function WelcomeClient() {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
 
-  // Transparent status bar on welcome page
-  useEffect(() => {
-    async function setTransparent() {
-      try {
-        const { StatusBar, Style } = await import("@capacitor/status-bar");
-        await StatusBar.setOverlaysWebView({ overlay: true });
-        await StatusBar.setStyle({ style: Style.Dark });
-      } catch {}
-    }
-    setTransparent();
-    return () => {
-      async function reset() {
-        try {
-          const { StatusBar } = await import("@capacitor/status-bar");
-          await StatusBar.setOverlaysWebView({ overlay: false });
-          await StatusBar.setBackgroundColor({ color: "#0d0d0d" });
-        } catch {}
-      }
-      reset();
-    };
-  }, []);
+  // Barres systeme de l'app Android : transparentes des le lancement (capacitor.config.ts),
+  // rien a regler ici. Le contenu, cale en bas, reste au-dessus de la barre de navigation.
 
   useEffect(() => {
     // Connected user → always /feed (Supabase session in localStorage persists)
