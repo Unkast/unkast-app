@@ -66,6 +66,7 @@ export default function ProfileClient({
   const [inviteRole, setInviteRole] = useState("");
   const [inviteMessage, setInviteMessage] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
+  const [inviteError, setInviteError] = useState("");
   const [viewerIsCreator, setViewerIsCreator] = useState(false);
   // Recrutement — signaux "Disponible" du visiteur vers ce recruteur (chantier 2).
   const [availSignals, setAvailSignals] = useState<{ role: string; expires_at: string }[]>([]);
@@ -172,12 +173,27 @@ export default function ProfileClient({
       const data = await res.json();
       setInviteProjects(data.projects || []);
     }
+    setInviteError("");
     setShowInviteModal(true);
   }
+
+  // Echap ferme la fenetre d'invitation, sauf si la feuille des roles est ouverte
+  // par-dessus : elle se ferme alors seule.
+  useEffect(() => {
+    if (!showInviteModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (document.querySelector('[role="dialog"]:not([data-invite-modal])')) return;
+      setShowInviteModal(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showInviteModal]);
 
   async function sendInvitation() {
     if (!inviteSelectedProject || !inviteRole) return;
     setInviteSending(true);
+    setInviteError("");
     try {
       const res = await fetch("/api/invitations/project", {
         method: "POST",
@@ -189,17 +205,16 @@ export default function ProfileClient({
           message: inviteMessage || null,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setShowInviteModal(false);
         setInviteSelectedProject(null);
         setInviteRole("");
         setInviteMessage("");
-        // Show toast - use a simple alert or add toast state
       } else {
-        alert(data.error || "Erreur");
+        setInviteError(data.error || "L'invitation n'a pas pu être envoyée. Réessaie.");
       }
-    } catch { alert("Erreur réseau"); }
+    } catch { setInviteError("Erreur réseau. L'invitation n'a pas été envoyée."); }
     finally { setInviteSending(false); }
   }
 
@@ -623,13 +638,14 @@ export default function ProfileClient({
       {/* Invitation Modal */}
       {showInviteModal && (
         <div onClick={() => setShowInviteModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} className="glass rounded-panel" style={{ width: "100%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto", padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Inviter ${profile.full_name}`} data-invite-modal className="glass rounded-panel" style={{ width: "100%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto", padding: 24 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: "#f0f0f0", marginBottom: 20 }}>Inviter {profile.full_name}</h3>
 
             {inviteProjects.length === 0 ? (
               <div style={{ textAlign: "center", padding: "12px 0" }}>
                 <p style={{ fontSize: 13, color: "#555", marginBottom: 12 }}>Tu n&apos;as pas encore de film publié.</p>
                 <Button onClick={() => { setShowInviteModal(false); router.push("/moi"); }}>Ajouter un film →</Button>
+                <Button variant="glass" onClick={() => setShowInviteModal(false)} className="mt-2 w-full">Annuler</Button>
               </div>
             ) : (
               <>
@@ -659,6 +675,10 @@ export default function ProfileClient({
                 <Button onClick={sendInvitation} disabled={!inviteSelectedProject || !inviteRole || inviteSending} className="w-full">
                   {inviteSending ? "Envoi..." : "Envoyer l'invitation"}
                 </Button>
+                {inviteError && (
+                  <p role="alert" style={{ fontSize: 13, color: "#f87171", marginTop: 12 }}>{inviteError}</p>
+                )}
+                <Button variant="glass" onClick={() => setShowInviteModal(false)} className="mt-2 w-full">Annuler</Button>
               </>
             )}
           </div>

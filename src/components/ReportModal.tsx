@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ReportModalProps {
@@ -24,10 +24,20 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
   const [details, setDetails] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  // Echap ferme la fenetre.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   async function handleSubmit() {
     if (!reason) return;
     setSending(true);
+    setError("");
     try {
       const res = await fetch("/api/reports", {
         method: "POST",
@@ -37,8 +47,13 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
       if (res.ok) {
         setSent(true);
         setTimeout(() => { onClose(); setSent(false); setReason(""); setDetails(""); }, 2000);
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Le signalement n'a pas pu être envoyé. Réessaie.");
       }
-    } catch {}
+    } catch {
+      setError("Erreur réseau. Le signalement n'a pas été envoyé.");
+    }
     finally { setSending(false); }
   }
 
@@ -59,6 +74,9 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Signaler ce contenu"
           style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 16, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto", padding: 24 }}
         >
           {sent ? (
@@ -111,6 +129,10 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
               />
               <p style={{ fontSize: 10, color: "#444", textAlign: "right", marginTop: 4 }}>{details.length}/300</p>
 
+              {error && (
+                <p role="alert" style={{ fontSize: 13, color: "#f87171", marginTop: 12 }}>{error}</p>
+              )}
+
               {/* Submit */}
               <button
                 onClick={handleSubmit}
@@ -123,6 +145,16 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
                 }}
               >
                 {sending ? "Envoi..." : "Envoyer le signalement"}
+              </button>
+              <button
+                onClick={onClose}
+                style={{
+                  width: "100%", marginTop: 8, padding: 14, background: "none",
+                  color: "#a0a0a0", fontSize: 14, fontWeight: 500,
+                  borderRadius: 10, border: "none", cursor: "pointer",
+                }}
+              >
+                Annuler
               </button>
             </>
           )}
