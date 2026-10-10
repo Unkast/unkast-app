@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   CATEGORY_LABELS,
@@ -85,7 +84,6 @@ interface SearchProject {
 }
 
 export default function RejoindreClient() {
-  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [direction, setDirection] = useState(1);
   const reduced = useReducedMotion();
