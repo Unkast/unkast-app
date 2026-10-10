@@ -83,12 +83,12 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
             <div style={{ textAlign: "center", padding: "20px 0" }}>
               <svg style={{ margin: "0 auto 16px" }} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
               <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Signalement envoyé</p>
-              <p style={{ fontSize: 13, color: "#555" }}>Merci de nous aider a maintenir la qualite.</p>
+              <p style={{ fontSize: 13, color: "#868686" }}>Merci de nous aider a maintenir la qualite.</p>
             </div>
           ) : (
             <>
               <h3 style={{ fontSize: 18, fontWeight: 600, color: "#f0f0f0", marginBottom: 6 }}>Signaler ce contenu</h3>
-              <p style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>Aide-nous à maintenir une communauté professionnelle.</p>
+              <p style={{ fontSize: 13, color: "#868686", marginBottom: 20 }}>Aide-nous à maintenir une communauté professionnelle.</p>
 
               {/* Reasons */}
               <div>
@@ -127,7 +127,7 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
                   outline: "none",
                 }}
               />
-              <p style={{ fontSize: 10, color: "#444", textAlign: "right", marginTop: 4 }}>{details.length}/300</p>
+              <p style={{ fontSize: 10, color: "#868686", textAlign: "right", marginTop: 4 }}>{details.length}/300</p>
 
               {error && (
                 <p role="alert" style={{ fontSize: 13, color: "#f87171", marginTop: 12 }}>{error}</p>
@@ -139,7 +139,7 @@ export default function ReportModal({ open, onClose, targetType, targetId }: Rep
                 disabled={!reason || sending}
                 style={{
                   width: "100%", marginTop: 16, padding: 14, background: reason ? "#C8FF00" : "rgba(255,255,255,0.06)",
-                  color: reason ? "#0d0d0d" : "#555", fontSize: 14, fontWeight: 600,
+                  color: reason ? "#0d0d0d" : "#868686", fontSize: 14, fontWeight: 600,
                   borderRadius: 10, border: "none", cursor: reason ? "pointer" : "not-allowed",
                   opacity: sending ? 0.6 : 1, transition: "all 150ms",
                 }}
@@ -172,7 +172,7 @@ export function ReportButton({ onClick }: { onClick: () => void }) {
       style={{
         display: "flex", alignItems: "center", gap: 6,
         background: "none", border: "none", padding: "8px 0",
-        fontSize: 12, color: "#444", fontFamily: "JetBrains Mono, monospace",
+        fontSize: 12, color: "#868686", fontFamily: "JetBrains Mono, monospace",
         cursor: "pointer",
       }}
     >

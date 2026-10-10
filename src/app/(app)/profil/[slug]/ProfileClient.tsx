@@ -436,7 +436,7 @@ export default function ProfileClient({
               {userStatus === "anonymous" && (
                 <div style={{ maxWidth: 240 }}>
                   <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", marginBottom: 6 }}>Envoyer un message</p>
-                  <p style={{ fontSize: 12, color: "#555", marginBottom: 14, lineHeight: 1.5 }}>Crée un compte gratuit pour entrer en contact avec les talents.</p>
+                  <p style={{ fontSize: 12, color: "#868686", marginBottom: 14, lineHeight: 1.5 }}>Crée un compte gratuit pour entrer en contact avec les talents.</p>
                   <Button onClick={() => router.push("/rejoindre")} className="w-full">Rejoindre Unkast</Button>
                 </div>
               )}
@@ -502,7 +502,7 @@ export default function ProfileClient({
             {/* Project cards */}
             {filmItems.length === 0 ? (
               <div className="border border-dashed border-white/[0.08] rounded-card h-[120px] flex items-center justify-center">
-                <p className="text-[13px] text-[#444]">Aucun film pour le moment</p>
+                <p className="text-[13px] text-text-tertiary">Aucun film pour le moment</p>
               </div>
             ) : (
               // Même carte que les rangées du feed : affiche en cadre 16:9, taille
@@ -643,23 +643,23 @@ export default function ProfileClient({
 
             {inviteProjects.length === 0 ? (
               <div style={{ textAlign: "center", padding: "12px 0" }}>
-                <p style={{ fontSize: 13, color: "#555", marginBottom: 12 }}>Tu n&apos;as pas encore de film publié.</p>
+                <p style={{ fontSize: 13, color: "#868686", marginBottom: 12 }}>Tu n&apos;as pas encore de film publié.</p>
                 <Button onClick={() => { setShowInviteModal(false); router.push("/moi"); }}>Ajouter un film →</Button>
                 <Button variant="glass" onClick={() => setShowInviteModal(false)} className="mt-2 w-full">Annuler</Button>
               </div>
             ) : (
               <>
-                <p style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>Dans quel projet ?</p>
+                <p style={{ fontSize: 13, color: "#868686", marginBottom: 10 }}>Dans quel projet ?</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
                   {inviteProjects.map((p: any) => (
                     <button key={p.id} onClick={() => setInviteSelectedProject(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, background: inviteSelectedProject === p.id ? "rgba(200,255,0,0.06)" : "rgba(255,255,255,0.04)", border: inviteSelectedProject === p.id ? "1px solid rgba(200,255,0,0.3)" : "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left" }}>
                       <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", margin: 0 }}>{p.title}</p><p style={{ fontSize: 11, color: "#555", margin: 0 }}>{p.year}</p></div>
+                      <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", margin: 0 }}>{p.title}</p><p style={{ fontSize: 11, color: "#868686", margin: 0 }}>{p.year}</p></div>
                     </button>
                   ))}
                 </div>
 
-                <p style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>Quel rôle ?</p>
+                <p style={{ fontSize: 13, color: "#868686", marginBottom: 10 }}>Quel rôle ?</p>
                 <div style={{ marginBottom: 20 }}>
                   <RoleSelector
                     selectedRoles={inviteRole ? [inviteRole] : []}

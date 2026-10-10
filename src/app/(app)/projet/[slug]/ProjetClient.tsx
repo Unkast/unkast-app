@@ -353,7 +353,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
                         {!isAnon && c.profile?.avatar_url ? (
                           <img src={c.profile.avatar_url} alt="" className="size-full object-cover" />
                         ) : (
-                          <span className="text-xs font-semibold" style={{ color: isAnon ? "#555" : "#C8FF00" }}>{isAnon ? "?" : initials(fullName)}</span>
+                          <span className="text-xs font-semibold" style={{ color: isAnon ? "#868686" : "#C8FF00" }}>{isAnon ? "?" : initials(fullName)}</span>
                         )}
                       </span>
                       <span className="min-w-0">

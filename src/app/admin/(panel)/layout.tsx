@@ -35,7 +35,7 @@ export default async function AdminLayout({
       >
         <span style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0" }}>
           Unkast<span style={{ color: "#C8FF00" }}>.</span>{" "}
-          <span style={{ fontWeight: 400, color: "#555" }}>Admin</span>
+          <span style={{ fontWeight: 400, color: "#868686" }}>Admin</span>
         </span>
         <ViewAs />
       </header>

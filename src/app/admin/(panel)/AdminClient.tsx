@@ -139,8 +139,8 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
     if (value === "autre" && !checked) setNoteOpen(true);
   }
 
-  const label = { color: "#555" } as const;
-  const missing = { color: "#444" } as const;
+  const label = { color: "#868686" } as const;
+  const missing = { color: "#868686" } as const;
   const bigBtn = { flex: 1, minHeight: 52, borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
 
   return (
@@ -168,7 +168,7 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
           </p>
         </div>
 
-        <p style={{ fontSize: 11, color: "#555", marginTop: 8 }}>
+        <p style={{ fontSize: 11, color: "#868686", marginTop: 8 }}>
           Proposé le {new Date(f.created_at).toLocaleDateString("fr-FR")} ·{" "}
           <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#888" }}>Lien vidéo</a>
         </p>
@@ -474,7 +474,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
 
       {/* Header */}
       <h1 style={{ fontSize: 24, fontWeight: 700, color: "#f0f0f0", marginBottom: 4 }}>Administration Unkast</h1>
-      <p style={{ fontSize: 13, color: "#555", marginBottom: 24 }}>{date} · {totalPending} action{totalPending !== 1 ? "s" : ""} en attente</p>
+      <p style={{ fontSize: 13, color: "#868686", marginBottom: 24 }}>{date} · {totalPending} action{totalPending !== 1 ? "s" : ""} en attente</p>
 
       {/* Tabs */}
       <div className="no-scrollbar" style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto" }}>
@@ -504,21 +504,21 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
         ))}
       </div>
 
-      {loading && <p style={{ color: "#555", fontSize: 13 }}>Chargement...</p>}
+      {loading && <p style={{ color: "#868686", fontSize: 13 }}>Chargement...</p>}
 
       {/* ===== RECRUITERS ===== */}
       {!loading && tab === "recruiters" && (
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 14 }}>En attente ({pendingRecruiters.length})</h2>
-          {pendingRecruiters.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucune demande en attente.</p>}
+          {pendingRecruiters.length === 0 && <p style={{ color: "#868686", fontSize: 13 }}>Aucune demande en attente.</p>}
           {pendingRecruiters.map((r) => (
             <div key={r.id} style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                 <div>
                   <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0" }}>{r.full_name}</p>
-                  <p style={{ fontSize: 12, color: "#555" }}>{r.email}</p>
+                  <p style={{ fontSize: 12, color: "#868686" }}>{r.email}</p>
                 </div>
-                <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
+                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
               </div>
               {r.recruiter_company && <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Société : {r.recruiter_company}</p>}
               {r.recruiter_role && <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Poste : {r.recruiter_role}</p>}
@@ -534,7 +534,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
           {recruiterEdits.length > 0 && (
             <>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginTop: 32, marginBottom: 4 }}>Modifications en attente ({recruiterEdits.length})</h2>
-              <p style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Description professionnelle modifiée — le public voit encore la version actuelle.</p>
+              <p style={{ fontSize: 12, color: "#868686", marginBottom: 14 }}>Description professionnelle modifiée — le public voit encore la version actuelle.</p>
               {recruiterEdits.map((e) => (
                 <div key={e.id} style={card}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -543,19 +543,19 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                         <Link href={`/profil/${e.slug}`} target="_blank" style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", textDecoration: "none" }}>{e.full_name}</Link>
                         <VerifiedPill verified={e.recruiter_verified} plan={e.plan} />
                       </div>
-                      {e.recruiter_company && <p style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{e.recruiter_company}</p>}
+                      {e.recruiter_company && <p style={{ fontSize: 12, color: "#868686", marginTop: 2 }}>{e.recruiter_company}</p>}
                     </div>
-                    <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace" }}>{new Date(e.created_at).toLocaleDateString("fr-FR")}</p>
+                    <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(e.created_at).toLocaleDateString("fr-FR")}</p>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                     <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 10 }}>
-                      <p style={{ fontSize: 10, color: "#555", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Actuelle (publique)</p>
-                      <p style={{ fontSize: 12.5, color: "#888", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio || <span style={{ color: "#444" }}>— vide —</span>}</p>
+                      <p style={{ fontSize: 10, color: "#868686", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Actuelle (publique)</p>
+                      <p style={{ fontSize: 12.5, color: "#888", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio || <span style={{ color: "#868686" }}>— vide —</span>}</p>
                     </div>
                     <div style={{ background: "rgba(200,255,0,0.03)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 8, padding: 10 }}>
                       <p style={{ fontSize: 10, color: "#8aa800", fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Proposée</p>
-                      <p style={{ fontSize: 12.5, color: "#e8e8e8", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio_pending || <span style={{ color: "#444" }}>— vide —</span>}</p>
+                      <p style={{ fontSize: 12.5, color: "#e8e8e8", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: 0 }}>{e.bio_pending || <span style={{ color: "#868686" }}>— vide —</span>}</p>
                     </div>
                   </div>
 
@@ -578,7 +578,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                       <p style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", overflowWrap: "anywhere", minWidth: 0 }}>{r.full_name}</p>
                       <VerifiedPill verified={r.recruiter_verified} plan={r.plan} />
                     </div>
-                    <p style={{ fontSize: 11, color: "#555", overflowWrap: "anywhere" }}>{r.recruiter_company}</p>
+                    <p style={{ fontSize: 11, color: "#868686", overflowWrap: "anywhere" }}>{r.recruiter_company}</p>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {r.recruiter_verified
@@ -604,7 +604,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
       {/* ===== REPORTS ===== */}
       {!loading && tab === "reports" && (
         <div>
-          {reports.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun signalement en attente.</p>}
+          {reports.length === 0 && <p style={{ color: "#868686", fontSize: 13 }}>Aucun signalement en attente.</p>}
           {reports.map((r) => (
             <div key={r.id} style={r.urgent ? { ...card, borderColor: "rgba(239,68,68,0.4)", borderLeft: "3px solid #ef4444" } : card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -615,9 +615,9 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0" }}>{r.target_name}</span>
                     {r.total_reports >= 3 && <span style={{ padding: "2px 6px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff" }}>{r.total_reports} signalements</span>}
                   </div>
-                  <p style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{r.reporter_id ? `Signalé par ${r.reporter_name}` : "Détection automatique"} · {REASON_LABELS[r.reason] || r.reason}</p>
+                  <p style={{ fontSize: 12, color: "#868686", marginTop: 4 }}>{r.reporter_id ? `Signalé par ${r.reporter_name}` : "Détection automatique"} · {REASON_LABELS[r.reason] || r.reason}</p>
                 </div>
-                <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
+                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
               </div>
               {/* Entree du Parcours : son contenu (target_name = profil concerne). */}
               {r.target_type === "career_entry" && (
@@ -664,7 +664,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                 ? { background: "rgba(200,255,0,0.1)", color: "#C8FF00" }
                 : badge.tone === "expired"
                 ? { background: "rgba(249,115,22,0.08)", color: "#f97316" }
-                : { background: "rgba(255,255,255,0.05)", color: "#555" };
+                : { background: "rgba(255,255,255,0.05)", color: "#868686" };
             // ⚠️ Jusqu'au 2026-08-10, "Offrir Pro…" etait masque sur un grant
             // 'recruiter' (grant_pro l'aurait ecrase sans garde-fou serveur —
             // le seul garde-fou existant etait ici, cote UI). Ce type n'existe
@@ -679,7 +679,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                     <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, ...badgeStyle }}>{badge.label}</span>
                     {u.is_suspended && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>Suspendu</span>}
                   </div>
-                  <p style={{ fontSize: 11, color: "#555" }}>{u.email} · {new Date(u.created_at).toLocaleDateString("fr-FR")}</p>
+                  <p style={{ fontSize: 11, color: "#868686" }}>{u.email} · {new Date(u.created_at).toLocaleDateString("fr-FR")}</p>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                   <button onClick={() => openGrantModal(u.id, `Offrir Pro à ${u.full_name}`)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Offrir Pro…</button>
@@ -699,7 +699,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
       {!loading && tab === "films" && (
         <div>
           <h2 style={sectionTitle}>À valider ({films.length})</h2>
-          {films.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun film en attente.</p>}
+          {films.length === 0 && <p style={{ color: "#868686", fontSize: 13 }}>Aucun film en attente.</p>}
           {films.map((f) => (
             <PendingFilmCard
               key={f.id}
@@ -712,8 +712,8 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
 
           {/* Films approuves modifies depuis leur validation */}
           <h2 style={{ ...sectionTitle, marginTop: 32 }}>Modifiés récemment ({editedFilms.length})</h2>
-          <p style={{ color: "#555", fontSize: 12, marginBottom: 10 }}>Seulement les films à surveiller : titre nettement changé depuis ta validation, ou film signalé.</p>
-          {editedFilms.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucune modification à relire.</p>}
+          <p style={{ color: "#868686", fontSize: 12, marginBottom: 10 }}>Seulement les films à surveiller : titre nettement changé depuis ta validation, ou film signalé.</p>
+          {editedFilms.length === 0 && <p style={{ color: "#868686", fontSize: 13 }}>Aucune modification à relire.</p>}
           {editedFilms.map((f) => (
             <div key={f.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div style={{ minWidth: 0, flex: "1 1 180px" }}>
@@ -722,7 +722,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   <p style={{ fontSize: 12, color: "#f59e0b", overflowWrap: "anywhere" }}>Titre validé : {f.approved_title}</p>
                 )}
                 {f.reported && <p style={{ fontSize: 12, color: "#ef4444" }}>Film signalé</p>}
-                <p style={{ fontSize: 11, color: "#555" }}>Modifié par {f.edited_by_name || "un compte supprimé"} · {new Date(f.edited_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+                <p style={{ fontSize: 11, color: "#868686" }}>Modifié par {f.edited_by_name || "un compte supprimé"} · {new Date(f.edited_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <Link href={`/projet/${f.slug}`} target="_blank" style={{ ...btnNeutral, textDecoration: "none", padding: "6px 12px", fontSize: 12 }}>Voir le film</Link>
@@ -733,12 +733,12 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
 
           {/* Films sans Responsable (compte supprime sans co-gestionnaire) */}
           <h2 style={{ ...sectionTitle, marginTop: 32 }}>Sans Responsable ({orphanFilms.length})</h2>
-          {orphanFilms.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucun film sans Responsable.</p>}
+          {orphanFilms.length === 0 && <p style={{ color: "#868686", fontSize: 13 }}>Aucun film sans Responsable.</p>}
           {orphanFilms.map((f) => (
             <div key={f.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div style={{ minWidth: 0, flex: "1 1 180px" }}>
                 <Link href={`/projet/${f.slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{f.title}</Link>
-                <p style={{ fontSize: 11, color: "#555" }}>{FILM_STATUS_LABELS[f.status] || f.status} · {VISIBILITY_LABELS[f.visibility] || f.visibility}</p>
+                <p style={{ fontSize: 11, color: "#868686" }}>{FILM_STATUS_LABELS[f.status] || f.status} · {VISIBILITY_LABELS[f.visibility] || f.visibility}</p>
               </div>
               <button onClick={() => openAssign({ projectId: f.id, title: f.title })} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12 }}>Attribuer un Responsable</button>
             </div>
@@ -785,7 +785,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
       {/* ===== CLAIMS (signalements et revendications de films) ===== */}
       {!loading && tab === "claims" && (
         <div>
-          {claims.length === 0 && <p style={{ color: "#555", fontSize: 13 }}>Aucune demande en attente.</p>}
+          {claims.length === 0 && <p style={{ color: "#868686", fontSize: 13 }}>Aucune demande en attente.</p>}
           {claims.map((c) => (
             <div key={c.id} style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
@@ -794,14 +794,14 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                     <span style={c.kind === "claim" ? { ...pill, background: "rgba(200,255,0,0.1)", color: "#C8FF00" } : pill}>{c.kind === "claim" ? "Revendication" : "Signalement"}</span>
                     <Link href={`/projet/${c.project_slug}`} target="_blank" style={{ fontSize: 14, fontWeight: 500, color: "#f0f0f0", textDecoration: "none", overflowWrap: "anywhere" }}>{c.project_title || "Film introuvable"}</Link>
                   </div>
-                  <p style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                  <p style={{ fontSize: 12, color: "#868686", marginTop: 4 }}>
                     Demandé par <Link href={`/profil/${c.claimant_slug}`} target="_blank" style={{ color: "#888", textDecoration: "none" }}>{c.claimant_name || "compte introuvable"}</Link>
                   </p>
                 </div>
-                <p style={{ fontSize: 11, color: "#444", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{new Date(c.created_at).toLocaleDateString("fr-FR")}</p>
+                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{new Date(c.created_at).toLocaleDateString("fr-FR")}</p>
               </div>
               <p style={{ fontSize: 13, color: "#888", marginBottom: 8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.message}</p>
-              <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>
+              <p style={{ fontSize: 12, color: "#868686", marginBottom: 12 }}>
                 {c.document_url
                   ? <><a href={c.document_url} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00" }}>Ouvrir le justificatif</a> (lien valable 10 minutes, recharge l&apos;onglet s&apos;il a expiré)</>
                   : "Aucun justificatif joint."}
@@ -810,7 +810,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                 <button onClick={() => acceptClaim(c)} disabled={actionLoading === c.id} style={btnApprove}>Accepter</button>
                 <button onClick={() => confirmAction("reject_claim", c.id, `Refuser ${c.kind === "claim" ? "la revendication" : "le signalement"} de ${c.claimant_name}`)} style={btnDanger}>Refuser</button>
               </div>
-              {c.kind === "claim" && <p style={{ fontSize: 11, color: "#555", marginTop: 8 }}>Accepter ne transfère pas le film : l&apos;attribution au demandeur est proposée ensuite.</p>}
+              {c.kind === "claim" && <p style={{ fontSize: 11, color: "#868686", marginTop: 8 }}>Accepter ne transfère pas le film : l&apos;attribution au demandeur est proposée ensuite.</p>}
             </div>
           ))}
         </div>
@@ -821,7 +821,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
         <div onMouseDown={(e) => { if (e.target === e.currentTarget) setAssign(null); }} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", padding: 16 }}>
           <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 6, overflowWrap: "anywhere" }}>Responsable de « {assign.title} »</h3>
-            <p style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>Le membre choisi devient le Responsable du film. S&apos;il y en a déjà un, il est remplacé.</p>
+            <p style={{ fontSize: 12, color: "#868686", marginBottom: 16 }}>Le membre choisi devient le Responsable du film. S&apos;il y en a déjà un, il est remplacé.</p>
 
             {assign.preset && (
               <div style={{ background: "rgba(200,255,0,0.03)", border: "1px solid rgba(200,255,0,0.18)", borderRadius: 10, padding: 12, marginBottom: 16 }}>
@@ -830,7 +830,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               </div>
             )}
 
-            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{assign.preset ? "Ou un autre membre" : "Chercher un membre"}</p>
+            <p style={{ fontSize: 11, color: "#868686", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{assign.preset ? "Ou un autre membre" : "Chercher un membre"}</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input
                 type="text"
@@ -842,13 +842,13 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               />
               <button onClick={searchAssignCandidates} disabled={assignSearching || !assignQuery.trim()} style={{ ...btnNeutral, opacity: assignQuery.trim() ? 1 : 0.4 }}>Chercher</button>
             </div>
-            {assignSearching && <p style={{ color: "#555", fontSize: 13, marginBottom: 12 }}>Recherche...</p>}
-            {!assignSearching && assignResults?.length === 0 && <p style={{ color: "#555", fontSize: 13, marginBottom: 12 }}>Aucun membre trouvé.</p>}
+            {assignSearching && <p style={{ color: "#868686", fontSize: 13, marginBottom: 12 }}>Recherche...</p>}
+            {!assignSearching && assignResults?.length === 0 && <p style={{ color: "#868686", fontSize: 13, marginBottom: 12 }}>Aucun membre trouvé.</p>}
             {!assignSearching && assignResults?.map((u) => (
               <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 13, color: "#f0f0f0", overflowWrap: "anywhere" }}>{u.full_name} <span style={{ fontSize: 10, color: "#666", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>{u.account_type}</span></p>
-                  <p style={{ fontSize: 11, color: "#555", overflowWrap: "anywhere" }}>{u.email}</p>
+                  <p style={{ fontSize: 11, color: "#868686", overflowWrap: "anywhere" }}>{u.email}</p>
                 </div>
                 <button onClick={() => executeAssign(u.id)} disabled={actionLoading === assign.projectId} style={{ ...btnApprove, padding: "6px 12px", fontSize: 12, flexShrink: 0 }}>Attribuer</button>
               </div>
@@ -890,7 +890,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", marginBottom: 16 }}>{grantModal.label}</h3>
 
-            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Nature du grant</p>
+            <p style={{ fontSize: 11, color: "#868686", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Nature du grant</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#f0f0f0", cursor: "pointer" }}>
                 <input type="radio" name="grant_type" checked={grantType === "vip"} onChange={() => selectGrantType("vip")} />
@@ -906,7 +906,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
               </label>
             </div>
 
-            <p style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Échéance {grantType === "launch" ? "(obligatoire)" : "(optionnelle)"}</p>
+            <p style={{ fontSize: 11, color: "#868686", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Échéance {grantType === "launch" ? "(obligatoire)" : "(optionnelle)"}</p>
             <input
               type="date"
               value={grantExpiresAt}

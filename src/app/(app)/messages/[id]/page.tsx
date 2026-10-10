@@ -585,7 +585,7 @@ export default function ConversationPage({
               border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: 20,
               fontSize: 16,
-              color: inputBlocked ? "#555" : "#f0f0f0",
+              color: inputBlocked ? "#868686" : "#f0f0f0",
               outline: "none",
               resize: "none",
               minHeight: 40,
@@ -620,7 +620,7 @@ export default function ConversationPage({
               width="18"
               height="18"
               viewBox="0 0 24 24"
-              fill={input.trim() && !inputBlocked ? "#0A0A0C" : "#555"}
+              fill={input.trim() && !inputBlocked ? "#0A0A0C" : "#868686"}
             >
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>

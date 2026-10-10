@@ -356,7 +356,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 <h2 className="text-lg font-bold text-text-primary mb-2">Editer mon profil</h2>
 
                 {/* PHOTO */}
-                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Photo</p>
+                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#868686", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Photo</p>
                 <div className="flex flex-col items-center gap-2 py-2">
                   <AvatarUpload
                     currentAvatarUrl={profile.avatar_url}
@@ -364,11 +364,11 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     initials={profile.full_name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
                     size={80}
                   />
-                  <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#444", textAlign: "center" }}>Appuie pour changer la photo</p>
+                  <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#868686", textAlign: "center" }}>Appuie pour changer la photo</p>
                 </div>
 
                 {/* IDENTITE */}
-                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Identite</p>
+                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#868686", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Identite</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-text-secondary mb-1.5">Prenom</label>
@@ -382,7 +382,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 <div className="mt-3">
                   <label className="block text-xs text-text-secondary mb-1.5">Nom de scene / Pseudonyme</label>
                   <input type="text" value={editStageName} onChange={(e) => setEditStageName(e.target.value)} className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition" placeholder="Ex: J.M. Vision" />
-                  <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#444", marginTop: 6 }}>Laisse vide si tu n&apos;en as pas</p>
+                  <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "#868686", marginTop: 6 }}>Laisse vide si tu n&apos;en as pas</p>
                 </div>
                 <div className="mt-3">
                   <label className="block text-xs text-text-secondary mb-2">Afficher sur le profil public</label>
@@ -390,14 +390,14 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                     <button
                       onClick={() => setEditDisplayPref("real_name")}
                       className="px-4 py-2 rounded-full text-xs font-semibold transition"
-                      style={{ background: editDisplayPref === "real_name" ? "#C8FF00" : "transparent", color: editDisplayPref === "real_name" ? "#0d0d0d" : "#555", border: editDisplayPref === "real_name" ? "1px solid #C8FF00" : "1px solid #333" }}
+                      style={{ background: editDisplayPref === "real_name" ? "#C8FF00" : "transparent", color: editDisplayPref === "real_name" ? "#0d0d0d" : "#868686", border: editDisplayPref === "real_name" ? "1px solid #C8FF00" : "1px solid #333" }}
                     >
                       Vrai nom
                     </button>
                     <button
                       onClick={() => setEditDisplayPref("stage_name")}
                       className="px-4 py-2 rounded-full text-xs font-semibold transition"
-                      style={{ background: editDisplayPref === "stage_name" ? "#C8FF00" : "transparent", color: editDisplayPref === "stage_name" ? "#0d0d0d" : "#555", border: editDisplayPref === "stage_name" ? "1px solid #C8FF00" : "1px solid #333" }}
+                      style={{ background: editDisplayPref === "stage_name" ? "#C8FF00" : "transparent", color: editDisplayPref === "stage_name" ? "#0d0d0d" : "#868686", border: editDisplayPref === "stage_name" ? "1px solid #C8FF00" : "1px solid #333" }}
                     >
                       Nom de scene
                     </button>
@@ -405,7 +405,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 </div>
 
                 {/* PROFIL PRO */}
-                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Profil pro</p>
+                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#868686", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Profil pro</p>
                 <div>
                   <label className="block text-xs text-text-secondary mb-1.5">Metiers</label>
                   <div className="flex gap-2">
@@ -429,13 +429,13 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 </div>
                 <div className="mt-3">
                   <label className="block text-xs text-text-secondary mb-1.5">
-                    Bio <span style={{ color: "#555" }}>({editBio.length}/280)</span>
+                    Bio <span style={{ color: "#868686" }}>({editBio.length}/280)</span>
                   </label>
                   <textarea rows={4} value={editBio} onChange={(e) => { if (e.target.value.length <= 280) setEditBio(e.target.value); }} className="w-full px-4 py-3 bg-background border border-white/5 rounded-xl text-text-primary text-sm focus:outline-none focus:border-lime/50 transition resize-none" placeholder="Decris ton parcours, tes specialites..." />
                 </div>
 
                 {/* DISPONIBILITE */}
-                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Disponibilite</p>
+                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#868686", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Disponibilite</p>
                 <div className="flex items-center gap-3">
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={editAvailable} onChange={(e) => setEditAvailable(e.target.checked)} className="sr-only peer" />
@@ -445,7 +445,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                 </div>
 
                 {/* CONTACT & VISIBILITE */}
-                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Contact &amp; visibilite</p>
+                <p style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#868686", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 24 }}>Contact &amp; visibilite</p>
                 <div className="p-3 rounded-lg bg-white/[0.02] border-l-2 border-[#C8FF00] pl-4 mb-4" style={{ borderLeft: "2px solid #C8FF00" }}>
                   <p className="text-xs text-text-secondary leading-relaxed">Ces informations permettent aux recruteurs de te contacter via Unkast. Elles ne sont pas affichees publiquement sur ton profil.</p>
                 </div>

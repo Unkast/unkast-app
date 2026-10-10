@@ -30,10 +30,10 @@ export default function CompteIntrouvablePage() {
         <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, marginBottom: 16 }}>
           Ton compte existe mais son profil n&apos;a pas pu etre cree. Ce n&apos;est pas grave, mais on doit intervenir manuellement pour le reparer.
         </p>
-        <p style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: "#868686", marginBottom: 16 }}>
           Ecris-nous a <Link href="mailto:pro@unkast.com" style={{ color: "#C8FF00", textDecoration: "none" }}>pro@unkast.com</Link> pour qu&apos;on repare ton acces.
         </p>
-        <p style={{ fontSize: 12, color: "#555", marginBottom: 24 }}>
+        <p style={{ fontSize: 12, color: "#868686", marginBottom: 24 }}>
           Si tu t&apos;es inscrit avec Google, te deconnecter puis te reconnecter peut suffire a reparer ton acces.
         </p>
         <button

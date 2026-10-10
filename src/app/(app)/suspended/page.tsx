@@ -46,7 +46,7 @@ export default function SuspendedPage() {
             <p style={{ fontSize: 13, color: "#ef4444" }}>Raison : {reason}</p>
           </div>
         )}
-        <p style={{ fontSize: 12, color: "#555", marginBottom: 24 }}>
+        <p style={{ fontSize: 12, color: "#868686", marginBottom: 24 }}>
           Pour contester cette decision, contacte-nous a <span style={{ color: "#C8FF00" }}>contact@unkast.com</span>
         </p>
         <button
