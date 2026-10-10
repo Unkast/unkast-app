@@ -20,7 +20,8 @@ import Button from "@/components/ui/Button";
 // minimal a la premiere connexion et envoie vers la finalisation.
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-const GIS_SRC = "https://accounts.google.com/gsi/client";
+// hl=fr : langue du bouton imposee au chargement du script (sinon celle du navigateur).
+const GIS_SRC = "https://accounts.google.com/gsi/client?hl=fr";
 
 type GoogleId = {
   initialize(options: { client_id: string; callback: (response: { credential?: string }) => void; nonce?: string; use_fedcm_for_prompt?: boolean }): void;
@@ -139,7 +140,7 @@ export default function GoogleSignInButton({ next = "/feed", terms, disabled = f
           theme: "filled_black",
           shape: "pill",
           size: "large",
-          text: "continue_with",
+          text: "signin_with",
           logo_alignment: "center",
           locale: "fr",
           width: Math.max(200, Math.min(400, holder.current.offsetWidth)),
@@ -206,7 +207,7 @@ export default function GoogleSignInButton({ next = "/feed", terms, disabled = f
       className="w-full"
     >
       {LOGO}
-      {busy ? "Connexion..." : "Continuer avec Google"}
+      {busy ? "Connexion..." : "Se connecter avec Google"}
     </Button>
   );
 }

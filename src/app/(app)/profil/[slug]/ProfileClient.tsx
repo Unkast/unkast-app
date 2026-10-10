@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { EnterList, EnterItem, enterUp, enterFade, cardSpring } from "@/components/motion";
 import Button from "@/components/ui/Button";
+import AlreadyMember from "@/components/AlreadyMember";
 import Chip from "@/components/ui/Chip";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
@@ -368,6 +369,7 @@ export default function ProfileClient({
                     <Button onClick={() => router.push("/rejoindre")} className="w-full">
                       Rejoindre Unkast
                     </Button>
+                    <AlreadyMember className="mt-2.5 text-center" />
                   </>
                 ) : (
                   <>
@@ -438,6 +440,7 @@ export default function ProfileClient({
                   <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", marginBottom: 6 }}>Envoyer un message</p>
                   <p style={{ fontSize: 12, color: "#868686", marginBottom: 14, lineHeight: 1.5 }}>Crée un compte gratuit pour entrer en contact avec les talents.</p>
                   <Button onClick={() => router.push("/rejoindre")} className="w-full">Rejoindre Unkast</Button>
+                  <AlreadyMember className="mt-2.5 text-center" />
                 </div>
               )}
               {/* Free ET Pro : même bouton de contact depuis le 2026-08-10. Un

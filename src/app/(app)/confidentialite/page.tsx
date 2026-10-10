@@ -124,7 +124,7 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Google Identity Services</strong> : le script de Google se charge uniquement sur les
-            pages de connexion et d&apos;inscription, pour proposer « Continuer avec Google ». Google reçoit
+            pages de connexion et d&apos;inscription, pour proposer « Se connecter avec Google ». Google reçoit
             ton adresse IP et les données techniques de ton navigateur à ce moment.
           </li>
           <li>
@@ -163,7 +163,7 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Connexion avec Google</strong> : sur les pages de connexion et d&apos;inscription, le
-            bouton « Continuer avec Google » est affiché par Google, qui peut y lire ou déposer ses propres
+            bouton « Se connecter avec Google » est affiché par Google, qui peut y lire ou déposer ses propres
             cookies. Il n&apos;est chargé sur aucune autre page.
           </li>
         </ul>

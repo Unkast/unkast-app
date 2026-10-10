@@ -75,6 +75,12 @@ CORE  AppShell (src/components/AppShell.tsx)
   reservent plus rien (ni .pb-tabbar, ni pb-16) ; rien dans une conversation (navigation masquee).
   En-tete mobile : pas de titre de page sur /rejoindre (il ne tient pas a 360 px a cote de
   « Se connecter » et « Rejoindre ») ; « Se connecter » ne passe jamais a la ligne.
+  Visiteur (10/10/2026) : « Se connecter » est un bouton secondaire a contour visible, meme hauteur
+  que « Rejoindre », en-tete mobile (44 px) et bas de la sidebar desktop (36 px, sous « Rejoindre
+  Unkast »). Sous chaque invitation a creer un compte, `components/AlreadyMember.tsx` affiche
+  « Deja membre ? Se connecter » : RejoindreClient (etapes 1 a 4), LockedFilmCard, ProfileClient
+  (2 encarts visiteur), ProjetClient (encart equipe, retour sur le film via ?next=).
+  GoogleSignInButton : script charge avec ?hl=fr et texte signin_with (« Se connecter avec Google »).
   Navigation masquee (prop hidden) dans une conversation ouverte et quand le clavier virtuel est
   ouvert : useKeyboardOpen(), hook local a AppShell (focus d'un champ de texte + visualViewport).
 

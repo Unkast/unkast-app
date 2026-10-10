@@ -683,11 +683,12 @@ export default function AppShell({
                 Rejoindre Unkast
               </Link>
             </motion.div>
+            {/* Bouton secondaire : contour visible, meme hauteur que « Rejoindre Unkast » */}
             <Link
               href="/connexion"
-              className="block w-full py-1.5 text-center text-[11px] text-text-tertiary hover:text-text-primary transition"
+              className="block w-full rounded-lg border border-white/40 py-[9px] text-center text-xs font-bold text-text-primary transition hover:border-white/70 hover:bg-white/[0.06]"
             >
-              Déjà inscrit ? Se connecter
+              Se connecter
             </Link>
           </div>
         )}
@@ -766,10 +767,10 @@ export default function AppShell({
                   href="/connexion"
                   style={{
                     background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    border: "1px solid rgba(255,255,255,0.4)",
                     color: "#f0f0f0",
                     fontSize: 13,
-                    fontWeight: 400,
+                    fontWeight: 600,
                     borderRadius: 20,
                     padding: "7px 14px",
                     minHeight: 44,

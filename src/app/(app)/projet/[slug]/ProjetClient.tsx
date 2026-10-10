@@ -15,6 +15,7 @@ import FilmPoster from "@/components/FilmPoster";
 import ShareButton from "@/components/ShareButton";
 import { backWithTransition } from "@/lib/film-transition";
 import Button from "@/components/ui/Button";
+import AlreadyMember from "@/components/AlreadyMember";
 import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
@@ -447,7 +448,10 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
                     <p className="font-semibold text-text-primary">Découvre toute l&apos;équipe</p>
                     <p className="text-sm text-text-secondary">Crée ton profil gratuit pour voir les noms et ouvrir les profils.</p>
                   </div>
-                  <Button href="/rejoindre">Rejoindre</Button>
+                  <div className="flex flex-col items-start gap-2">
+                    <Button href="/rejoindre">Rejoindre</Button>
+                    <AlreadyMember href={`/connexion?next=${encodeURIComponent(`/projet/${project.slug}`)}`} />
+                  </div>
                 </GlassCard>
               )}
             </EnterItem>

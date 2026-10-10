@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import AlreadyMember from "@/components/AlreadyMember";
 import Button from "@/components/ui/Button";
 import FilmMeta from "@/components/FilmMeta";
 
@@ -45,7 +46,7 @@ interface Props {
   /** Adresse de la page du film : le titre devient un lien (liste d'une fiche).
    *  Absente, le titre est le titre de la page (h1). */
   href?: string;
-  /** Adresse de connexion avec retour sur le film : affiche « Déjà membre ? ». */
+  /** Adresse de connexion avec retour sur le film (« Déjà membre ? ») ; /connexion par défaut. */
   loginHref?: string;
   className?: string;
 }
@@ -104,14 +105,7 @@ export default function LockedFilmCard({ film, href, loginHref, className = "" }
           S&apos;inscrire
         </Button>
 
-        {loginHref && (
-          <p className="mt-3 text-xs text-text-secondary">
-            Déjà membre ?{" "}
-            <Link href={loginHref} className="text-text-primary underline underline-offset-2 hover:text-lime">
-              Connecte-toi
-            </Link>
-          </p>
-        )}
+        <AlreadyMember href={loginHref} className="mt-3" />
       </div>
     </article>
   );

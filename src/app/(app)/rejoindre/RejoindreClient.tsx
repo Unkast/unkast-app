@@ -21,6 +21,7 @@ import Chip from "@/components/ui/Chip";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import ProgressSteps from "@/components/ui/ProgressSteps";
+import AlreadyMember from "@/components/AlreadyMember";
 import Select from "@/components/ui/Select";
 import Toggle from "@/components/ui/Toggle";
 import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
@@ -111,7 +112,7 @@ export default function RejoindreClient() {
   }
 
   // CGU et politique de confidentialité : case obligatoire, jamais cochée d'avance.
-  // Demandée à l'étape 2 (avant « Continuer avec Google ») et à l'étape 4 (là où
+  // Demandée à l'étape 2 (avant « Se connecter avec Google ») et à l'étape 4 (là où
   // /api/signup crée le compte). Même état : cochée une fois, elle le reste.
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -898,6 +899,7 @@ export default function RejoindreClient() {
             Coche la case ci-dessus pour créer ton compte.
           </p>
         )}
+        {step < 5 && <AlreadyMember className="mt-6 text-center" />}
       </EnterItem>
 
       {/* Nouvel onglet : le formulaire en cours n'est pas perdu. */}
