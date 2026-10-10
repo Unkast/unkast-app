@@ -123,8 +123,17 @@ export default function ConfidentialitePage() {
             notifications sur ton téléphone (Firebase).
           </li>
           <li>
+            <strong>Google Identity Services</strong> : le script de Google se charge uniquement sur les
+            pages de connexion et d&apos;inscription, pour proposer « Continuer avec Google ». Google reçoit
+            ton adresse IP et les données techniques de ton navigateur à ce moment.
+          </li>
+          <li>
             <strong>YouTube et Vimeo</strong> : lecture des vidéos. Nous leur demandons aussi le titre et
             l&apos;image d&apos;une vidéo quand un film est publié.
+          </li>
+          <li>
+            <strong>API YouTube Data</strong> : appelée par nos serveurs pour lire les playlists publiques
+            des séries. Aucune donnée d&apos;utilisateur n&apos;est envoyée.
           </li>
           <li>
             <strong>Stripe</strong> : paiement, uniquement si une offre payante est ouverte et que tu y
@@ -151,6 +160,11 @@ export default function ConfidentialitePage() {
             <strong>Vidéos</strong> : un lecteur YouTube ou Vimeo ne se charge que lorsque tu cliques pour
             lancer une vidéo. À ce moment, la plateforme peut déposer ses propres cookies. Tant que tu ne
             lances pas de vidéo, rien n&apos;est déposé.
+          </li>
+          <li>
+            <strong>Connexion avec Google</strong> : sur les pages de connexion et d&apos;inscription, le
+            bouton « Continuer avec Google » est affiché par Google, qui peut y lire ou déposer ses propres
+            cookies. Il n&apos;est chargé sur aucune autre page.
           </li>
         </ul>
       </Section>
