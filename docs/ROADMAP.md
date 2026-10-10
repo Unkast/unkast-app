@@ -176,6 +176,7 @@ Système complet et testable, **à basculer en live à la fin du dev** (rien enc
 - [ ] *(évolution future)* webhook Resend pour gérer bounces/désabonnements ; relance manuelle encadrée.
 
 ### Chantier 11 — Connexion Google sur app mobile (deep-link OAuth Capacitor) *(à faire AVANT la sortie de l'APK)*
+> **Remplacé le 10/10/2026 par le lot 11 (ADR 0016)** : connexion par jeton d'identité, bouton Google Identity Services sur le web et sélecteur de comptes natif dans l'app (`@capgo/capacitor-social-login`). Le plan par deep-link ci-dessous n'a pas été réalisé et ne l'est plus : ni `@capacitor/browser`, ni intent-filter, ni domaine personnalisé Supabase. Reste à faire hors du code : configuration Google Cloud et Supabase, reconstruction de l'APK, test sur téléphone.
 **Problème** : dans l'APK (webview Capacitor chargeant `app.unkast.com`), le login Google s'ouvre dans le **navigateur système** (Google interdit l'OAuth en webview brut). La session se crée **dans le navigateur**, pas dans le webview de l'app → de retour dans l'app, l'utilisateur **n'est pas connecté**. En web pur (`signInWithOAuth` → `app.unkast.com/auth/callback`) ça fonctionne ; **seul le mobile est concerné**. L'email/mot de passe, lui, marche déjà sur mobile (pas de redirection).
 **Objectif** : faire revenir la session **dans le webview de l'app** via un **deep-link natif** après le retour de Google.
 - [ ] Ajouter **`@capacitor/browser`** : ouvrir l'URL OAuth Google dans un onglet in-app contrôlé (plutôt que la navigation brute du webview).

@@ -11,6 +11,16 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
   },
   plugins: {
+    // Connexion Google native (lot 11). Seul Google est embarque : les SDK des
+    // autres fournisseurs du plugin ne sont pas inclus dans l'APK.
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      },
+    },
     StatusBar: {
       style: "DARK",
       backgroundColor: "#0d0d0d",

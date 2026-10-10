@@ -240,3 +240,15 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `ProjetClient` | [utilise] | `VideoEmbed` (`onEnded`), `lib/utils.ts` (`episodeUrl`), `projects.episodes` |
 | `FilmMeta` (`episodes`) | [utilise par] | `feed/FilmRow`, `RechercheClient`, `ProfileClient`, `ProjetClient` |
 | `feed/page.tsx`, `/api/search`, `categories/[slug]/page.tsx`, `profil/[slug]/page.tsx` | [persiste dans] | `projects.episode_count` (lecture : migration `20261023` requise) |
+
+## Connexion Google par jeton (lot 11, 10/10/2026)
+
+| Source | Type de relation | Destination |
+|---|---|---|
+| `ConnexionClient`, `RejoindreClient` | [utilise] | `GoogleSignInButton` |
+| `GoogleSignInButton` | [depend de] | Google Identity Services (`accounts.google.com/gsi/client`), `NEXT_PUBLIC_GOOGLE_CLIENT_ID` |
+| `GoogleSignInButton` | [depend de] | `@capacitor/core`, `@capgo/capacitor-social-login` (app Android, import dynamique) |
+| `GoogleSignInButton` | [declenche] | `supabase.auth.signInWithIdToken`, puis `POST /api/auth/google` |
+| `POST /api/auth/google`, `auth/callback/route.ts` | [utilise] | `lib/google-account.ts` (`googleLandingPath`) |
+| `lib/google-account.ts` | [persiste dans] | `profiles` (création), `profile_roles` (lecture) |
+| `capacitor.config.ts` (`plugins.SocialLogin.providers`) | [declenche] | configuration Gradle du plugin à `npx cap sync android` |

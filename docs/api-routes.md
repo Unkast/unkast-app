@@ -19,6 +19,7 @@
 | `/api/cron/pro-expiry` | GET | `profiles` | `profiles` | **Cron Vercel** — pas d'auth utilisateur, secouru par `CRON_SECRET` (header `Authorization: Bearer …`) |
 | `/api/search` | GET | `profiles`, `profile_roles`, `projects` | — | filtre `status='approved'` |
 | `/api/signup` | POST | — | `profiles`, `profile_roles`, `projects`, `project_credits`, `credit_requests` | rate-limit 5/IP/h ; **email à confirmer** (generateLink + Resend) |
+| `/api/auth/google` | POST | `profiles`, `profile_roles` | `profiles` | **lot 11** : suite d'une connexion Google par jeton (session déjà ouverte par `signInWithIdToken`). Corps `{ next?, terms? }`. Crée le profil minimal à la première connexion (CGU enregistrées si `terms` est la version en vigueur), répond `{ redirect }` : finalisation ou page demandée. 401 sans session, 403 si le compte n'est pas relié à Google. Règle partagée avec `/auth/callback` : `lib/google-account.ts` |
 | `/api/auth/resend-confirmation` | POST | — | — (Auth admin) | renvoie l'email de confirmation (Resend) ; rate-limit 3/h/email + 10/h/IP ; anti-énumération |
 | `/api/waitlist` | POST | — | `waitlist` | rate-limit 5/IP/h |
 | `/api/credits/status` | GET | `projects`, `project_credits`, `credit_requests` | — | auth optionnelle |
@@ -67,7 +68,8 @@
 | `/api/admin` | GET, PATCH | `profiles`, `projects`, `reports`, `admin_logs` | `profiles`, `projects`, `reports`, `admin_logs` |
 
 > Route handler associe (hors `/api`) : `app/(app)/auth/callback/route.ts` — echange le code OAuth/magic-link,
-> cree le profil si absent (`profiles`, `profile_roles`).
+> cree le profil si absent (`profiles`, `profile_roles`). Depuis le lot 11, c'est l'ANCIEN flux Google, garde en repli
+> tant que `NEXT_PUBLIC_GOOGLE_CLIENT_ID` n'est pas renseigne ; la creation du profil vit dans `lib/google-account.ts`.
 
 ## Detail des routes notables
 

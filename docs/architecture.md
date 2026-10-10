@@ -463,3 +463,13 @@ Une série (web-série, série courte) est un film de catégorie `serie` dont la
 - **Feed** : rangée « Séries » après « Court-métrage ». Recherche : tuile « Série » (dégradé seul tant que `public/categories/serie.webp` n'existe pas).
 - **Admin** : la fiche d'un film en attente montre le nombre d'épisodes et la liste (liens YouTube) ; la façade lit le premier épisode.
 - **Constantes** : `SERIES_CATEGORY`, `episodesLabel` (`src/lib/constants.ts`).
+
+### Connexion Google par jeton (lot 11, 10/10/2026) — voir docs/adr/0016-connexion-google-par-jeton.md
+
+| Fichier | Type | Rôle |
+|---|---|---|
+| `src/components/GoogleSignInButton.tsx` | UTILITY | bouton Google unique de `/connexion` et de l'étape 2 de `/rejoindre`. Navigateur : bouton officiel Google Identity Services (sombre, pilule), script chargé par le composant. App Android : sélecteur de comptes natif (`@capgo/capacitor-social-login`). Dans les deux cas : nonce, `supabase.auth.signInWithIdToken`, puis `POST /api/auth/google` et rechargement vers la page indiquée. Props : `next`, `terms` (version des CGU cochée), `disabled` (case non cochée : bouton inerte), `onError`. Sans `NEXT_PUBLIC_GOOGLE_CLIENT_ID` : ancien flux par redirection. Ancien APK sans le plugin : aucun bouton |
+| `src/lib/google-account.ts` | UTILITY | `googleLandingPath` : profil minimal à la première connexion Google, puis chemin de destination (finalisation tant que le compte n'a pas de métier, recruteurs exceptés). Appelé par `/api/auth/google` et `/auth/callback` |
+| `src/app/api/auth/google/route.ts` | FEATURE | suite de la connexion par jeton, voir docs/api-routes.md |
+
+Inchangé : la finalisation (`/rejoindre/finaliser`, proxy), l'écran des CGU, et le compte admin, jamais ouvert par Google (`sessionStrength` exige la méthode `password`). Android : docs/capacitor-android.md.
