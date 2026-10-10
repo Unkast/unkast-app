@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_COLORS, CATEGORY_LABELS, episodesLabel } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 
 interface Props {
@@ -8,15 +8,17 @@ interface Props {
   /** Réalisateur ; sur une carte verrouillée, le rôle de la personne. */
   author?: string | null;
   year?: number | null;
+  /** Série : nombre d'épisodes (« 8 épisodes »), toujours sous l'affiche. */
+  episodes?: number | null;
   /** md : sous un grand titre (bloc à la une, page film). */
   size?: "sm" | "md";
   className?: string;
 }
 
 // Ligne d'infos d'un film, sous son titre : point de couleur + catégorie, puis
-// auteur et année. Rien n'est posé sur la vignette d'un film (ni texte, ni
+// auteur, année et, pour une série, nombre d'épisodes. Rien n'est posé sur la vignette d'un film (ni texte, ni
 // badge) : la catégorie se lit ici, partout dans l'app.
-export default function FilmMeta({ category, author, year, size = "sm", className = "" }: Props) {
+export default function FilmMeta({ category, author, year, episodes, size = "sm", className = "" }: Props) {
   const parts: ReactNode[] = [];
   if (category) {
     parts.push(
@@ -28,6 +30,7 @@ export default function FilmMeta({ category, author, year, size = "sm", classNam
   }
   if (author) parts.push(<span key="author" className="truncate">{author}</span>);
   if (year != null) parts.push(<span key="year" className="shrink-0 font-mono">{year}</span>);
+  if (episodes) parts.push(<span key="episodes" className="shrink-0">{episodesLabel(episodes)}</span>);
   if (parts.length === 0) return null;
 
   return (

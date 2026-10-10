@@ -22,6 +22,8 @@ import ReportModal from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { isDirectorRole } from "@/lib/credits";
+import { SERIES_CATEGORY, episodesLabel } from "@/lib/constants";
+import { episodeUrl } from "@/lib/utils";
 import ClaimModal from "./ClaimModal";
 
 type CreditWithProfile = ProjectCredit & {
@@ -84,6 +86,26 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
   const [playingInline, setPlayingInline] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const playerRef = useRef<HTMLDivElement>(null);
+
+  // Série : épisodes figés à la publication, lus un par un dans le même lecteur.
+  // Le générique (équipe) est celui du film, commun à tous les épisodes.
+  const episodes = project.category === SERIES_CATEGORY ? project.episodes ?? [] : [];
+  const isSeries = episodes.length > 0;
+  const [episodeIndex, setEpisodeIndex] = useState(0);
+  const episode = isSeries ? episodes[Math.min(episodeIndex, episodes.length - 1)] : null;
+  const hasNext = isSeries && episodeIndex < episodes.length - 1;
+  const videoUrl = episode ? episodeUrl(episode.id) : project.video_url;
+  const videoTitle = episode ? episode.title : project.title;
+  const nextEpisode = () => setEpisodeIndex((i) => Math.min(i + 1, episodes.length - 1));
+  // key : un nouvel épisode remonte le lecteur, qui démarre aussitôt.
+  const player = (
+    <VideoEmbed key={videoUrl} url={videoUrl} title={videoTitle} autoplay onEnded={hasNext ? nextEpisode : undefined} />
+  );
+
+  function playEpisode(index: number) {
+    setEpisodeIndex(index);
+    play();
+  }
 
   // Le lecteur ne se monte qu'après ce clic (règle cookies).
   function play() {
@@ -280,7 +302,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             {playingInline ? (
               <FilmPlayerFrame>
                 <div data-film-player="" className={`overflow-hidden ${PLAYER_LOOK}`}>
-                  <VideoEmbed url={project.video_url} title={project.title} autoplay />
+                  {player}
                 </div>
               </FilmPlayerFrame>
             ) : (
@@ -296,6 +318,23 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
 
           {/* Mention cookies : le lecteur ne se charge qu'au clic */}
           <p className="mt-3 text-center text-xs leading-snug text-text-tertiary">{VIDEO_COOKIE_NOTICE}</p>
+
+          {/* Série : épisode en cours et passage au suivant, sous le lecteur */}
+          {episode && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="min-w-0 text-sm text-text-secondary">
+                <span className="font-mono text-text-tertiary">Épisode {episodeIndex + 1} sur {episodes.length}</span>
+                <span className="mx-2 text-text-tertiary" aria-hidden="true">·</span>
+                <span className="text-text-primary">{episode.title}</span>
+              </p>
+              {hasNext && (
+                <Button variant="glass" size="sm" onClick={() => playEpisode(episodeIndex + 1)}>
+                  Épisode suivant
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                </Button>
+              )}
+            </div>
+          )}
         </section>
 
         {/* ===== CONTENU : deux colonnes ===== */}
@@ -303,7 +342,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
           {/* ========= COLONNE PRINCIPALE ========= */}
           <div className="min-w-0">
             <EnterItem>
-              <FilmMeta size="md" category={project.category} year={project.year} />
+              <FilmMeta size="md" category={project.category} year={project.year} episodes={project.episode_count} />
             </EnterItem>
 
             <EnterItem>
@@ -323,11 +362,41 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
               <div className="mt-6 flex flex-wrap gap-2.5">
                 <Button onClick={play}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={PLAY_ICON} /></svg>
-                  Lancer le film
+                  {isSeries ? `Lancer l'épisode ${episodeIndex + 1}` : "Lancer le film"}
                 </Button>
                 <ShareButton title={project.title} />
               </div>
             </EnterItem>
+
+            {/* Série : liste des épisodes. Un clic lance l'épisode dans le lecteur. */}
+            {isSeries && (
+              <EnterItem>
+                <div className="mb-4 mt-12 flex items-baseline justify-between">
+                  <h2 className={SECTION_TITLE}>Épisodes</h2>
+                  <span className="text-sm text-text-secondary">{episodesLabel(episodes.length)}</span>
+                </div>
+                <ol className="flex flex-col gap-1">
+                  {episodes.map((ep, i) => {
+                    const current = i === episodeIndex;
+                    return (
+                      <li key={`${ep.id}-${i}`}>
+                        <button
+                          type="button"
+                          onClick={() => playEpisode(i)}
+                          aria-current={current ? "true" : undefined}
+                          className={`press-spring flex min-h-11 w-full items-center gap-3.5 rounded-card border p-2 text-left transition-colors duration-fast ${current ? "border-lime/40 bg-lime/[0.06]" : "border-transparent hover:bg-white/5"}`}
+                        >
+                          <span className={`w-6 shrink-0 text-center font-mono text-[13px] ${current ? "text-lime" : "text-text-tertiary"}`}>{i + 1}</span>
+                          <Image src={`https://i.ytimg.com/vi/${ep.id}/mqdefault.jpg`} alt="" width={112} height={63} className="shrink-0 rounded-[10px] object-cover" />
+                          <span className="min-w-0 flex-1 break-words text-[15px] font-medium leading-snug text-text-primary">{ep.title}</span>
+                          {current && <span className="shrink-0 text-xs text-lime">En cours</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </EnterItem>
+            )}
 
             {/* Équipe en générique : rôle, avatar, nom */}
             <EnterItem>
@@ -413,6 +482,9 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
                 <dl className="text-sm">
                   <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] py-2.5"><dt className="text-text-secondary">Catégorie</dt><dd className="font-medium" style={{ color: catColor }}>{categoryLabels[project.category]}</dd></div>
                   <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] py-2.5"><dt className="text-text-secondary">Année</dt><dd className="font-mono font-medium text-text-primary">{project.year}</dd></div>
+                  {isSeries && (
+                    <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] py-2.5"><dt className="text-text-secondary">Épisodes</dt><dd className="font-mono font-medium text-text-primary">{episodes.length}</dd></div>
+                  )}
                   <div className="flex items-center justify-between gap-3 py-2.5"><dt className="text-text-secondary">Équipe</dt><dd className="font-medium text-text-primary">{talents}</dd></div>
                 </dl>
               </GlassCard>
@@ -459,7 +531,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
                   />
                   <div className="w-0 min-w-full px-0.5">
                     <h3 className="truncate text-[15px] font-semibold text-text-primary transition-colors group-hover:text-lime">{rp.title}</h3>
-                    <FilmMeta category={rp.category} author={rp.director_name} year={rp.year} className="mt-1" />
+                    <FilmMeta category={rp.category} author={rp.director_name} year={rp.year} episodes={rp.episode_count} className="mt-1" />
                   </div>
                 </FilmLink>
               ))}
@@ -488,8 +560,15 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
             </Button>
             {/* Panneau arrondi à partir de lg seulement : en mobile la vidéo est bord à bord,
                 l'arrondi rognerait les contrôles du lecteur. */}
+            {/* Série : épisode suivant, en haut à gauche (les commandes du lecteur sont en bas) */}
+            {hasNext && (
+              <Button variant="glass" size="sm" onClick={nextEpisode} className="absolute top-5 left-5" style={{ zIndex: 9999 }}>
+                Épisode {episodeIndex + 2}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+              </Button>
+            )}
             <div className="lg:overflow-hidden lg:rounded-panel lg:shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]" style={{ width: "100%", maxWidth: 900, aspectRatio: "16/9" }}>
-              <VideoEmbed url={project.video_url} title={project.title} autoplay />
+              {player}
             </div>
           </motion.div>
         )}

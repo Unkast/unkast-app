@@ -7,6 +7,7 @@ import {
   DECLARED_ROLES,
   CLIENT_AUTHORIZATION_CATEGORIES,
   RIGHTS_DECLARATION_VERSION,
+  SERIES_CATEGORY,
 } from "@/lib/constants";
 import { fetchVideoMeta } from "@/lib/oembed";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
@@ -185,7 +186,9 @@ export async function POST(request: NextRequest) {
     project &&
     project.title &&
     project.video_url &&
-    project.category
+    project.category &&
+    // Une serie (playlist) se publie depuis « Mes films », pas a l'inscription.
+    project.category !== SERIES_CATEGORY
   ) {
     const declaredCredit = DECLARED_ROLES.find((r) => r.value === project.declared_role);
     const clientAuthorizationMissing =

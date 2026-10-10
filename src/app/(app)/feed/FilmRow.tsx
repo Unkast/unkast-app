@@ -18,6 +18,8 @@ export interface FilmRowItem {
   director_name: string;
   team_size: number;
   image: string | null;
+  /** Série : nombre d'épisodes, affiché sous l'affiche. */
+  episode_count?: number | null;
 }
 
 interface Props {
@@ -105,7 +107,7 @@ export default function FilmRow({ title, href, items }: Props) {
                     {film.title}
                   </h3>
                   <div className="mt-1 flex items-center gap-2">
-                    <FilmMeta category={film.category} author={film.director_name} year={film.year} />
+                    <FilmMeta category={film.category} author={film.director_name} year={film.year} episodes={film.episode_count} />
                     {film.team_size > 0 && (
                       <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-text-tertiary/50">
                         <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

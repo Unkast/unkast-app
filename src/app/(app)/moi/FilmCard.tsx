@@ -2,7 +2,7 @@
 // Un film de la liste : role, statut, visibilite, et ses panneaux (modifier,
 // image, visibilite, crediter par email, gestion).
 import { useState } from "react";
-import { CATEGORY_LABELS, MEMBERS_ONLY_WARNING, PROJECT_VISIBILITIES } from "@/lib/constants";
+import { CATEGORY_LABELS, MEMBERS_ONLY_WARNING, PROJECT_VISIBILITIES, SERIES_CATEGORY, episodesLabel } from "@/lib/constants";
 import type { ProjectCategory, ProjectVisibility } from "@/types/database";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -35,6 +35,7 @@ const helpCls = "text-xs leading-relaxed text-text-secondary";
 
 function EditPanel({ project, reload, showToast, close }: PanelProps) {
   const isOwner = project.my_role === "owner";
+  const isSeries = project.category === SERIES_CATEGORY;
   const [title, setTitle] = useState(project.title);
   const [description, setDescription] = useState(project.description ?? "");
   const [category, setCategory] = useState<ProjectCategory>(project.category);
@@ -90,13 +91,20 @@ function EditPanel({ project, reload, showToast, close }: PanelProps) {
       )}
       <Field label="Titre" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
-        <Select label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value as ProjectCategory)}>
-          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
+        {/* Une série reste une série, un film ne le devient pas (lié à la playlist). */}
+        <Select label="Catégorie" value={category} disabled={isSeries} onChange={(e) => setCategory(e.target.value as ProjectCategory)}>
+          {Object.entries(CATEGORY_LABELS)
+            .filter(([key]) => isSeries || key !== SERIES_CATEGORY)
+            .map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
         </Select>
         <Field label="Année" type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || project.year)} min={1990} max={2030} />
       </div>
       <Field multiline rows={3} label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-      <p className={helpCls}>Le lien vidéo n&apos;est pas modifiable : pour changer de vidéo, publie un nouveau film. L&apos;image se change dans « Image ».</p>
+      <p className={helpCls}>
+        {isSeries
+          ? "Le lien de la playlist n'est pas modifiable. Si tu as ajouté ou retiré des épisodes sur YouTube, clique sur « Actualiser les épisodes ». L'image se change dans « Image »."
+          : "Le lien vidéo n'est pas modifiable : pour changer de vidéo, publie un nouveau film. L'image se change dans « Image »."}
+      </p>
 
       {showDeclaration && <RightsDeclaration value={declaration} onChange={setDeclaration} category={category} />}
       {!isOwner && becomesClientWork && (
@@ -221,11 +229,22 @@ export default function FilmCard({
   showToast: ShowToast;
 }) {
   const [panel, setPanel] = useState<Panel | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const isOwner = project.my_role === "owner";
+  const isSeries = project.category === SERIES_CATEGORY;
 
   const statusTone = project.status === "approved" ? "published" : project.status === "pending" ? "pending" : "rejected";
   const statusLabel = project.status === "approved" ? "Publié" : project.status === "pending" ? "En attente" : "Refusé";
   const visibilityLabel = PROJECT_VISIBILITIES.find((v) => v.value === project.visibility)?.label ?? "Public";
+
+  // Série : relit la playlist (épisodes ajoutés ou retirés), sans nouvelle validation.
+  async function refreshEpisodes() {
+    setRefreshing(true);
+    const r = await callApi<{ episode_count?: number }>(`/api/projects/${project.id}/episodes`, "POST");
+    setRefreshing(false);
+    showToast(r.ok ? `Épisodes à jour : ${episodesLabel(r.data.episode_count ?? 0)}` : r.error);
+    if (r.ok) await reload();
+  }
 
   async function remove() {
     if (!confirm("Supprimer ce film ? Cette action est définitive.")) return;
@@ -253,6 +272,7 @@ export default function FilmCard({
             <Badge variant="neutral">{isOwner ? "Responsable" : "Co-gestionnaire"}</Badge>
             <Badge variant={statusTone}>{statusLabel}</Badge>
             <Badge variant="neutral">{visibilityLabel}</Badge>
+            {isSeries && project.episode_count != null && <Badge variant="neutral">{episodesLabel(project.episode_count)}</Badge>}
           </div>
         </div>
         {/* Supprimer : Responsable seul */}
@@ -299,6 +319,11 @@ export default function FilmCard({
             </Button>
           );
         })}
+        {isSeries && (
+          <Button variant="glass" size="sm" disabled={refreshing} onClick={refreshEpisodes} className="px-3!">
+            {refreshing ? "Actualisation..." : "Actualiser les épisodes"}
+          </Button>
+        )}
       </div>
 
       {panel && (

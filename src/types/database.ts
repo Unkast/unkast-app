@@ -22,6 +22,7 @@ export type ProjectCategory =
   | 'documentaire'
   | 'bande-demo'
   | 'scene-extrait'
+  | 'serie'
 export type ContactSubject = 'collaboration' | 'project' | 'question' | 'other'
 export type ContactStatus = 'pending' | 'accepted' | 'declined'
 
@@ -227,6 +228,14 @@ export interface Project {
   status: ProjectStatus | null   // text libre, defaut probable 'pending'
   poster_url: string | null
   preview_url: string | null
+  episode_count: number | null   // serie : nombre d'episodes de la playlist (migration 20261023)
+  episodes: Episode[] | null     // serie : episodes figes a la publication ou a la derniere actualisation
+}
+
+// Episode d'une serie : identifiant de la video YouTube et son titre.
+export interface Episode {
+  id: string
+  title: string
 }
 
 // -----------------------------------------------------------------------------

@@ -13,7 +13,7 @@ export const revalidate = 60; // Cache 1 minute
 // personne et pour ceux où elle est créditée.
 const FILM_COLUMNS = `
   id, profile_id, title, slug, description, category, year,
-  video_url, poster_url, preview_url, status, visibility, created_at,
+  video_url, poster_url, preview_url, episode_count, status, visibility, created_at,
   project_credits (
     *,
     profiles ( ${DISPLAY_NAME_COLUMNS}, slug, avatar_url )

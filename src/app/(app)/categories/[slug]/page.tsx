@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
+import { CATEGORY_LABELS, CATEGORY_COLORS, episodesLabel } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
@@ -14,7 +14,7 @@ import FilmPoster from "@/components/FilmPoster";
 export const revalidate = 300; // Cache 5 minutes (était absent → aucun cache)
 
 const VALID_CATEGORIES: ProjectCategory[] = [
-  "court-metrage", "moyen-metrage", "long-metrage", "publicite", "clip", "documentaire", "bande-demo", "scene-extrait",
+  "court-metrage", "moyen-metrage", "long-metrage", "publicite", "clip", "documentaire", "bande-demo", "scene-extrait", "serie",
 ];
 
 const PAGE_SIZE = 30;
@@ -49,7 +49,7 @@ export default async function CategoryPage({ params }: Props) {
   const { data } = await supabase
     .from("projects")
     .select(`
-      id, title, slug, category, year, description, video_url, profile_id, poster_url, preview_url,
+      id, title, slug, category, year, description, video_url, profile_id, poster_url, preview_url, episode_count,
       ${TEAM_SELECT}
     `)
     .eq("status", "approved")
@@ -59,7 +59,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const projects = (data ?? []) as unknown as {
     id: string; title: string; slug: string; year: number;
-    poster_url: string | null; preview_url: string | null; project_credits?: unknown;
+    poster_url: string | null; preview_url: string | null; episode_count: number | null; project_credits?: unknown;
   }[];
   const teamOf = await loadFilmTeams(supabase, !user, projects);
 
@@ -124,7 +124,7 @@ export default async function CategoryPage({ params }: Props) {
                   <p className="truncate text-lg font-semibold text-text-primary transition-colors duration-base group-hover:text-lime lg:text-3xl lg:whitespace-normal" style={{ letterSpacing: "-0.3px" }}>
                     {featured.title}
                   </p>
-                  <p className="mt-1 truncate text-xs text-text-secondary lg:text-sm">{featured.director_name && `${featured.director_name} · `}{featured.year}</p>
+                  <p className="mt-1 truncate text-xs text-text-secondary lg:text-sm">{featured.director_name && `${featured.director_name} · `}{featured.year}{featured.episode_count ? ` · ${episodesLabel(featured.episode_count)}` : ""}</p>
                 </div>
               </Link>
             </EnterItem>
@@ -153,7 +153,7 @@ export default async function CategoryPage({ params }: Props) {
                       <p className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate leading-tight">
                         {p.title}
                       </p>
-                      <p className="mt-1 text-[11px] text-text-secondary truncate">{p.director_name && `${p.director_name} · `}{p.year}</p>
+                      <p className="mt-1 text-[11px] text-text-secondary truncate">{p.director_name && `${p.director_name} · `}{p.year}{p.episode_count ? ` · ${episodesLabel(p.episode_count)}` : ""}</p>
                     </div>
                   </GlassCard>
                 </Link>

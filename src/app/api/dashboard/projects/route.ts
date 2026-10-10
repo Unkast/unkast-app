@@ -10,13 +10,14 @@ import {
   PROJECT_VISIBILITIES,
   refusalMessages,
   RIGHTS_DECLARATION_VERSION,
+  SERIES_CATEGORY,
 } from "@/lib/constants";
-import { slugify } from "@/lib/utils";
+import { extractPlaylistId, extractVideoKey, playlistUrl, slugify } from "@/lib/utils";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { detectContactIn } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
-import { fetchVideoMeta } from "@/lib/oembed";
+import { fetchPlaylistMeta, fetchVideoMeta, playlistRefusal } from "@/lib/oembed";
 import { sendAdminNewFilmEmail } from "@/lib/email";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
@@ -191,12 +192,27 @@ export async function POST(request: NextRequest) {
     declared_role, rights_accepted, client_authorized,
   } = body;
   const description = typeof body.description === "string" ? body.description : null;
+  // Serie : le titre peut rester vide, celui de la playlist est repris.
+  const isSeries = category === SERIES_CATEGORY;
 
-  if (!title || !category || !video_url) {
+  if ((!title && !isSeries) || !category || !video_url) {
     return NextResponse.json({ error: "Titre, categorie et URL video requis." }, { status: 400 });
   }
-  if (typeof title !== "string" || typeof video_url !== "string" || !isCategory(category)) {
+  if ((title && typeof title !== "string") || typeof video_url !== "string" || !isCategory(category)) {
     return NextResponse.json({ error: "Titre, catégorie ou URL vidéo invalide." }, { status: 400 });
+  }
+  const playlistId = isSeries ? extractPlaylistId(video_url) : null;
+  if (isSeries && !playlistId) {
+    return NextResponse.json(
+      { code: "playlist_required", error: "Pour une série, colle le lien d'une playlist YouTube (il contient « list= »)." },
+      { status: 400 }
+    );
+  }
+  if (!isSeries && extractVideoKey(video_url)?.startsWith("youtube-playlist:")) {
+    return NextResponse.json(
+      { code: "series_category_required", error: "Ce lien est une playlist : choisis la catégorie « Série »." },
+      { status: 400 }
+    );
   }
   if (rights_accepted !== true || !isDeclaredRole(declared_role)) {
     return NextResponse.json(RIGHTS_REQUIRED, { status: 400 });
@@ -205,7 +221,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(CLIENT_AUTHORIZATION_REQUIRED, { status: 400 });
   }
 
-  const verdict = detectContactIn(title, description);
+  const verdict = detectContactIn(typeof title === "string" ? title : null, description);
   if (verdict.level === "obvious") {
     return NextResponse.json(CONTACT_REFUSED, { status: 400 });
   }
@@ -214,7 +230,16 @@ export async function POST(request: NextRequest) {
   // atomique : pas de pre-controle ici, la regle ne vit qu'a un endroit.
   const projectLimit = planLimit(guard.profile.plan);
 
-  const meta = await fetchVideoMeta(video_url);
+  // Serie : titre, image et episodes de la playlist (API YouTube). Une playlist
+  // privee, vide ou avec un episode illisible n'est pas publiee.
+  const playlist = playlistId ? await fetchPlaylistMeta(playlistId) : null;
+  if (playlist && !playlist.ok) {
+    const { status, ...refusal } = playlistRefusal(playlist);
+    return NextResponse.json(refusal, { status });
+  }
+  const meta = playlist?.ok
+    ? { ok: true as const, title: playlist.title, author: playlist.author, thumbnail: playlist.thumbnail, duration: null }
+    : await fetchVideoMeta(video_url);
   if (!meta.ok) {
     return NextResponse.json(
       {
@@ -224,16 +249,21 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  const finalTitle = (typeof title === "string" && title.trim()) || meta.title;
+  if (!finalTitle) {
+    return NextResponse.json({ error: "Titre, categorie et URL video requis." }, { status: 400 });
+  }
 
   const admin = createAdminClient();
   const { data: result, error } = await admin.rpc("publish_project", {
     p_profile_id: user.id,
-    p_title: title,
-    p_slug: slugify(title) + "-" + Date.now().toString(36),
+    p_title: finalTitle,
+    p_slug: slugify(finalTitle) + "-" + Date.now().toString(36),
     p_description: description,
     p_category: category,
     p_year: year || new Date().getFullYear(),
-    p_video_url: video_url,
+    // Serie : adresse canonique de la playlist (la cle anti-doublon en decoule).
+    p_video_url: playlistId ? playlistUrl(playlistId) : video_url,
     p_declared_role: declared_role,
     p_text_version: RIGHTS_DECLARATION_VERSION,
     p_client_authorized: client_authorized === true,
@@ -258,13 +288,20 @@ export async function POST(request: NextRequest) {
       if (meta.thumbnail) {
         await admin.from("projects").update({ poster_url: meta.thumbnail }).eq("id", result.project_id);
       }
+      // Serie : episodes figes a la publication (colonnes hors du GRANT UPDATE).
+      if (playlist?.ok) {
+        await admin
+          .from("projects")
+          .update({ episode_count: playlist.episodes.length, episodes: playlist.episodes })
+          .eq("id", result.project_id);
+      }
       // Duree de la video (Vimeo seulement), montree a l'admin.
       if (meta.duration) {
         await admin.from("project_moderation").update({ source_duration: meta.duration }).eq("project_id", result.project_id);
       }
       // Alerte admin : un film attend sa validation. Jamais bloquant.
       await sendAdminNewFilmEmail({
-        projectTitle: title,
+        projectTitle: finalTitle,
         ownerName: guard.profile.display_name,
         sourceTitle: meta.title,
         sourceAuthor: meta.author,
@@ -338,6 +375,15 @@ export async function PATCH(request: NextRequest) {
   if (body.category !== undefined) {
     if (!isCategory(body.category)) {
       return NextResponse.json({ error: "Catégorie invalide." }, { status: 400 });
+    }
+    // Une serie est liee a sa playlist : sa categorie ne change pas, et un film
+    // ne devient pas une serie.
+    const { data: current } = await supabase.from("projects").select("category").eq("id", id).maybeSingle();
+    if (current && (current.category === SERIES_CATEGORY) !== (body.category === SERIES_CATEGORY)) {
+      return NextResponse.json(
+        { code: "series_category_locked", error: "La catégorie « Série » ne se change pas : publie un nouveau film." },
+        { status: 400 }
+      );
     }
     updates.category = body.category;
   }

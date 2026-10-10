@@ -35,6 +35,7 @@ interface ProjectResult {
   director_name: string;
   poster_url?: string | null;
   preview_url?: string | null;
+  episode_count?: number | null;
 }
 
 const CATEGORIES: {
@@ -64,6 +65,13 @@ const CATEGORIES: {
     gradient: "linear-gradient(135deg, #2e0d2a, #4e1b45)",
     accent: "#E879F9",
     icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4V2m0 2v2m0-2H5m2 0h2M3 20h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v10a2 2 0 002 2zM15 12l-4 2.5v-5l4 2.5z" />,
+  },
+  {
+    key: "serie",
+    label: "Série",
+    gradient: "linear-gradient(135deg, #2e260d, #4e411b)",
+    accent: "#FFD166",
+    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h10M4 18h10M17 14.5v5l4-2.5-4-2.5z" />,
   },
   {
     key: "documentaire",
@@ -437,7 +445,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles, in
                           <FilmPoster src={p.preview_url || p.poster_url} alt={p.title} sizes="96px" className="h-11 rounded-lg" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-text-primary group-hover:text-lime transition truncate">{p.title}</p>
-                            <FilmMeta category={p.category} author={p.director_name} year={p.year} className="mt-0.5" />
+                            <FilmMeta category={p.category} author={p.director_name} year={p.year} episodes={p.episode_count} className="mt-0.5" />
                           </div>
                           <svg className="w-4 h-4 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -464,7 +472,7 @@ export default function RechercheClient({ categoryCounts, recruitingProfiles, in
                           </FilmPoster>
                           <div className="mt-2.5 px-1 pb-0.5">
                             <h3 className="text-[13px] font-semibold text-text-primary group-hover:text-lime transition-colors truncate">{p.title}</h3>
-                            <FilmMeta category={p.category} author={p.director_name} year={p.year} className="mt-1" />
+                            <FilmMeta category={p.category} author={p.director_name} year={p.year} episodes={p.episode_count} className="mt-1" />
                           </div>
                         </GlassCard>
                       </Link>

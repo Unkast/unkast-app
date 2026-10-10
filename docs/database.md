@@ -15,7 +15,7 @@
 | Type | Valeurs |
 |---|---|
 | `profile_status` | `pending`, `approved`, `rejected` |
-| `project_category` | `court-metrage`, `moyen-metrage`, `long-metrage`, `publicite`, `clip`, `documentaire`, `bande-demo`, `scene-extrait` |
+| `project_category` | `court-metrage`, `moyen-metrage`, `long-metrage`, `publicite`, `clip`, `documentaire`, `bande-demo`, `scene-extrait`, `serie` (lot 10, migration `20261022`) |
 | `contact_subject` | `collaboration`, `project`, `question`, `other` |
 | `contact_status` | `pending`, `accepted`, `declined` |
 
@@ -142,6 +142,8 @@ silencieusement. Dette technique a corriger (CHECK ou vrai enum).
 | `status` | TEXT | oui | CHECK en prod (`pending`/`approved`/`refused`, relevé du 08/10/2026) ; modération des films |
 | `poster_url` | TEXT | oui | |
 | `preview_url` | TEXT | oui | |
+| `episode_count` | INTEGER (CHECK > 0) | oui | **lot 10, migration `20261023`** : série, nombre d'épisodes. NULL pour un film |
+| `episodes` | JSONB (tableau) | oui | **lot 10** : série, épisodes `[{id, title}]` (`id` = vidéo YouTube), figés à la publication ou à la dernière actualisation. Écrite par le service role uniquement |
 
 > **Anti-doublon (chantier 9)** — index **unique partiel** `projects_video_key_unique` sur `(video_key) WHERE video_key IS NOT NULL` : une même vidéo (identifiant canonique) ne peut exister que sur **un** projet. Les films dont l'URL n'est pas normalisable (`video_key` NULL) ne sont jamais bloqués. Migrations manuelles : `20260614_video_dedup_A.sql` (colonne + backfill + détection), `20260614_video_dedup_resolve.sql` (résolution des doublons existants → garde le plus ancien, met les autres à NULL), `20260614_video_dedup_B.sql` (index unique). La vérification applicative renvoie un **409** propre ; l'index est le dernier rempart (course → code `23505` → 409).
 
@@ -593,3 +595,5 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 > **Ecritures directes fermees (migration `20261020_close_direct_writes.sql`, audit RLS du 09/10/2026).** Plus aucune ecriture cliente sur `project_credits` (sauf suppression par un gestionnaire), `project_invitations`, `invitations`, `profile_roles`, `contact_requests` : les routes ecrivent en service role. Lecture publique de `profiles`, `profile_roles`, `projects` et fonctions `can_view_project` / `is_project_public` : un compte suspendu en est exclu. Declencheur `lock_availability_signal_target` : destinataire et poste d un signal non modifiables. `credit_requests` : insertion en `pending` sur un film visible uniquement. Bucket `avatars` limite a 5 Mo et aux images, sans policy. Droits de table inutiles retires (dont `TRUNCATE`). A executer APRES le deploiement du code.
 
 > **Unicites (migration `20261021_uniqueness.sql`, audit de la base du 10/10/2026, a executer apres 20261020).** `credit_requests` : l'unicite `(project_id, requester_id)` tous statuts confondus est remplacee par l'index unique partiel `credit_requests_one_pending` (`WHERE status = 'pending'`) : une personne refusee, ou creditee puis retiree, peut redemander. `project_credits` : index unique `project_credits_one_role_per_person` sur `(project_id, profile_id, lower(btrim(role_on_project))) WHERE profile_id IS NOT NULL` ; les routes d'acceptation traitent `23505` comme « deja credite ». `push_tokens` : `UNIQUE (token)` en plus de `UNIQUE (profile_id, token)` ; `POST /api/notifications/register` detache d'abord le jeton de tout autre compte (service role).
+
+> **Séries (lot 10, étape 1, migrations `20261022_series_A.sql` puis `20261023_series_B.sql`, à exécuter AVANT le déploiement du code).** Une série est une ligne `projects` de catégorie `serie` : elle compte pour 1 film dans `project_slots_used` et suit la même validation admin. `video_url` porte l'adresse canonique de la playlist YouTube (`https://www.youtube.com/playlist?list=<id>`), `video_key` vaut `youtube-playlist:<id>` : `extract_video_key` reconnaît cette adresse, donc `publish_project` et l'index `projects_video_key_unique` refusent une playlist déjà publiée sans autre changement. `episode_count` et `episodes` sont hors du GRANT UPDATE client : écrites à la publication (`POST /api/dashboard/projects`) et par `POST /api/projects/[id]/episodes`. La catégorie `serie` ne se change pas par la route (`series_category_locked`) ; aucune contrainte en base ne l'empêche.

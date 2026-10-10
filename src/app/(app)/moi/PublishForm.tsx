@@ -1,7 +1,7 @@
 "use client";
 // Formulaire de publication d'un film (POST /api/dashboard/projects).
 import { useState } from "react";
-import { CATEGORY_LABELS, DECLARED_ROLES } from "@/lib/constants";
+import { CATEGORY_LABELS, DECLARED_ROLES, SERIES_CATEGORY } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
@@ -37,6 +37,7 @@ export default function PublishForm({
   // undefined : pas de doublon ; null : doublon non identifie.
   const [duplicate, setDuplicate] = useState<DuplicateProject | null | undefined>(undefined);
 
+  const isSeries = category === SERIES_CATEGORY;
   // Realisateur et producteur : credit cree automatiquement par le serveur.
   const autoCredit = DECLARED_ROLES.find((r) => r.value === declaration.role)?.credit ?? null;
 
@@ -53,7 +54,7 @@ export default function PublishForm({
       ...declarationPayload(declaration, category),
     });
     if (r.ok) {
-      showToast("Film ajouté, en attente de validation");
+      showToast(isSeries ? "Série ajoutée, en attente de validation" : "Film ajouté, en attente de validation");
       await onPublished();
       return;
     }
@@ -69,15 +70,42 @@ export default function PublishForm({
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-[15px] font-semibold text-text-primary">Nouveau film</h3>
-      <Field aria-label="Titre du film" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre du film" />
+      <h3 className="text-[15px] font-semibold text-text-primary">{isSeries ? "Nouvelle série" : "Nouveau film"}</h3>
+      <Field
+        aria-label={isSeries ? "Titre de la série" : "Titre du film"}
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder={isSeries ? "Titre de la série (celui de la playlist si tu laisses vide)" : "Titre du film"}
+      />
       <div className="grid grid-cols-2 gap-3">
         <Select aria-label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value as ProjectCategory)}>
           {Object.entries(CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
         </Select>
         <Field aria-label="Année" type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || new Date().getFullYear())} min={1990} max={2030} />
       </div>
-      <Field aria-label="URL vidéo (Vimeo ou YouTube)" type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="URL vidéo (Vimeo ou YouTube)" />
+      <div>
+        <Field
+          aria-label={isSeries ? "Lien de la playlist YouTube" : "URL vidéo (Vimeo ou YouTube)"}
+          type="url"
+          value={videoUrl}
+          onChange={(e) => setVideoUrl(e.target.value)}
+          placeholder={isSeries ? "Lien de la playlist YouTube (il contient list=)" : "URL vidéo (Vimeo ou YouTube)"}
+        />
+        <div className="mt-2 space-y-1 text-xs leading-relaxed text-text-secondary">
+          {isSeries && (
+            <p>
+              Colle le lien de la playlist YouTube de ta série. L&apos;image, le nombre d&apos;épisodes et leurs titres sont repris automatiquement. Une série compte pour 1 film.
+            </p>
+          )}
+          <p>
+            <span className="text-text-primary">« Non répertoriée » : acceptée.</span> La vidéo se lit sur Unkast sans apparaître dans les recherches {isSeries ? "YouTube" : "YouTube ou Vimeo"}.
+          </p>
+          <p>
+            <span className="text-text-primary">« Privée » : impossible à lire.</span> Une vidéo privée ne s&apos;ouvre que pour son propriétaire, Unkast ne peut pas l&apos;afficher : la publication est refusée. Passe-la en « Non répertoriée » avant de la coller ici{isSeries ? ", ainsi que la playlist elle-même" : ""}.
+          </p>
+        </div>
+      </div>
       <Field multiline rows={3} aria-label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
 
       <RightsDeclaration value={declaration} onChange={setDeclaration} category={category} />
@@ -108,7 +136,7 @@ export default function PublishForm({
       {error && <Note>{error}</Note>}
 
       <div className="flex gap-3">
-        <Button onClick={submit} disabled={!title || !videoUrl || !isDeclarationComplete(declaration, category) || saving} className="flex-1">
+        <Button onClick={submit} disabled={(!title && !isSeries) || !videoUrl || !isDeclarationComplete(declaration, category) || saving} className="flex-1">
           {saving ? "Ajout..." : "Ajouter"}
         </Button>
         <Button variant="glass" onClick={onCancel} className="flex-1">

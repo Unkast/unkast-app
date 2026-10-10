@@ -27,11 +27,13 @@ interface Props {
   title: string;
   /** Démarre la lecture immédiatement (ex. après un clic sur une façade / ouverture de modale). */
   autoplay?: boolean;
+  /** Fin de la vidéo (série : passage à l'épisode suivant). */
+  onEnded?: () => void;
 }
 
 // À ne monter qu'après un clic : dès qu'il est monté, le lecteur contacte
 // YouTube ou Vimeo. Avant le clic, afficher une image (voir VideoFacade).
-export default function VideoEmbed({ url, title, autoplay = false }: Props) {
+export default function VideoEmbed({ url, title, autoplay = false, onEnded }: Props) {
   // Pas de fond avant le chargement du lecteur : le conteneur reste transparent
   // (ssr: false suffit, rien n'est rendu cote serveur).
   return (
@@ -43,6 +45,7 @@ export default function VideoEmbed({ url, title, autoplay = false }: Props) {
         controls
         light={!autoplay}
         playing={autoplay}
+        onEnded={onEnded}
         style={{ position: "absolute", top: 0, left: 0 }}
         previewAriaLabel={`Video: ${title}`}
       />

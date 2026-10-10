@@ -333,7 +333,7 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/components/LegalPage.tsx` | UTILITY | mise en page des trois pages légales ; `Info` surligne toute information de société non remplie |
 | `src/app/(app)/cgu`, `confidentialite`, `mentions-legales` | FEATURE | pages légales de la bêta, publiques |
 | `src/components/LegalLinks.tsx` | UTILITY | liens vers les pages légales (accueil, connexion, inscription, /moi) |
-| `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée |
+| `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée. Série : `fetchPlaylistMeta` (API YouTube Data v3, `YOUTUBE_API_KEY`) et `playlistRefusal` (messages de refus) |
 | `src/app/(app)/moi/PosterUpload.tsx` | SUB | image du film : consignes de format avant le choix du fichier, recadrage 16:9 avec aperçu en direct (petite carte, à la une, page du film), avertissement sous 1280 × 720 px (envoi permis) et pour une image verticale, compression dans le navigateur (sortie 1920 × 1080 au plus), retour à l'image de la vidéo |
 | `src/components/FilmMeta.tsx` | UTILITY | ligne d infos d un film sous son titre : point de couleur + categorie, puis auteur et annee. Regle (09/10/2026) : aucun texte ni badge sur la vignette d un film (feed, recherche, fiche, films lies, carte verrouillee, ou seul le cadenas reste) ; la mention cookies de `VideoFacade` est sous la vignette |
 | `src/components/SearchAssistant.tsx` | FEATURE | assistant de recherche (lot 8, 09/10/2026), sans IA : panneau en verre ouvert par le champ de l'en-tête desktop, la loupe de l'en-tête mobile (plein écran) ou Ctrl K. Accueil (« Je cherche », « Je veux »), parcours guidés à une question à la fois (comédien : type de rôle, ville, âge de jeu, langue ; technicien : domaine, métier, ville, langue ; « Peu importe » partout), fil d'Ariane, résultats en direct, saisie libre, réponses toutes faites. Clavier : flèches, Entrée, Échap, Retour arrière (étape précédente). Ne lit que `POST /api/search`. Rien de ce qui est tapé n'est gardé : pas de stockage, état perdu à la fermeture. Chargé à la demande par `AppShell` |
@@ -450,3 +450,16 @@ FEATURE  Compte admin dedie (lot 9, 10/2026) — voir docs/adr/0015-compte-admin
   « Voir le site comme » (ViewAs) : membre = le compte admin sur le site ; visiteur = cookie
   unkast_view=visitor, lib/supabase/server.ts ignore alors la session (sauf ignoreView, reserve
   a la garde admin). AppShell affiche le bandeau « Compte admin · vue ... · Retour a l'admin ».
+
+### Séries (lot 10, étape 1, 10/10/2026)
+
+Une série (web-série, série courte) est un film de catégorie `serie` dont la vidéo est une playlist YouTube. Vimeo (showcase) n'est pas pris en charge à cette étape.
+
+- **Publication** : `moi/PublishForm.tsx`, catégorie « Série ». Le champ devient « lien de la playlist », le titre est facultatif, l'aide explique « Non répertoriée » (acceptée) et « Privée » (illisible, refusée). Pas de série à l'inscription (`/rejoindre` et `/api/signup` l'écartent).
+- **Clé et doublons** : `extractVideoKey` (`src/lib/utils.ts`) renvoie `youtube-playlist:<id>` pour l'adresse d'une playlist ; `extractPlaylistId` lit `list=` dans tout lien YouTube ; `playlistUrl` et `episodeUrl` construisent les adresses. La fonction SQL `extract_video_key` suit la même règle.
+- **Épisodes** : figés à la publication dans `projects.episodes` (`{id, title}`), relus par « Actualiser les épisodes » (`moi/FilmCard.tsx` → `POST /api/projects/[id]/episodes`). La catégorie d'une série est verrouillée dans « Modifier ».
+- **Page du film** (`ProjetClient.tsx`) : le même lecteur (`VideoEmbed`, toujours après un clic) lit l'épisode courant ; ligne « Épisode N sur M » et bouton « Épisode suivant » sous le lecteur (en haut à gauche dans la modale mobile), liste « Épisodes » avant l'équipe, passage automatique à l'épisode suivant en fin de vidéo (`onEnded` de `VideoEmbed`). Les vignettes des épisodes passent par `next/image` (aucun appel du navigateur à YouTube avant le clic). L'équipe est celle du film : générique commun à la série.
+- **Cartes** : `FilmMeta` reçoit `episodes` et écrit « N épisodes » dans la ligne d'infos, sous l'affiche (feed, recherche, fiche profil, films liés) ; la page catégorie l'écrit dans sa propre ligne. Rien sur l'affiche.
+- **Feed** : rangée « Séries » après « Court-métrage ». Recherche : tuile « Série » (dégradé seul tant que `public/categories/serie.webp` n'existe pas).
+- **Admin** : la fiche d'un film en attente montre le nombre d'épisodes et la liste (liens YouTube) ; la façade lit le premier épisode.
+- **Constantes** : `SERIES_CATEGORY`, `episodesLabel` (`src/lib/constants.ts`).

@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   CATEGORY_LABELS,
+  SERIES_CATEGORY,
   MAX_PROJECTS_FREE,
   DECLARED_ROLES,
   RIGHTS_DECLARATION_TEXT,
@@ -665,7 +666,8 @@ export default function RejoindreClient() {
                   </div>
 
                   <Select label="Catégorie" value={projectCategory} onChange={(e) => { setProjectCategory(e.target.value as ProjectCategory); setClientAuthorized(false); }}>
-                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    {/* Une série se publie depuis « Mes films », une fois le compte créé. */}
+                    {Object.entries(CATEGORY_LABELS).filter(([key]) => key !== SERIES_CATEGORY).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </Select>

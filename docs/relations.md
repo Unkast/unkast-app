@@ -227,3 +227,16 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `lib/supabase/server.ts` (`createClient`) | [depend de] | cookie `unkast_view` (`lib/adminSession.ts`) : vue visiteur = session ignoree |
 | `lib/auth-guard.ts` (`getActiveUser`) | [bloque] | compte `account_type='admin'` (403 sur toutes les routes d'ecriture) |
 | `admin/(panel)/ViewAs` | [declenche] | cookie de vue puis `/feed` ; `AppShell` (`adminView`) affiche le bandeau de retour |
+
+
+## Séries (lot 10, 10/10/2026)
+
+| Source | Type de relation | Destination |
+|---|---|---|
+| `moi/PublishForm`, `POST /api/dashboard/projects` | [utilise] | `lib/utils.ts` (`extractPlaylistId`, `playlistUrl`), `lib/oembed.ts` (`fetchPlaylistMeta`, `playlistRefusal`) |
+| `lib/oembed.ts` (`fetchPlaylistMeta`) | [depend de] | API YouTube Data v3 (`YOUTUBE_API_KEY`) |
+| `moi/FilmCard` | [declenche] | `POST /api/projects/[id]/episodes` |
+| `POST /api/projects/[id]/episodes` | [persiste dans] | `projects.episode_count`, `projects.episodes` (service role) |
+| `ProjetClient` | [utilise] | `VideoEmbed` (`onEnded`), `lib/utils.ts` (`episodeUrl`), `projects.episodes` |
+| `FilmMeta` (`episodes`) | [utilise par] | `feed/FilmRow`, `RechercheClient`, `ProfileClient`, `ProjetClient` |
+| `feed/page.tsx`, `/api/search`, `categories/[slug]/page.tsx`, `profil/[slug]/page.tsx` | [persiste dans] | `projects.episode_count` (lecture : migration `20261023` requise) |

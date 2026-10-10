@@ -159,6 +159,7 @@ const CATEGORY_INDEX: Map<string, ProjectCategory> = (() => {
     "moyens metrages": "moyen-metrage", long: "long-metrage", "longs metrages": "long-metrage",
     pub: "publicite", pubs: "publicite", publicites: "publicite", spot: "publicite",
     clips: "clip", "clip musical": "clip", "music video": "clip",
+    "web serie": "serie", "web series": "serie", webserie: "serie", webseries: "serie",
     docu: "documentaire", doc: "documentaire", docs: "documentaire", documentaires: "documentaire",
     showreel: "bande-demo", demo: "bande-demo", "bandes demo": "bande-demo", reel: "bande-demo",
     scene: "scene-extrait", extrait: "scene-extrait", scenes: "scene-extrait", extraits: "scene-extrait",

@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-plan";
-import { CATEGORY_LABELS, DECLARED_ROLES, REFUSAL_REASONS } from "@/lib/constants";
+import { CATEGORY_LABELS, DECLARED_ROLES, REFUSAL_REASONS, episodesLabel } from "@/lib/constants";
+import { episodeUrl } from "@/lib/utils";
 import VideoFacade from "@/components/VideoFacade";
 
 type Tab = "recruiters" | "reports" | "users" | "films" | "claims";
@@ -23,7 +24,7 @@ interface Report { id: string; reporter_id: string | null; reporter_name: string
 // recruteur), pas seulement le badge `plan` opaque. Voir GET tab=users
 // (src/app/api/admin/route.ts) qui les selectionne desormais.
 interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; pro_grant_type: string | null; pro_grant_expires_at: string | null; subscription_status: string | null; }
-interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; source_duration: number | null; declared_role: string | null; }
+interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; source_duration: number | null; declared_role: string | null; episode_count: number | null; episodes: { id: string; title: string }[] | null; }
 // Gestion des films (lot 2 de la route) : films approuves modifies, films sans
 // Responsable, signalements / revendications de films.
 interface EditedFilm { id: string; title: string; slug: string; edited_at: string; edited_by_name: string; title_changed: boolean; reported: boolean; approved_title: string | null; }
@@ -146,7 +147,8 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
   return (
     <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, marginBottom: 16, maxWidth: 560, overflow: "hidden" }}>
       {/* Le lecteur ne se monte qu'au clic (VideoFacade). */}
-      <VideoFacade url={f.video_url} title={f.title} poster={f.poster_url || f.preview_url} />
+      {/* Serie : la facade lit le premier episode, les autres s'ouvrent sur YouTube. */}
+      <VideoFacade url={f.episodes?.[0] ? episodeUrl(f.episodes[0].id) : f.video_url} title={f.title} poster={f.poster_url || f.preview_url} />
 
       <div style={{ padding: 16 }}>
         <p style={{ fontSize: 17, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.3, overflowWrap: "anywhere" }}>{f.title}</p>
@@ -157,7 +159,16 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
           <p style={{ margin: 0 }}><span style={label}>Titre d&apos;origine :</span> {f.source_title || <span style={missing}>non relevé</span>}</p>
           <p style={{ margin: 0 }}><span style={label}>Chaîne d&apos;origine :</span> {f.source_author || <span style={missing}>non relevée</span>}</p>
           <p style={{ margin: 0 }}><span style={label}>Rôle déclaré :</span> {declaredRole || <span style={missing}>aucune déclaration</span>}</p>
-          <p style={{ margin: 0 }}><span style={label}>Catégorie :</span> {category}</p>
+          <p style={{ margin: 0 }}><span style={label}>Catégorie :</span> {category}{f.episode_count ? ` · ${episodesLabel(f.episode_count)}` : ""}</p>
+          {f.episodes && f.episodes.length > 0 && (
+            <ol style={{ margin: "4px 0 4px 20px", padding: 0 }}>
+              {f.episodes.map((ep, i) => (
+                <li key={`${ep.id}-${i}`}>
+                  <a href={episodeUrl(ep.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00", textDecoration: "none" }}>{ep.title || ep.id}</a>
+                </li>
+              ))}
+            </ol>
+          )}
           <p style={{ margin: 0 }}><span style={label}>Année :</span> {f.year}</p>
           {f.source_duration != null && <p style={{ margin: 0 }}><span style={label}>Durée :</span> {formatDuration(f.source_duration)}</p>}
           <p style={{ margin: 0 }}>

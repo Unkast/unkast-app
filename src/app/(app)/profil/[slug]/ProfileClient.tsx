@@ -565,7 +565,7 @@ export default function ProfileClient({
                           <h3 className="truncate text-[13px] font-semibold leading-tight text-text-primary transition-colors duration-300 group-hover:text-lime lg:text-[15px]">
                             {project.title}
                           </h3>
-                          <FilmMeta category={project.category} author={directors} year={project.year} className="mt-1" />
+                          <FilmMeta category={project.category} author={directors} year={project.year} episodes={project.episode_count} className="mt-1" />
                         </div>
                       </FilmLink>
                     </motion.div>

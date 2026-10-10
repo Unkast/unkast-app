@@ -9,6 +9,7 @@ export const CATEGORY_COLORS: Record<ProjectCategory, string> = {
   documentaire: "#FF8844",
   "bande-demo": "#FF5577",
   "scene-extrait": "#FF5577",
+  serie: "#FFD166",
 };
 
 export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
@@ -20,7 +21,13 @@ export const CATEGORY_LABELS: Record<ProjectCategory, string> = {
   documentaire: "Documentaire",
   "bande-demo": "Bande démo",
   "scene-extrait": "Scène / Extrait",
+  serie: "Série",
 };
+
+// Serie (web-serie, serie courte) : une playlist YouTube, publiee comme un seul
+// film. Sa categorie ne se change pas, dans un sens comme dans l'autre.
+export const SERIES_CATEGORY: ProjectCategory = "serie";
+export const episodesLabel = (count: number) => `${count} épisode${count > 1 ? "s" : ""}`;
 
 // 2 -> 3 le 2026-08-10 (nouveau modele economique). Les textes qui annoncent
 // la limite l'interpolent depuis ces constantes : ne jamais reecrire le nombre

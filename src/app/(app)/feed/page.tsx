@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_LABELS, SERIES_CATEGORY } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import { Section, AnimatedCard } from "./HomeAnimations";
 import Avatar from "@/components/Avatar";
@@ -29,6 +29,7 @@ interface ProjectCard {
   team_preview: FilmTeam["team_preview"];
   poster_url?: string | null;
   preview_url?: string | null;
+  episode_count: number | null;
 }
 
 interface TalentCard {
@@ -59,6 +60,7 @@ function toRowItem(p: ProjectCard): FilmRowItem {
     director_name: p.director_name,
     team_size: p.team_size,
     image: p.preview_url || p.poster_url || null,
+    episode_count: p.episode_count,
   };
 }
 
@@ -66,7 +68,7 @@ function toRowItem(p: ProjectCard): FilmRowItem {
 // appliquee par la RLS : toutes les lectures de cette page passent par le client
 // utilisateur, aucune par le service role.
 const PROJECT_SELECT = `
-  id, title, slug, category, year, description, video_url, poster_url, preview_url,
+  id, title, slug, category, year, description, video_url, poster_url, preview_url, episode_count,
   profiles!projects_profile_id_fkey ( is_suspended ),
   ${TEAM_SELECT}
 `;
@@ -91,6 +93,7 @@ function toCard(p: RawProject, team: FilmTeam): ProjectCard {
     ...team,
     poster_url: (p.poster_url as string | null) ?? null,
     preview_url: (p.preview_url as string | null) ?? null,
+    episode_count: (p.episode_count as number | null) ?? null,
   };
 }
 
@@ -100,7 +103,7 @@ async function getHomeData() {
   // son equipe passe par public_project_credits (un seul appel pour la page).
   const { data: { user } } = await supabase.auth.getUser();
 
-  const categoriesToShow: ProjectCategory[] = ["court-metrage", "publicite", "clip", "documentaire"];
+  const categoriesToShow: ProjectCategory[] = ["court-metrage", SERIES_CATEGORY, "publicite", "clip", "documentaire"];
 
   const [recentResult, ...categoryResults] = await Promise.all([
     supabase
@@ -140,7 +143,8 @@ async function getHomeData() {
     // Meme condition qu'avant : la ligne existe des que la categorie a un film lisible.
     if ((categoryResults[i].data ?? []).length > 0) {
       const items = categoryRaw[i].map((p) => toCard(p, teamOf(p.id)));
-      categoryRows.push({ title: CATEGORY_LABELS[cat], href: `/recherche?category=${cat}`, items });
+      const title = cat === SERIES_CATEGORY ? "Séries" : CATEGORY_LABELS[cat];
+      categoryRows.push({ title, href: `/recherche?category=${cat}`, items });
     }
   }
 

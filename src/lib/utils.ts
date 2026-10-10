@@ -25,6 +25,8 @@ export function newProfileSlug(displayName: string): string {
 //
 // Renvoie null si la plateforme/l'ID n'est pas reconnu de fa\u00e7on S\u00dbRE \u2014 dans ce cas
 // aucune unicit\u00e9 n'est appliqu\u00e9e (on pr\u00e9f\u00e8re ne rien bloquer plut\u00f4t qu'un faux positif).
+// Serie : "youtube-playlist:<id>" pour l'adresse d'une playlist (meme regle dans
+// extract_video_key, migration 20261023).
 // Les deux seules plateformes support\u00e9es par react-player ici : YouTube et Vimeo.
 export function extractVideoKey(rawUrl: string): string | null {
   if (!rawUrl || typeof rawUrl !== "string") return null;
@@ -49,6 +51,11 @@ export function extractVideoKey(rawUrl: string): string | null {
     return ytId(url.pathname.split("/").filter(Boolean)[0]);
   }
   if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    // /playlist?list=<id> : une serie, cle "youtube-playlist:<id>"
+    if (/^\/+playlist\/?$/.test(url.pathname)) {
+      const list = url.searchParams.get("list");
+      return list && PLAYLIST_ID.test(list) ? `youtube-playlist:${list}` : null;
+    }
     // /watch?v=<id>
     const v = url.searchParams.get("v");
     if (v) return ytId(v);
@@ -71,6 +78,27 @@ export function extractVideoKey(rawUrl: string): string | null {
 
   return null;
 }
+
+// Identifiant d'une playlist YouTube (PL..., UU..., OLAK5uy_...).
+const PLAYLIST_ID = /^[A-Za-z0-9_-]{13,64}$/;
+
+// Playlist d'une serie : identifiant lu dans n'importe quel lien YouTube qui porte
+// list= (page de la playlist, ou video ouverte depuis la playlist). null sinon.
+export function extractPlaylistId(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl.trim());
+    const host = url.hostname.toLowerCase().replace(/^(www\.|m\.)/, "");
+    const list = url.searchParams.get("list");
+    return (host === "youtube.com" || host === "youtu.be") && list && PLAYLIST_ID.test(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+// Adresse canonique d'une playlist : c'est elle qui est enregistree (video_url),
+// et extractVideoKey en tire la cle anti-doublon.
+export const playlistUrl = (id: string) => `https://www.youtube.com/playlist?list=${id}`;
+export const episodeUrl = (id: string) => `https://www.youtube.com/watch?v=${id}`;
 
 // Adresse de retour apres connexion (parametre ?next=) : uniquement un chemin
 // interne. Tout le reste (URL absolue, « //hote », antislash, « @hote » colle a

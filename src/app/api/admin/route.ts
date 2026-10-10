@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
 
   if (tab === "films") {
     const { data: pending } = await admin.from("projects")
-      .select("id, title, slug, category, year, video_url, poster_url, preview_url, profile_id, status, created_at")
+      .select("id, title, slug, category, year, video_url, poster_url, preview_url, episode_count, episodes, profile_id, status, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 

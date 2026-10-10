@@ -314,7 +314,7 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
     let query = supabase
       .from("projects")
       .select(`
-        id, title, slug, description, category, year, video_url, profile_id, created_at, poster_url, preview_url,
+        id, title, slug, description, category, year, video_url, profile_id, created_at, poster_url, preview_url, episode_count,
         profiles!projects_profile_id_fkey ( is_suspended ),
         ${TEAM_SELECT}
       `)
@@ -365,6 +365,7 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
         created_at: project.created_at,
         poster_url: project.poster_url ?? null,
         preview_url: project.preview_url ?? null,
+        episode_count: project.episode_count ?? null,
         // Realisateur : credits de realisation du film (chaine vide si aucun),
         // plus le Responsable. Remplace owner_name / owner_slug.
         director_name: teamOf(project.id).director_name,
