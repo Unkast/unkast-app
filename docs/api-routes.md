@@ -291,3 +291,11 @@ Back-office complet (contredit l'ancienne note « pas de route admin »). GET pa
 > **Lot 9 (10/2026) — garde admin.** `getAdminId()` exige `is_admin`, une session ouverte par mot de passe et la double authentification (aal2) : sans cela `/api/admin` repond 403. `getActiveUser()` repond 403 a un compte `account_type='admin'` (il ne publie ni n'ecrit). Avec le cookie `unkast_view=visitor`, toutes les routes (sauf `/api/admin`) repondent comme a un visiteur non connecte.
 
 > **Credits (10/2026).** `DELETE /api/dashboard/credits?id=<credit>` : la personne retire elle-meme un credit a son nom (service role, limite a `profile_id` = session). `PATCH /api/credits/[id]` insere le credit accepte en service role apres verification du gestionnaire. `PUT /api/dashboard/profile` ecrit `profile_roles` en service role. `lib/project-edit.ts` (`markProjectEdited`) note la modification pour la liste admin, a la place du declencheur qui ne voit pas le service role.
+
+> **Corrections des audits du 09/10/2026 (commit `1ebc3b4`).**
+> - `POST /api/billing/checkout` : 403 tant que `NEXT_PUBLIC_BILLING_ENABLED` n'est pas `true`, sauf admin (meme regle que la page `/pro`, appliquee cote serveur).
+> - `DELETE /api/notifications/register` `{ token }` : detache l'appareil du compte, appelee a la deconnexion (`AppShell.handleSignOut`). Le jeton est garde cote client (`unkast_push_token`) et renvoye a la reconnexion.
+> - `PATCH /api/credits/[id]` et `PATCH /api/invitations/project/[id]` : une seule decision, 409 si la demande ou l'invitation n'est plus `pending`. L'invitation repasse en attente si le credit ne peut pas etre cree.
+> - Textes libres (`isText`, `lib/api.ts`) : message 4 000 caracteres, description de signalement et mot d'accompagnement 1 000, role d'une invitation ou d'une demande de credit 80. Le role reste un texte libre (decision du 10/10/2026).
+> - Limites de debit : `POST /api/invitations/project` 30 par heure et par compte, `POST /api/credits/request` 20 par heure.
+> - En-tetes de securite poses dans `next.config.ts` pour toutes les reponses (cadre externe interdit, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Powered-By` retire).

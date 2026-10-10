@@ -54,11 +54,6 @@ export function usePushNotifications(isLoggedIn: boolean) {
           console.warn("Push registration error:", error);
         });
 
-        // Handle notification received while app is open
-        PushNotifications.addListener("pushNotificationReceived", (notification) => {
-          console.log("Push received:", notification);
-        });
-
         // Handle notification tap (app was in background)
         PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
           const data = action.notification.data;
