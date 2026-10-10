@@ -192,7 +192,7 @@ export default async function Home() {
       )}
 
       {/* CONTENT ROWS */}
-      <div className="space-y-8 lg:space-y-12 py-6 lg:py-10">
+      <div className="space-y-8 lg:space-y-12 pt-4 pb-6 md:pt-6 lg:py-10">
         {recent.length > 5 && (
           <Section>
             <FilmRow title="Projets récents" href="/recherche?type=projets" items={recent.slice(5).map(toRowItem)} />

@@ -64,8 +64,8 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
   const fade = { duration: reduced ? 0.15 : 0.3 };
 
   return (
-    <section aria-label="À la une" className="px-4 pt-4 lg:px-10 lg:pt-7">
-      <div className="relative isolate overflow-hidden rounded-panel-lg border border-white/[0.11] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_40px_110px_rgba(0,0,0,0.55)] sm:p-[22px] xl:px-11 xl:pb-[26px] xl:pt-11">
+    <section aria-label="À la une" className="px-2 pt-2 md:px-4 md:pt-4 lg:px-10 lg:pt-7">
+      <div className="relative isolate overflow-hidden rounded-panel-lg border border-white/[0.11] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_40px_110px_rgba(0,0,0,0.55)] md:p-[22px] xl:px-11 xl:pb-[26px] xl:pt-11">
         {/* Lumiere : l'affiche de chaque film, tres floutee ; seule celle du film en cours est visible */}
         {films.map((p, i) => {
           const src = image(p);
@@ -82,10 +82,11 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
         {/* Voile sombre, plus fort a gauche (lisibilite du texte) */}
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(10,10,12,0.94)_0%,rgba(10,10,12,0.7)_38%,rgba(10,10,12,0.25)_100%)]" />
 
-        <div className="grid items-center gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-12">
+        <div className="grid items-center gap-3 md:gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-12">
           {/* Texte. @container : les boutons s'allegent quand la colonne est etroite, pour
-              que les fleches restent sur leur ligne. */}
-          <div className="@container flex min-w-0 flex-col gap-[18px]">
+              que les fleches restent sur leur ligne.
+              Mobile (< md) : titre sur 1 ligne et une ligne d'infos, rien d'autre. */}
+          <div className="@container flex min-w-0 flex-col gap-[18px] max-md:px-4">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={active.id}
@@ -93,21 +94,22 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={fade}
-                className="flex min-w-0 flex-col gap-[18px]"
+                className="flex min-w-0 flex-col gap-1.5 md:gap-[18px]"
               >
-                <p className="flex items-center gap-2.5 text-xs font-semibold tracking-[0.16em] text-text-secondary">
+                <p className="flex items-center gap-2.5 text-xs font-semibold tracking-[0.16em] text-text-secondary max-md:hidden">
                   <span className="text-text-primary">À LA UNE</span>
                   <span className="font-mono">{two(activeIndex + 1)} / {two(count)}</span>
                 </p>
-                {/* Titre : 2 lignes au plus, hauteur de 2 lignes toujours reservee */}
-                <h2 className="text-sheen line-clamp-2 h-[2.2em] text-[34px] font-extrabold leading-[1.1] tracking-[-0.035em] sm:text-[40px] xl:text-5xl 2xl:text-[64px]">
+                {/* Titre : 2 lignes au plus, hauteur de 2 lignes toujours reservee (1 ligne en mobile) */}
+                <h2 className="text-sheen truncate text-[22px] font-extrabold leading-[1.25] tracking-[-0.035em] md:line-clamp-2 md:h-[2.2em] md:whitespace-normal md:text-[40px] md:leading-[1.1] xl:text-5xl 2xl:text-[64px]">
                   {active.title}
                 </h2>
-                <FilmMeta size="md" category={active.category} author={active.director_name} year={active.year} />
+                <FilmMeta size="md" category={active.category} author={active.director_name} year={active.year} className="max-md:hidden" />
+                <FilmMeta category={active.category} year={active.year} className="md:hidden" />
                 {/* Description : 2 lignes reservees, meme sans texte */}
-                <p className="line-clamp-2 h-[3.1em] max-w-[440px] text-[17px] leading-[1.55] text-text-primary/85">{active.description}</p>
+                <p className="line-clamp-2 h-[3.1em] max-w-[440px] text-[17px] leading-[1.55] text-text-primary/85 max-md:hidden">{active.description}</p>
                 {/* Ligne equipe : toujours presente, vide si personne n'est au generique */}
-                <div className="flex h-9 items-center gap-2.5 text-[13px] text-text-secondary">
+                <div className="hidden h-9 items-center gap-2.5 text-[13px] text-text-secondary md:flex">
                   {active.team_size > 0 && (
                     <>
                       <div className="flex">
@@ -129,8 +131,9 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
               </motion.div>
             </AnimatePresence>
 
-            {/* Boutons et fleches sur une seule ligne, fleches calees a droite */}
-            <div className="mt-1.5 flex items-center gap-2">
+            {/* Boutons et fleches sur une seule ligne, fleches calees a droite.
+                Absents en mobile : appuyer sur l'affiche ouvre le film, glisser change de film. */}
+            <div className="mt-1.5 hidden items-center gap-2 md:flex">
               <Button size="sm" href={`/projet/${active.slug}`} onClick={() => markFilmClick(shareKey)} className="shrink-0">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="hidden @[350px]:block"><path d={PLAY_ICON} /></svg>
                 Voir le film
@@ -153,9 +156,10 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
           </div>
 
           {/* Cadre fixe en 16:9 (en haut sur mobile) : l'affiche y tient entiere.
-              Glisser du doigt pour changer de film. */}
+              Glisser du doigt pour changer de film. Mobile : largeur bornee pour que le
+              bloc entier (affiche + 6rem de texte et de barres) ne depasse jamais 50svh. */}
           <div
-            className="relative aspect-video max-xl:order-first"
+            className="relative aspect-video w-full max-xl:order-first max-md:mx-auto max-md:max-w-[calc((50svh-6rem)*16/9)]"
             onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
             onTouchEnd={(e) => {
               if (touchStartX.current === null) return;
@@ -182,7 +186,7 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                     shareKey={shareKey}
                     sizes="(max-width: 1280px) 100vw, 60vw"
                     priority={activeIndex === 0}
-                    className="rounded-[20px] shadow-[0_50px_120px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.16)]"
+                    className="md:rounded-[20px] shadow-[0_50px_120px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.16)]"
                   >
                     <span aria-hidden="true" className="glass-strong absolute left-1/2 top-1/2 flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill bg-black/35 transition-transform duration-base ease-glass group-hover:scale-105 xl:size-[68px]">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}><path d={PLAY_ICON} /></svg>
@@ -195,9 +199,9 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
         </div>
 
         {/* Les films a la une : chaque affiche dans un cadre 16:9, barre de
-            progression sur le film en cours */}
+            progression sur le film en cours. Mobile : les barres seules, sur une ligne. */}
         {count > 1 && (
-          <div className="mt-6 grid grid-cols-2 gap-3.5 border-t border-white/[0.08] pt-[22px] sm:grid-cols-3 lg:grid-cols-5 xl:mt-[34px]">
+          <div className="flex gap-1.5 px-4 pb-2 pt-1 md:mt-6 md:grid md:grid-cols-3 md:gap-3.5 md:border-t md:border-white/[0.08] md:px-0 md:pb-0 md:pt-[22px] lg:grid-cols-5 xl:mt-[34px]">
             {films.map((p, i) => {
               const isActive = i === activeIndex;
               return (
@@ -207,13 +211,13 @@ export default function HeroCarousel({ projects }: HeroCarouselProps) {
                   onClick={() => goTo(i)}
                   aria-label={`À la une : ${p.title}`}
                   aria-current={isActive}
-                  className={`flex min-w-0 flex-col gap-2 text-left transition-opacity duration-base ease-glass hover:opacity-100 ${isActive ? "opacity-100" : "opacity-55"}`}
+                  className={`flex min-w-0 flex-1 flex-col gap-2 text-left transition-opacity duration-base ease-glass hover:opacity-100 max-md:py-2 ${isActive ? "opacity-100" : "opacity-55"}`}
                 >
                   <span className="block h-[3px] w-full overflow-hidden rounded-sm bg-white/[0.14]">
                     {isActive && <span key={activeIndex} className="hero-progress block h-full bg-lime shadow-[0_0_10px_var(--color-lime)]" />}
                   </span>
-                  <FilmPoster src={image(p)} alt="" framed sizes="(max-width: 1024px) 50vw, 220px" className="rounded-[10px]" />
-                  <span className="w-full min-w-0">
+                  <FilmPoster src={image(p)} alt="" framed sizes="(max-width: 1024px) 33vw, 220px" className="rounded-[10px] max-md:hidden" />
+                  <span className="w-full min-w-0 max-md:hidden">
                     <span className="block truncate text-[13px] font-semibold text-text-primary">{p.title}</span>
                     <span className="block truncate text-xs text-text-secondary">{CATEGORY_LABELS[p.category]}</span>
                   </span>

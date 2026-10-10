@@ -164,7 +164,11 @@ FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   lignes reservees, ligne equipe toujours presente. Lumiere =
   l'affiche tres floutee (.film-ambient) sous un voile sombre, puis les 5 films en vignettes avec
   barre de progression (8 s par film, minuteur JS + .hero-progress). Le carrousel 3D mobile et
-  HeroPlayer.tsx sont supprimes. FilmRow (client) = rangee avec fleches et fondu du bord droit
+  HeroPlayer.tsx sont supprimes. Mobile (< 768 px, 10/10/2026) : bloc compact, 50svh au plus et
+  hauteur constante : affiche 16:9 bord a bord du bloc, titre sur 1 ligne, FilmMeta (categorie,
+  annee), puis les barres de progression seules sur une ligne (appui = aller au film). Pas de
+  libelle A LA UNE, de description, d'equipe, de boutons ni de vignettes : appuyer sur l'affiche
+  ouvre le film, glisser change de film. Marges reduites (8 px). FeedSkeleton suit. FilmRow (client) = rangee avec fleches et fondu du bord droit
   (masque). RestoreFilmScroll remet le defilement du <main> au retour d'un film.
   [persiste dans] profiles, projects, profile_roles, project_credits (lecture)
   Verre liquide (chantier 4, 07/10/2026) : infos du film en text-sheen + pilule categorie a point
