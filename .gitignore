@@ -51,6 +51,7 @@ android/capacitor-cordova-android-plugins/
 
 # outils perso Claude Code
 .claude/skills/
+.agents/
 
 # signature Android (ne jamais versionner)
 *.jks
