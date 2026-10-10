@@ -3,6 +3,7 @@ import DashboardClient from "./DashboardClient";
 
 export const metadata: Metadata = {
   title: "Dashboard — Unkast",
+  robots: { index: false, follow: false },
 };
 
 export default function DashboardPage() {

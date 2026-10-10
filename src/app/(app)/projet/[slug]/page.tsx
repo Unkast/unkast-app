@@ -251,6 +251,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const { project } = result;
+  const isPublic = project.visibility === "public";
   const description = project.description
     ? project.description.slice(0, 160)
     : `${project.title} — un projet ${CATEGORY_LABELS[project.category]} sur Unkast`;
@@ -263,7 +264,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       type: "video.other",
       locale: "fr_FR",
+      // Image du film dans l'apercu d'un lien partage : films publics seulement.
+      ...(isPublic && project.poster_url && { images: [project.poster_url] }),
     },
+    ...(isPublic && project.poster_url && {
+      twitter: { card: "summary_large_image" as const, images: [project.poster_url] },
+    }),
     // Film « membres seulement » ou dépublié : jamais indexé.
     ...((project.visibility === "members" || project.visibility === "unpublished") && {
       robots: { index: false, follow: false },

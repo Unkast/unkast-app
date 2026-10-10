@@ -416,6 +416,14 @@ UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — H
          notFound() si NODE_ENV=production (donc 404 aussi sur les previews Vercel), non liee.
 ```
 
+### Referencement (10/10/2026)
+
+- `src/app/robots.ts` : `/robots.txt`. Ferme `/api/`, `/admin`, `/auth/callback`, `/dev/`. Les pages privees restent explorables expres : elles portent `noindex`, qu'un robot ne lit que s'il peut charger la page.
+- `src/app/sitemap.ts` : `/sitemap.xml`, recalcule au plus une fois par heure. Feed, recherche, categories, films publics approuves (Responsable approuve et non suspendu) et profils approuves. Lecture avec la cle publique sans session : la RLS repond comme a un visiteur.
+- `src/lib/site.ts` : `SITE_URL` (`NEXT_PUBLIC_SITE_URL`, sinon `https://app.unkast.com`), aussi `metadataBase` du layout racine.
+- `noindex` : layouts serveur dedies pour les pages clientes (`messages`, `suspended`, `compte-introuvable`, `pro/success`, `pro/cancel`, `auth/confirm`), et metadonnees de `/moi`, `/dashboard`, `/admin`.
+- Image de partage : `generateMetadata` de `projet/[slug]` ajoute `poster_url` (Open Graph et carte Twitter) pour les films publics seulement.
+
 ## Notes importantes (corrigees — etat reel du code)
 
 1. **Des hooks custom existent** — `src/hooks/` contient `useUserStatus` et `usePushNotifications`. *(ancienne note « pas de hooks custom » : fausse)*

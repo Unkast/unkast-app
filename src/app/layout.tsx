@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -26,6 +27,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // Base des adresses absolues (images de partage).
+  metadataBase: new URL(SITE_URL),
   title: "Unkast — Découvre l'œuvre. Trouve le talent.",
   description:
     "La plateforme où les professionnels du cinéma et de l'audiovisuel français se font découvrir à travers leurs réalisations.",
