@@ -6,11 +6,18 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
+Dernière mise à jour : 31 octobre 2026 (suppression de compte par le membre : route, bouton, page publique, textes légaux ; migration 20261101 exécutée) ; précédemment 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
 
 ---
 
 ## ✅ Terminé
+
+### Suppression de compte par le membre *(31 octobre 2026, RGPD et Google Play)*
+- [x] `20261101_account_deletion.sql` exécutée en prod : nom figé au générique = nom affiché (`display_name`), fonction `solo_projects_of`, films solo supprimés avec le compte, `reports.reporter_id` en `ON DELETE SET NULL`. Rollback : `20261101_account_deletion_rollback.sql`.
+- [x] `POST /api/account/delete` (admin refusé avant la comparaison de l'email, suspendu refusé, résiliation Stripe, Storage, lignes à l'email, email de confirmation), bouton dans `/moi` onglet Compte, message « Compte supprimé » sur l'accueil.
+- [x] Page publique `/supprimer-mon-compte` (adresse pour Google Play), liée depuis les liens légaux ; `/confidentialite` sections 6 et 7 et `/cgu` section 2 mises à jour, `TERMS_VERSION` inchangé.
+- [ ] Test du bouton sur un compte de test, ordinateur et téléphone (jamais le bon email sur un vrai compte), puis test `begin … rollback` de la migration.
+- [ ] Renseigner l'adresse `/supprimer-mon-compte` dans la Play Console (formulaire « Suppression de compte »).
 
 ### Audit sécurité — écritures directes et comptes de démo *(24 septembre 2026)*
 - [x] `20260924_ban_demo_accounts.sql` exécuté en prod : les 6 comptes `*@demo.com` bannis, sessions et refresh tokens supprimés (C3).

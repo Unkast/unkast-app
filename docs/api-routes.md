@@ -40,6 +40,7 @@
 | `/api/dashboard/credits` | GET | `projects`, `credit_requests`, `project_credits`, `profiles` | — |
 | `/api/avatar` | POST, DELETE | `profiles` | `profiles`, Storage `avatars` |
 | `/api/logout` | POST | — | — |
+| `/api/account/delete` | POST | `profiles`, `project_claims`, `projects` (RPC `solo_projects_of`) | Auth (`deleteUser`, cascades et triggers), Storage `avatars`, `posters`, `claims`, `invitations`, `contact_requests`, `waitlist`, `rate_limits` ; Stripe (résiliation) ; Resend. Voir le détail plus bas |
 | `/api/messages` | POST, GET | `profiles`, `conversations`, `messages` | `conversations`, `messages` |
 | `/api/messages/[conversationId]` | GET | `conversations`, `messages`, `profiles` | `messages` (is_read) |
 | `/api/messages/conversation` | POST | `conversations`, `profiles` | `conversations` |
@@ -197,7 +198,7 @@ Routes existantes modifiées : `/api/signup` (film via `publish_project`, répon
 
 **Contrôles serveur du profil** (`PATCH /api/dashboard/profile`, `/api/signup`) : un prénom envoyé ne peut pas être vide (400 `first_name_required`) ; les métiers passent par `checkProfileRoles` (`src/lib/constants.ts`) : tableau de textes, 5 au plus, pris dans la liste officielle `ALL_ROLES` (400 `roles_invalid`). Un métier hors liste déjà présent sur le profil est toléré, il ne peut plus être ajouté. Le sélecteur de métiers du profil (`RoleSelector` avec `allowCustom={false}`) ne propose plus d'intitulé libre ; le rôle au générique d'un film reste libre.
 
-**Pages légales** (`/cgu`, `/confidentialite`, `/mentions-legales`, publiques) : `/api/signup` exige
+**Pages légales** (`/cgu`, `/confidentialite`, `/mentions-legales`, `/supprimer-mon-compte`, publiques) : `/api/signup` exige
 `terms_accepted: true` (400 `terms_required` sinon) et enregistre version et date ;
 `POST /api/terms/accept` `{ accepted: true }` fait de même pour un membre connecté (écran « Avant de
 continuer » d'`AppShell`, affiché tant que `terms_version` diffère de `TERMS_VERSION`).
@@ -242,6 +243,20 @@ Cree un projet. **Plafond plan-aware** (lu cote serveur) : **3 films si `plan = 
 
 ### POST/DELETE /api/avatar
 Upload / suppression de la photo de profil (Storage bucket `avatars`). **Pipeline image** : compression **navigateur** d'abord (`AvatarUpload` → canvas **512×512 WebP q0.8** ≈ 30–60 Ko, via `lib/image-compress.ts`) + **plafond d'entrée 10 Mo** côté client. **Garde-fou serveur** : type ∈ {jpeg,png,webp} + **taille ≤ 3 Mo** (vrai rempart anti-saturation, valide avant chargement en mémoire). Stocke `${user.id}/avatar.webp` (`upsert`), supprime l'ancien `avatar.jpg` legacy, met à jour `profiles.avatar_url` (`+ ?t=timestamp`). DELETE retire `.webp` + `.jpg` et remet `avatar_url` à null. *(Les affiches `poster_url`/`preview_url` ne sont PAS uploadées par l'utilisateur — `lib/image-compress.ts` est prêt à les couvrir le jour où la feature sera ajoutée.)*
+
+### POST /api/account/delete *(31/10/2026, migration `20261101_account_deletion.sql`)*
+Décisions : [ADR 0017](adr/0017-suppression-de-compte.md).
+Le membre connecté supprime son propre compte (RGPD, Google Play). Corps `{ email }`. Le compte vient **toujours de la session**, jamais du body ; l'email ne sert qu'à confirmer l'intention. Ordre :
+1. Session (`getUser`) sinon **401**. En-tête `Origin` égal à l'adresse appelée sinon **403**. Limite `account-delete:{id}` 5/h sinon **429**.
+2. Email saisi (trim + minuscules) égal à l'email Auth (aussi pour un compte Google) sinon **400** `email_mismatch`.
+3. Compte admin (`is_admin` ou `account_type='admin'`) **403**. Compte suspendu **403** (décision du 30/10/2026 : il passe par la demande par email).
+4. Stripe : tout abonnement du `stripe_customer_id` non terminé est résilié tout de suite, sans remboursement. Échec = **502**, rien n'est supprimé. Le client Stripe est gardé (factures). Le webhook ignore ensuite ce client inconnu.
+5. Lecture avant suppression : films solo (`solo_projects_of`, même règle que le trigger) et chemins des justificatifs de ses revendications. Échec = **503**, rien n'est supprimé.
+6. `auth.admin.deleteUser(id)`. En base : profil en cascade, `keep_credit_name_on_profile_delete` (ses crédits chez les autres gardent son nom affiché), `transfer_projects_on_profile_delete` (films solo supprimés, les autres au co-gestionnaire le plus ancien ou dépubliés sans Responsable). Voir [database.md](database.md).
+7. Nettoyage au mieux, jamais d'erreur renvoyée au membre (logué `[account-delete]`) : `avatars/{id}/`, `posters/{film}/` et `claims/{film}/` **seulement pour les films qui n'existent plus** après la suppression (un crédit ajouté entre-temps garde le film et ses fichiers), justificatifs de ses revendications, lignes à son email dans `invitations`, `contact_requests` (`from_email`) et `waitlist` (`ilike` avec `%` et `_` échappés), clés `rate_limits` `*:{id}`, `pw-reset:{email}`, `resend-confirm:{email}`.
+8. Email `sendAccountDeletedEmail` (`lib/email.ts`) à l'adresse lue avant, puis `signOut({ scope: "local" })` pour effacer les cookies.
+
+Appelée par `MoiClient` (onglet Compte, pop-up `ConfirmDialog` avec champ email). Après succès : déconnexion locale, `/api/logout`, retour sur `/?compte=supprime` (message « Compte supprimé » dans `WelcomeClient`).
 
 ### GET /api/me
 Statut du visiteur sur **son propre** compte : `{ is_admin, plan, suspended_reason, pro_grant_type, pro_grant_expires_at, has_stripe_customer }`. Authentifie via le client utilisateur (cookies de session), puis lit ces colonnes via **`createAdminClient()`** scope sur `user.id` — `is_admin` et `suspended_reason` font partie des **20 colonnes revoquees** pour `anon`/`authenticated` (voir [database.md](database.md#row-level-security-rls)) et ne sont plus lisibles depuis le navigateur. `pro_grant_type`/`pro_grant_expires_at` (2026-08-10) alimentent le bandeau « Pro offert » de `/pro`. `has_stripe_customer` est une valeur **dérivée** (`!!stripe_customer_id`, pas la colonne brute) qui décide si `/pro` peut proposer « Gérer mon abonnement » sans se heurter au 400 de `api/billing/portal`. **Volontairement sans `getActiveUser`** : la page `/suspended` doit rester consultable par un compte suspendu. Consommee par `pro/page.tsx` et `suspended/page.tsx`. 401 si non connecte.

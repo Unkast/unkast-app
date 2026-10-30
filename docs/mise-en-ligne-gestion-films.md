@@ -283,10 +283,12 @@ A tester apres le deploiement (etape A seule), puis de nouveau apres B :
 - [ ] **Noms reels : etape B a executer** (voir « 4 octies »). Tant qu'elle n'est pas passee,
       les vrais noms restent lisibles en base avec la cle publique.
 - [ ] Refuser une demande de credit sur un film non visible.
-- [ ] **Bouton « Supprimer mon compte ».** Pendant la beta, la suppression se demande par email
-      (CGU et politique de confidentialite). Un bouton dans l'app est a faire avant le lancement
-      public : c'est une attente du RGPD, et **une obligation de Google Play** pour toute app qui
-      permet de creer un compte (suppression depuis l'app et depuis une page web).
+- [x] **Bouton « Supprimer mon compte »** *(code ecrit le 31/10/2026, migration `20261101`
+      executee)*. Bouton dans /moi, onglet Compte (`POST /api/account/delete`), page publique
+      `/supprimer-mon-compte` (a donner a Google Play), CGU et politique de confidentialite
+      mises a jour (`TERMS_VERSION` inchange). **Reste a faire avant de cocher definitivement :**
+      test du bouton sur un compte de test (ordinateur et telephone), test `begin ... rollback`
+      de la migration, puis deploiement. Aucune suppression reelle n'a ete lancee.
 - [ ] **Inscription recruteur par Google.** La finalisation Google ne propose que Talent et
       Createur ; un recruteur doit s'inscrire par email. A ouvrir si besoin, avec les champs
       societe et fonction et la validation admin.
@@ -299,7 +301,9 @@ A tester apres le deploiement (etape A seule), puis de nouveau apres B :
 - [ ] **Durees de conservation annoncees, pas encore automatisees.** La politique promet la
       suppression des donnees 30 jours apres celle du compte, des justificatifs apres 1 an et des
       journaux techniques apres 12 mois. Rien dans le code ne le fait tout seul aujourd'hui :
-      prevoir la procedure (manuelle ou planifiee), et un moyen de supprimer son compte.
+      prevoir la procedure (manuelle ou planifiee). La suppression du compte est desormais
+      **immediate** (bouton dans l'app) ; seules restent les sauvegardes (30 jours), les
+      justificatifs de revendication non lies a un compte supprime (1 an) et les journaux (12 mois).
 - [ ] **Bandeau de cookies** : inutile tant qu'il n'y a ni mesure d'audience ni pixel
       publicitaire, et que les lecteurs video ne se chargent qu'au clic. A reconsiderer des
       qu'un tel outil est ajoute.

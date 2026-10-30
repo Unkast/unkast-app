@@ -119,6 +119,7 @@
 | `MotDePasseOublieClient` → `api/auth/password-reset` ; `NouveauMotDePasseClient` → `api/auth/update-password` | [appelle] | `lib/email.ts` (`sendPasswordResetEmail`) ; `lib/password.ts` (aussi lu par `api/signup`) |
 | `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/Select`, `ui/Toast`, `ui/Toggle` |
 | `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field` |
+| `MoiClient` (onglet Compte) | [appelle] | `POST /api/account/delete` → `lib/stripe.ts` (résiliation), RPC `solo_projects_of`, `auth.admin.deleteUser` (triggers `keep_credit_name_on_profile_delete`, `transfer_projects_on_profile_delete`), Storage `avatars` `posters` `claims`, `lib/email.ts` (`sendAccountDeletedEmail`) ; `ConfirmDialog` (`children`, `confirmDisabled`) ; puis `WelcomeClient` (`/?compte=supprime`, `ui/Toast`) |
 | `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
 | `messages/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard`, `Avatar` |
 | `messages/[id]/page.tsx` | [utilise] | `ui/Button` |

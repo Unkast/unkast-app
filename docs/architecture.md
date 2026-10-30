@@ -159,6 +159,7 @@ HOOK  usePushNotifications (src/hooks/usePushNotifications.ts) — enregistremen
 
 ```
 FEATURE  Welcome / racine — / (src/app/page.tsx + WelcomeClient.tsx)
+  /?compte=supprime : Toast « Compte supprimé » (retour de la suppression du compte), adresse nettoyee.
 
 FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   Bloc « A la une » + rangees par categorie + talents a decouvrir.
@@ -302,6 +303,10 @@ FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient + RecruitmentSpace 
   portee dans <body> et calee au-dessus de la navigation mobile (68 px + safe area, 100 px si
   app-installed, 24 px en desktop).
   [utilise] RoleSelector, AvatarUpload, Avatar, ui/*, motion.tsx
+  Suppression du compte (31/10/2026) : onglet Compte, lien rouge discret sous « Se deconnecter »
+  (absent pour le compte admin), ConfirmDialog rouge avec liste de ce qui part et reste et champ
+  « Tape ton email » (bouton grise tant que l'email Auth ne correspond pas).
+  [appelle] POST /api/account/delete
 
 FEATURE  Messagerie — /messages, /messages/[id] (src/app/(app)/messages/)
   Conversations + messages. Quotas (5 conv/j, anti-coordonnees, relance 48h).
@@ -381,7 +386,7 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/app/(app)/rejoindre/finaliser` | FEATURE | fin de l'inscription par Google (type de compte, nom, nom de scène, métiers, ville) ; enregistre par `PATCH /api/dashboard/profile`, ne crée jamais de compte |
 | `src/lib/legal.ts` | UTILITY | `TERMS_VERSION`, informations de la société à remplir (`LEGAL`), liens des pages légales |
 | `src/components/LegalPage.tsx` | UTILITY | mise en page des trois pages légales ; `Info` surligne toute information de société non remplie |
-| `src/app/(app)/cgu`, `confidentialite`, `mentions-legales` | FEATURE | pages légales de la bêta, publiques |
+| `src/app/(app)/cgu`, `confidentialite`, `mentions-legales`, `supprimer-mon-compte` | FEATURE | pages légales de la bêta, publiques. `supprimer-mon-compte` (31/10/2026) : comment supprimer son compte, ce qui part et ce qui reste, délais, alternative par email ; adresse donnée à Google Play. Liée via `LEGAL_LINKS` (`lib/legal.ts`) : pied de page, barre des pages légales, liste de /moi, exemptions des CGU et de la finalisation Google |
 | `src/components/LegalLinks.tsx` | UTILITY | liens vers les pages légales (accueil, connexion, inscription, /moi) |
 | `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée. Série : `fetchPlaylistMeta` (API YouTube Data v3, `YOUTUBE_API_KEY`) et `playlistRefusal` (messages de refus) |
 | `src/app/(app)/moi/PosterUpload.tsx` | SUB | image du film : consignes de format avant le choix du fichier, recadrage 16:9 avec aperçu en direct (petite carte, à la une, page du film), avertissement sous 1280 × 720 px (envoi permis) et pour une image verticale, compression dans le navigateur (sortie 1920 × 1080 au plus), retour à l'image de la vidéo |
