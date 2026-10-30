@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { EnterItem, EnterList } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
+import PasswordInput from "@/components/PasswordInput";
 import GlassCard from "@/components/ui/GlassCard";
 import LegalLinks from "@/components/LegalLinks";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
@@ -108,14 +110,20 @@ export default function ConnexionClient({ next }: { next?: string }) {
               placeholder="lucas@example.com"
             />
 
-            <Field
+            {/* Aucune regle ici (lib/password.ts) : un ancien mot de passe, meme avec espace, doit passer. */}
+            <PasswordInput
               label="Mot de passe"
-              type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Ton mot de passe"
             />
+            <div className="-mt-2 text-right">
+              <Link href="/mot-de-passe-oublie" className="text-[13px] text-text-secondary underline-offset-4 hover:text-text-primary hover:underline">
+                Mot de passe oublié ?
+              </Link>
+            </div>
 
             {error && (
               <div

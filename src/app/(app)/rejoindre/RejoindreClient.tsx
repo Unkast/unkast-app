@@ -26,6 +26,8 @@ import Toggle from "@/components/ui/Toggle";
 import LegalLinks, { TermsCheckbox } from "@/components/LegalLinks";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { TERMS_VERSION } from "@/lib/legal";
+import { PASSWORD_RULES, passwordError } from "@/lib/password";
+import PasswordFields from "@/components/PasswordFields";
 
 // Compte créé mais film non créé : message selon video_skipped_reason (api/signup).
 const VIDEO_SKIPPED_MESSAGES: Record<string, string> = {
@@ -62,16 +64,15 @@ const ACCOUNT_CARD =
 const ACCOUNT_CARD_SELECTED = "border-lime/60 shadow-[0_0_24px_rgba(200,255,0,0.15)]";
 
 function passwordStrength(pw: string): { label: string; color: string; width: string } {
-  if (pw.length < 6) return { label: "Trop court", color: "bg-red-500", width: "20%" };
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { label: "Faible", color: "bg-orange-500", width: "40%" };
-  if (score === 2) return { label: "Moyen", color: "bg-yellow-500", width: "60%" };
-  if (score === 3) return { label: "Bon", color: "bg-lime", width: "80%" };
-  return { label: "Fort", color: "bg-green-500", width: "100%" };
+  // Regle non respectee : la jauge avance avec les criteres remplis (detail dans
+  // la liste sous le champ, bouton Continuer bloque).
+  const met = PASSWORD_RULES.filter((r) => r.test(pw)).length;
+  if (met < PASSWORD_RULES.length) {
+    return { label: "Incomplet", color: met <= 2 ? "bg-red-500" : "bg-orange-500", width: `${Math.max(met, 1) * 15}%` };
+  }
+  // Regle respectee : « Fort » au-dela de 12 caracteres ou avec un caractere special.
+  if (pw.length >= 12 || /[^A-Za-z0-9]/.test(pw)) return { label: "Fort", color: "bg-green-500", width: "100%" };
+  return { label: "Bon", color: "bg-lime", width: "75%" };
 }
 
 interface SearchProject {
@@ -122,6 +123,7 @@ export default function RejoindreClient() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
 
   // Step 3
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -246,7 +248,7 @@ export default function RejoindreClient() {
 
   function canProceed(): boolean {
     if (step === 1) return !!accountType;
-    if (step === 2) return !!firstName && !!lastName && !!email && password.length >= 6;
+    if (step === 2) return !!firstName && !!lastName && !!email && !passwordError(password) && password === passwordConfirm;
     if (step === 3) return selectedRoles.length > 0;
     // 4A, 4B et 4C sont optionnelles. Seule exception : un film commencé (4A)
     // doit être complet pour partir, sinon « Passer cette étape ».
@@ -542,14 +544,12 @@ export default function RejoindreClient() {
                     )}
                   </div>
 
-                  <div>
-                    <Field
-                      label="Mot de passe"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Minimum 6 caractères"
-                    />
+                  <PasswordFields
+                    password={password}
+                    confirm={passwordConfirm}
+                    onPasswordChange={setPassword}
+                    onConfirmChange={setPasswordConfirm}
+                  >
                     {password.length > 0 && (
                       <div className="mt-2.5">
                         <div className="h-1.5 overflow-hidden rounded-pill bg-white/10">
@@ -561,7 +561,7 @@ export default function RejoindreClient() {
                         <p className="mt-1.5 text-[11px] text-text-secondary">{strength.label}</p>
                       </div>
                     )}
-                  </div>
+                  </PasswordFields>
                 </div>
               </GlassCard>
             )}

@@ -17,6 +17,7 @@ import { sendConfirmationEmail, sendAdminNewFilmEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/stripe";
 import { TERMS_VERSION } from "@/lib/legal";
 import { grantLaunchPro } from "@/lib/pro-plan";
+import { passwordError, weakPasswordMessage } from "@/lib/password";
 
 export async function POST(request: NextRequest) {
   // Anti-abus : max 5 créations de compte par heure et par IP.
@@ -59,6 +60,11 @@ export async function POST(request: NextRequest) {
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "Email invalide." }, { status: 400 });
   }
+  // Meme regle que le formulaire (lib/password.ts), controlee ici aussi.
+  const invalidPassword = passwordError(password);
+  if (invalidPassword) {
+    return NextResponse.json({ code: "password_invalid", error: invalidPassword }, { status: 400 });
+  }
   // CGU et politique de confidentialite : acceptation obligatoire, enregistree
   // avec sa version et sa date (profiles.terms_version / terms_accepted_at).
   if (terms_accepted !== true) {
@@ -94,6 +100,12 @@ export async function POST(request: NextRequest) {
     // ("already registered" révèle qu'un compte existe). Message générique
     // pour toutes les erreurs Auth, erreur réelle loguée côté serveur.
     console.error("[signup] generateLink error:", authError);
+    // Mot de passe refuse par Supabase (regle Auth) : message francais, sans risque
+    // d'enumeration (le refus porte sur le mot de passe, pas sur l'adresse).
+    if (authError?.code === "weak_password") {
+      const reasons = "reasons" in authError ? (authError.reasons as string[]) : undefined;
+      return NextResponse.json({ code: "password_invalid", error: weakPasswordMessage(reasons) }, { status: 400 });
+    }
     return NextResponse.json(
       { error: "Impossible de créer le compte. Vérifie tes informations, ou connecte-toi si tu as déjà un compte." },
       { status: 400 }

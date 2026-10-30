@@ -2,6 +2,7 @@ import "server-only";
 import { Resend } from "resend";
 import { siteUrl } from "@/lib/stripe";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
+import { formatDateParis } from "@/lib/utils";
 
 // Client email SERVEUR uniquement (clé via env, JAMAIS dans le code versionné).
 // Singleton paresseux, même esprit que lib/stripe.ts : on n'instancie qu'au
@@ -152,6 +153,45 @@ export async function sendConfirmationEmail(
   }
 }
 
+// --- Mot de passe oublie : lien vers /auth/nouveau-mot-de-passe --------------
+
+export async function sendPasswordResetEmail(params: { to: string; resetUrl: string }): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) return { sent: false, reason: "no_api_key" };
+
+  const text = [
+    "Tu as demandé à changer ton mot de passe Unkast.",
+    "",
+    "Choisis-en un nouveau avec ce lien :",
+    params.resetUrl,
+    "",
+    "Ce lien expire dans 1 heure. Si tu n'es pas à l'origine de cette demande, ignore cet email : ton mot de passe actuel reste valable.",
+    "",
+    "— Unkast",
+  ].join("\n");
+  const html = plainHtml(
+    "Change ton mot de passe",
+    [
+      `<p style="margin:0 0 24px 0;">Tu as demandé à changer ton mot de passe Unkast. Choisis-en un nouveau avec le bouton ci-dessous.</p>`,
+      `<a href="${params.resetUrl}" style="display:inline-block;background:#C8FF00;color:#0d0d0d;font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:14px 28px;">Choisir un nouveau mot de passe</a>`,
+      `<p style="margin:24px 0 0 0;font-size:12px;color:#666;">Ce lien expire dans 1 heure. Si tu n'es pas à l'origine de cette demande, ignore cet email : ton mot de passe actuel reste valable.</p>`,
+    ].join("")
+  );
+
+  try {
+    await resend.emails.send({
+      from: authFromAddress(),
+      to: params.to,
+      subject: "Change ton mot de passe Unkast",
+      html,
+      text,
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}
+
 // --- Email de rappel J-7 avant expiration d'un Pro offert (chantier grants,
 // cron /api/cron/pro-expiry, commit 5) ------------------------------------
 
@@ -173,11 +213,8 @@ export async function sendProExpiryReminderEmail(
   }
 
   const { to, fullName, expiresAt } = params;
-  const dateLabel = new Date(expiresAt).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  // Heure de Paris : le serveur (Vercel) est en UTC, l'echeance est a 23:59 Paris.
+  const dateLabel = formatDateParis(expiresAt);
 
   try {
     await resend.emails.send({
