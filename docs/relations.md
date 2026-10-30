@@ -113,6 +113,10 @@
 | **Refonte vague 2 (chantier 6, 08/10/2026)** | | |
 | `RejoindreClient` | [utilise] | `RoleSelector`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/ProgressSteps`, `ui/Select` |
 | `ConnexionClient`, `auth/confirm/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard` |
+| `MotDePasseOublieClient`, `NouveauMotDePasseClient` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard` ; `NouveauMotDePasseClient` et `RejoindreClient` → `PasswordFields` → `PasswordInput` (→ `ui/Field`) + `lib/password.ts` ; `ConnexionClient` → `PasswordInput` |
+| `auth/confirm/page.tsx`, `FinaliserClient` | [affiche] | `LaunchProWelcome` (si `isLaunchOfferOpen`, `lib/pro-plan.ts`) |
+| `MoiClient`, `profil/[slug]/page.tsx` | [utilise] | `isFoundingMember`, `launchProDaysLeft` (`lib/pro-plan.ts`) ; `Badge` variante `founder` ; `formatDateParis` (`lib/utils.ts`, aussi `pro/page.tsx`, `ProfileClient`, `AdminClient`, `lib/email.ts`) |
+| `MotDePasseOublieClient` → `api/auth/password-reset` ; `NouveauMotDePasseClient` → `api/auth/update-password` | [appelle] | `lib/email.ts` (`sendPasswordResetEmail`) ; `lib/password.ts` (aussi lu par `api/signup`) |
 | `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/Select`, `ui/Toast`, `ui/Toggle` |
 | `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field` |
 | `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |

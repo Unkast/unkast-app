@@ -422,7 +422,7 @@ pour l'intéressé, tant qu'il n'a pas un nouveau grant, dans l'historique `admi
 
 | Type | Échéance | Qui peut le poser | Comment il se retire |
 |---|---|---|---|
-| `launch` | **Obligatoire** (CHECK) — cadeau de lancement, pas de Pro à vie non voulu par oubli | Admin, via `grant_pro` (modal « Offrir Pro… », AdminClient). **Automatique à l'inscription** (email et Google, 2026-10-30) : `grantLaunchPro()` (`lib/pro-plan.ts`) pose `launch` avec l'échéance fixe `LAUNCH_PRO_UNTIL` = `2027-02-01 23:59:59+01` (CGU section 9), `pro_grant_granted_by` NULL. Plus rien n'est posé après cette date | Expire seul (cron), ou `revoke_pro_grant` |
+| `launch` | **Obligatoire** (CHECK) — cadeau de lancement, pas de Pro à vie non voulu par oubli | Admin, via `grant_pro` (modal « Offrir Pro… », AdminClient). **Automatique à l'inscription** (email et Google, 2026-10-30) : `grantLaunchPro()` (`lib/pro-plan.ts`) pose `launch` avec l'échéance fixe `LAUNCH_PRO_UNTIL` = `2027-02-01 23:59:59+01` (CGU section 9), `pro_grant_granted_by` NULL. Plus rien n'est posé après cette date. Dates affichées **en heure de Paris** (`formatDateParis`, `lib/utils.ts`). Le badge « Membre fondateur » ne lit aucune colonne de grant : il se déduit de `profiles.created_at` (`isFoundingMember`, `lib/pro-plan.ts`, comptes créés jusqu'à la fin de l'offre) et reste après l'expiration du Pro | Expire seul (cron), ou `revoke_pro_grant` |
 | `vip` | **Libre** — `null` = à vie, une date reste possible pour une durée longue déterminée | Admin, via `grant_pro` | `revoke_pro_grant`, ou expire si une échéance avait été posée |
 
 > ⚰️ **Un troisième type, `recruiter`, a existé du 10/08/2026 (création, migration

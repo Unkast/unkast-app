@@ -188,6 +188,8 @@ FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
 
 FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server + ProfileClient]
   Fetch profil approuve + roles + projets + credits. Bouton contact + partage.
+  Badge « Membre fondateur » (30/10/2026) : page.tsx derive `show_founder_badge` de
+  `isFoundingMember(created_at)` (compte cree jusqu'a la fin du 1er fevrier 2027), sans colonne.
   [utilise] ProfileClient, VideoEmbed, ContactModal, ReportModal
   Verre liquide (chantier 4) : colonne gauche en panneau .glass (toujours lg:sticky), avatar
   112 px avec halo citron, Badge Disponible / Recruteur verifie (pas de badge Pro : `plan` n'est
@@ -212,6 +214,10 @@ FEATURE  Page projet — /projet/[slug] (src/app/(app)/projet/[slug]/) [Server +
   pour les visiteurs ; colonne collante : « Realise par », fiche technique, « Signaler ce film ».
   « Films lies » en grille de 4. Lecture dans le cadre en desktop, modale plein ecran en mobile,
   toujours apres un clic. Le menu trois points est supprime. Duree non affichee (voir ROADMAP).
+  Bouton « + J'ai participe a ce projet » (30/10/2026) : visible pour tout membre connecte, Pro ou
+  non (`userStatus` free ou pro), sauf s'il gere deja le film (Responsable ou co-gestionnaire), est
+  deja credite ou a une demande en attente. Il etait reserve a `free` depuis juin, ce qui le
+  cachait aux Pro. Aucune regle de plan cote serveur : `/api/credits/request` ne lit pas le plan.
   [utilise] VideoEmbed, FilmPoster, FilmLink (FilmPlayerFrame), lib/film-transition
   Verre liquide (chantier 4) : hero en panneau rounded-panel dans le conteneur (plus bord a bord),
   cartes d'equipe, fiche technique et carte createur en GlassCard. Equipe et projets lies restent
@@ -242,9 +248,43 @@ FEATURE  Inscription — /rejoindre (src/app/(app)/rejoindre/ + RejoindreClient)
 
 FEATURE  Connexion — /connexion (src/app/(app)/connexion/ + ConnexionClient)
   Login. Callback OAuth/magic-link : src/app/(app)/auth/callback/route.ts
-  Pas de « mot de passe oublie » (aucune route, aucun appel resetPasswordForEmail).
+  Mot de passe oublie (2026-10-30) : lien sous le champ mot de passe -> /mot-de-passe-oublie
+  (MotDePasseOublieClient, message identique que le compte existe ou non) -> POST
+  /api/auth/password-reset (email Resend) -> /auth/nouveau-mot-de-passe (verifyOtp recovery, puis
+  POST /api/auth/update-password). Regle du mot de passe : src/lib/password.ts (8 caracteres,
+  une majuscule, une minuscule, un chiffre, classes ASCII comme Supabase, aucun espace ni
+  tabulation ni espace insecable), partagee formulaires + serveur, alignee sur le reglage Supabase
+  Auth « Lowercase, uppercase letters and digits », minimum 8 (l'interdiction des espaces est
+  propre a Unkast). /connexion n'applique aucune regle : un ancien mot de passe avec espace reste
+  utilisable. Refus Supabase (weak_password) traduit par weakPasswordMessage(). Champs mot de
+  passe + confirmation : src/components/PasswordFields.tsx (/rejoindre etape 2, nouveau mot de
+  passe), 5 criteres qui passent au vert une fois remplis. Bouton afficher/masquer (oeil, masque
+  par defaut) : src/components/PasswordInput.tsx, habille ui/Field sans le modifier, utilise par
+  PasswordFields et /connexion.
   Verre liquide (chantier 6) : carte GlassCard, Field, Button, titre text-sheen ; meme habillage
   pour /auth/confirm.
+
+FEATURE  Avantages du Pro offert (30/10/2026) — lib/pro-plan.ts, lib/utils.ts, components/LaunchProWelcome.tsx
+  - Dates d'echeance en heure de Paris : `formatDateParis(value, style)` (lib/utils.ts, styles
+    long « 1er fevrier 2027 », day-month, short, datetime). Utilise par /moi, /pro, l'email de
+    rappel J-7 (lib/email.ts), l'admin (AdminClient) et l'expiration d'un signal de recrutement
+    (ProfileClient). Les heures de messages restent en heure locale.
+  - Ecran de bienvenue `LaunchProWelcome` (anime, framer-motion, sans dependance : cadeau qui
+    s'ouvre avec halo lime, pluie de confettis lime/blanc unique d'environ 3 s, grand badge PRO
+    avec reflet, date en lime, Membre fondateur en « tampon », deux avantages qui s'allument,
+    bouton avec reflet periodique). prefers-reduced-motion : fondu simple, sans confettis,
+    pulsation, reflet ni rebond. Meme ecran pour email et Google) : au premier acces apres
+    l'inscription, seulement si `isLaunchOfferOpen()`. Email : /auth/confirm (apres verifyOtp). Google : FinaliserClient
+    (apres l'enregistrement du profil). Le membre continue lui-meme (/feed ou ?next=).
+  - Badge « Membre fondateur » : `isFoundingMember(created_at)`, en-tete de /moi et profil public.
+    Couleurs violettes (tokens `--color-violet` / `--color-violet-soft`, voir globals.css).
+  - Violet secondaire (30/10/2026), tres parcimonieux, le lime reste la couleur d'action : lueur
+    violette a 12 % a la place de la lueur bleue du fond, `.glass-violet` (a combiner avec `.glass`)
+    sur la carte « Mon forfait » et sur `LaunchProWelcome` (+ halo violet tres leger derriere le
+    cadeau), badge fondateur et compte a rebours « Pro offert, il reste X jours » en `violet-soft`.
+  - Compte a rebours sous « Mon forfait » (MoiClient) : « Pro offert, il reste X jours »
+    (`launchProDaysLeft`, jours calendaires Paris), seulement pour un grant `launch` valide sans
+    abonnement Stripe actif (ni VIP). Aucune migration SQL.
 
 FEATURE  Dashboard — /dashboard, /dashboard/projets, /dashboard/contacts (+ DashboardClient)
   ⚠️ INATTEIGNABLE : next.config.ts redirige en permanent /dashboard* vers /moi. Le code reste
