@@ -94,9 +94,19 @@ export default function PublishForm({
         />
         <div className="mt-2 space-y-1 text-xs leading-relaxed text-text-secondary">
           {isSeries && (
-            <p>
-              Colle le lien de la playlist YouTube de ta série. L&apos;image, le nombre d&apos;épisodes et leurs titres sont repris automatiquement. Une série compte pour 1 film.
-            </p>
+            <>
+              <p>
+                Colle le lien de la playlist YouTube de ta série. L&apos;image, le nombre d&apos;épisodes et leurs titres sont repris automatiquement. Une série compte pour 1 film.
+              </p>
+              <div>
+                <p className="text-text-primary">Pas encore de playlist ? Sur YouTube :</p>
+                <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                  <li>Ouvre la première vidéo, clique sur « Enregistrer », puis « Nouvelle playlist ».</li>
+                  <li>Ajoute les autres épisodes à la playlist, dans l&apos;ordre.</li>
+                  <li>Mets la playlist en « Non répertoriée » ou « Publique », puis colle son lien ici.</li>
+                </ol>
+              </div>
+            </>
           )}
           <p>
             <span className="text-text-primary">« Non répertoriée » : acceptée.</span> La vidéo se lit sur Unkast sans apparaître dans les recherches {isSeries ? "YouTube" : "YouTube ou Vimeo"}.
