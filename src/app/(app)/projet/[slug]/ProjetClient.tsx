@@ -157,7 +157,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
     return () => { document.body.style.overflow = ""; };
   }, [showVideo]);
 
-  const showCreditButton = userStatus === "free" && creditStatusLoaded && !creditStatus.isCredited && !creditStatus.hasPendingRequest && !creditStatus.isManager;
+  const showCreditButton = (userStatus === "free" || userStatus === "pro") && creditStatusLoaded && !creditStatus.isCredited && !creditStatus.hasPendingRequest && !creditStatus.isManager;
   const showConversionCTA = userStatus === "anonymous";
 
   function toast(msg: string) { setCreditToast(msg); setTimeout(() => setCreditToast(""), 4000); }
