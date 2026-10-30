@@ -9,6 +9,7 @@ const FINALIZE_EXEMPT = [
   "/cgu",
   "/confidentialite",
   "/mentions-legales",
+  "/supprimer-mon-compte",
   "/admin",
   "/auth",
 ];

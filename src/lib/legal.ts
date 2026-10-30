@@ -39,4 +39,5 @@ export const LEGAL_LINKS = [
   { href: "/cgu", label: "CGU" },
   { href: "/confidentialite", label: "Confidentialité" },
   { href: "/mentions-legales", label: "Mentions légales" },
+  { href: "/supprimer-mon-compte", label: "Supprimer mon compte" },
 ] as const;

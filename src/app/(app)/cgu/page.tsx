@@ -44,9 +44,10 @@ export default function CguPage() {
           <li>Un compte par personne, avec des informations exactes. Tu peux afficher un nom de scène.</li>
           <li>Tu es responsable de ton mot de passe et de ce qui est fait avec ton compte.</li>
           <li>
-            Tu peux demander la suppression de ton compte à tout moment. <strong>Pendant la bêta</strong>,
-            elle se demande par email à <Info value={LEGAL.contactEmail} />, depuis l&apos;adresse de ton
-            compte. Nous la traitons dans les 30 jours.
+            Tu peux supprimer ton compte à tout moment, toi-même, dans <strong>Mon profil, onglet Compte</strong>{" "}
+            (voir <Link href="/supprimer-mon-compte">Supprimer mon compte</Link>). Tu peux aussi le demander par
+            email à <Info value={LEGAL.contactEmail} />, depuis l&apos;adresse de ton compte (compte suspendu
+            compris). Nous la traitons dans les 30 jours.
           </li>
         </ul>
       </Section>

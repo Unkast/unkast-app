@@ -175,12 +175,18 @@ export default function ConfidentialitePage() {
             <strong>Ton compte et tes contenus</strong> : tant que ton compte existe.
           </li>
           <li>
-            <strong>Après la suppression de ton compte</strong> : tes données sont effacées dans les 30
-            jours. Ton nom reste dans le générique des films des autres, tel qu&apos;il y figurait, sauf si
-            tu demandes son retrait.
+            <strong>Après la suppression de ton compte</strong> : tes données sont supprimées
+            immédiatement. Les copies de sauvegarde disparaissent dans les 30 jours. Ton nom reste dans le
+            générique des films des autres, tel qu&apos;il y figurait, sauf si tu demandes son retrait.
           </li>
           <li>
-            <strong>Justificatifs de revendication</strong> : 1 an après la décision.
+            <strong>Ce qui reste après la suppression</strong> : ton nom au générique des films des autres ;
+            les déclarations de droits des films qui restent, sans lien avec toi ; tes factures Stripe, que
+            la loi nous oblige à conserver ; les journaux techniques (12 mois, voir ci-dessous).
+          </li>
+          <li>
+            <strong>Justificatifs de revendication</strong> : 1 an après la décision, ou supprimés avec ton
+            compte s&apos;il est supprimé avant.
           </li>
           <li>
             <strong>Journaux techniques</strong> : 12 mois.
@@ -194,8 +200,10 @@ export default function ConfidentialitePage() {
           <li>accéder à tes données et en recevoir une copie ;</li>
           <li>les corriger (la plupart se modifient directement dans ton espace) ;</li>
           <li>
-            les faire supprimer, avec ton compte : <strong>pendant la bêta</strong>, la suppression du compte
-            se demande par email à <Info value={LEGAL.contactEmail} />, depuis l&apos;adresse de ton compte ;
+            les faire supprimer, avec ton compte : tu peux supprimer ton compte toi-même dans{" "}
+            <strong>Mon profil, onglet Compte</strong> (voir <Link href="/supprimer-mon-compte">Supprimer mon
+            compte</Link>), ou le demander par email à <Info value={LEGAL.contactEmail} />, depuis
+            l&apos;adresse de ton compte ;
           </li>
           <li>t&apos;opposer à un traitement ou en demander la limitation ;</li>
           <li>récupérer tes données dans un format réutilisable.</li>
