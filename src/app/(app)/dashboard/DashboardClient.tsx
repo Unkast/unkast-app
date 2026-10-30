@@ -253,16 +253,16 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   }
 
   async function sendInvitation(projectId: string) {
-    if (!inviteEmail || !inviteRole) return;
+    if (!inviteName.trim() || !inviteEmail || !inviteRole) return;
     const res = await fetch("/api/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, email: inviteEmail, role: inviteRole, name: inviteName || null }),
+      body: JSON.stringify({ project_id: projectId, email: inviteEmail, role: inviteRole, name: inviteName }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      // L'email peut etre saute en dev (Resend non configure) : on le signale.
-      showToast(data.email_sent ? "Invitation envoyee par email" : "Invitation enregistree (email non envoye en dev)");
+      // Meme message dans tous les cas : il ne revele pas si l'email a un compte.
+      showToast("Invitation envoyee");
       setInviteEmail("");
       setInviteRole("");
       setInviteName("");
@@ -776,13 +776,13 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
 
                               {/* Invite a member par email (collaborateur absent d'Unkast) */}
                               <div>
-                                <h4 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Créditer un collaborateur absent</h4>
-                                <p className="text-[10px] text-text-tertiary mb-2">Il reçoit un email pour rejoindre Unkast et revendiquer son crédit. Pour créditer un membre déjà inscrit, passe par son profil.</p>
+                                <h4 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Créditer par email</h4>
+                                <p className="text-[10px] text-text-tertiary mb-2">La personne reçoit une invitation par email. Si elle est déjà sur Unkast, elle accepte ou refuse depuis son profil.</p>
                                 <div className="flex gap-2">
                                   <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom" className="w-28 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
                                   <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
                                   <input type="text" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Rôle" className="w-28 px-3 py-2 bg-background border border-white/5 rounded-lg text-text-primary text-xs placeholder:text-text-tertiary focus:outline-none focus:border-lime/50 transition" />
-                                  <button onClick={() => sendInvitation(project.id)} disabled={!inviteEmail || !inviteRole} className="px-3 py-2 bg-lime text-[#0d0d0d] font-bold text-xs rounded-lg hover:brightness-110 transition disabled:opacity-40">
+                                  <button onClick={() => sendInvitation(project.id)} disabled={!inviteName.trim() || !inviteEmail || !inviteRole} className="px-3 py-2 bg-lime text-[#0d0d0d] font-bold text-xs rounded-lg hover:brightness-110 transition disabled:opacity-40">
                                     Inviter
                                   </button>
                                 </div>

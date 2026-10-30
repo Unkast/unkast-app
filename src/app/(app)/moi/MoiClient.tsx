@@ -354,13 +354,16 @@ export default function MoiClient() {
   }
 
   async function handleInvitationAction(id: string, status: "accepted" | "refused") {
-    await fetch(`/api/invitations/project/${id}`, {
+    const res = await fetch(`/api/invitations/project/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    await fetchInvitations();
-    showToast(status === "accepted" ? "Invitation acceptée !" : "Invitation déclinée");
+    const data = await res.json().catch(() => ({}));
+    // Acceptee : le credit apparait dans « Mes participations ».
+    await Promise.all([fetchInvitations(), fetchCreditRequests()]);
+    if (!res.ok) showToast(data.error || "Erreur, réessaie.");
+    else showToast(status === "accepted" ? "Invitation acceptée !" : "Invitation déclinée");
   }
 
   /* ---------- logout ---------- */
@@ -591,6 +594,57 @@ export default function MoiClient() {
   const pendingSentRequests = myCreditRequests.filter((r) => r.status === "pending");
 
   // Demandes de credit recues sur les films geres (tous types de compte).
+  // Invitations recues a apparaitre dans l'equipe d'un film (api/invitations/project).
+  const receivedInvitationsList = (headCls: string) => (
+    <>
+      <EnterItem className={headCls}>
+        <h2 className={titleCls}>Invitations reçues</h2>
+        <p className={subCls}>Des membres te proposent d&apos;apparaître dans l&apos;équipe de leur film. Tu n&apos;es crédité que si tu acceptes.</p>
+      </EnterItem>
+      {receivedInvitations.length === 0 ? (
+        <EnterItem className="px-1">
+          <p className={emptyCls}>Aucune invitation reçue.</p>
+        </EnterItem>
+      ) : (
+        receivedInvitations.map((inv) => (
+          <EnterItem key={inv.id} className="glass rounded-card p-3">
+            <div className="flex items-center gap-3">
+              {/* Project thumbnail */}
+              <FilmThumb url={inv.project_poster} />
+              <div className="min-w-0 flex-1">
+                <p className={`${rowTitleCls} truncate`}>{inv.project_title || "Projet"}</p>
+                <p className={rowMetaCls}>
+                  {inv.role && <span>{inv.role}</span>}
+                  {inv.inviter_name && <span> · {inv.inviter_name}</span>}
+                </p>
+              </div>
+            </div>
+            {inv.message && (
+              <p className="mt-2.5 text-xs italic text-text-secondary">&quot;{inv.message}&quot;</p>
+            )}
+            {inv.status === "pending" && (
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" onClick={() => handleInvitationAction(inv.id, "accepted")}>
+                  Accepter
+                </Button>
+                <Button variant="glass" size="sm" onClick={() => handleInvitationAction(inv.id, "refused")}>
+                  Refuser
+                </Button>
+              </div>
+            )}
+            {inv.status !== "pending" && (
+              <div className="mt-2.5">
+                <Badge variant={inv.status === "accepted" ? "published" : "rejected"}>
+                  {inv.status === "accepted" ? "Acceptée" : "Déclinée"}
+                </Badge>
+              </div>
+            )}
+          </EnterItem>
+        ))
+      )}
+    </>
+  );
+
   const receivedCredits = (headCls: string) => (
     <>
       <EnterItem className={headCls}>
@@ -910,51 +964,7 @@ export default function MoiClient() {
 
                 {/* Invitations reçues */}
                 <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-3">
-                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6 lg:mt-0 lg:border-t-0 lg:pt-0">
-                  <h2 className={titleCls}>Invitations reçues</h2>
-                  <p className={subCls}>Des créateurs t&apos;ont invité à rejoindre leur projet.</p>
-                </EnterItem>
-                {receivedInvitations.length === 0 ? (
-                  <EnterItem className="px-1">
-                    <p className={emptyCls}>Aucune invitation reçue.</p>
-                  </EnterItem>
-                ) : (
-                  receivedInvitations.map((inv) => (
-                    <EnterItem key={inv.id} className="glass rounded-card p-3">
-                      <div className="flex items-center gap-3">
-                        {/* Project thumbnail */}
-                        <FilmThumb url={inv.project_poster_url} />
-                        <div className="min-w-0 flex-1">
-                          <p className={`${rowTitleCls} truncate`}>{inv.project_title || "Projet"}</p>
-                          <p className={rowMetaCls}>
-                            {inv.role_offered && <span>{inv.role_offered}</span>}
-                            {inv.inviter_name && <span> · {inv.inviter_name}</span>}
-                          </p>
-                        </div>
-                      </div>
-                      {inv.message && (
-                        <p className="mt-2.5 text-xs italic text-text-secondary">&quot;{inv.message}&quot;</p>
-                      )}
-                      {inv.status === "pending" && (
-                        <div className="mt-3 flex gap-2">
-                          <Button size="sm" onClick={() => handleInvitationAction(inv.id, "accepted")}>
-                            Accepter
-                          </Button>
-                          <Button variant="glass" size="sm" onClick={() => handleInvitationAction(inv.id, "refused")}>
-                            Refuser
-                          </Button>
-                        </div>
-                      )}
-                      {inv.status !== "pending" && (
-                        <div className="mt-2.5">
-                          <Badge variant={inv.status === "accepted" ? "published" : "rejected"}>
-                            {inv.status === "accepted" ? "Acceptée" : "Déclinée"}
-                          </Badge>
-                        </div>
-                      )}
-                    </EnterItem>
-                  ))
-                )}
+                {receivedInvitationsList("mt-4 border-t border-white/10 px-1 pt-6 lg:mt-0 lg:border-t-0 lg:pt-0")}
 
                 </div>
 
@@ -971,6 +981,8 @@ export default function MoiClient() {
                 {/* Ordinateur : demandes reçues à gauche, invitations envoyées à droite */}
                 <div className="contents lg:flex lg:flex-col lg:gap-3">
                   {receivedCredits("px-1")}
+                  {/* Un createur peut aussi etre invite sur le film d'un autre membre */}
+                  {receivedInvitations.length > 0 && receivedInvitationsList("mt-4 border-t border-white/10 px-1 pt-6")}
                 </div>
 
                 {/* Invitations envoyées */}
@@ -990,10 +1002,13 @@ export default function MoiClient() {
                     return (
                       <EnterItem key={inv.id} className="glass flex items-center gap-3 rounded-card p-3">
                         {/* Invited person avatar */}
-                        <Avatar url={inv.invitee_avatar_url} name={inv.invitee_name || "?"} size={36} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }} />
+                        <Avatar url={inv.invited_avatar} name={inv.invited_name || "?"} size={36} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }} />
                         <div className="min-w-0 flex-1">
-                          <p className={rowTitleCls}>{inv.invitee_name || "Membre"}</p>
-                          <p className={`${rowMetaCls} truncate`}>{inv.project_title || "Projet"}</p>
+                          <p className={rowTitleCls}>{inv.invited_name || "Membre"}</p>
+                          <p className={`${rowMetaCls} truncate`}>
+                            {inv.project_title || "Projet"}
+                            {inv.role && <span> · {inv.role}</span>}
+                          </p>
                         </div>
                         <div className="shrink-0">
                           <Badge variant={statusTone}>{statusLabel}</Badge>

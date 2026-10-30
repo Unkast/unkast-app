@@ -4,17 +4,30 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit, isValidEmail } from "@/lib/rate-limit";
 import { sendInvitationEmail } from "@/lib/email";
-import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText, MAX_ROLE_LENGTH } from "@/lib/api";
+import { addCreditRole } from "@/lib/project-invitations";
+import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
-// POST: inviter PAR EMAIL un collaborateur absent d'Unkast (chantier 10, cas b).
+// POST: crediter quelqu'un PAR EMAIL sur un film (onglet Créditer de « Mes films »).
+//
+// Trois cas, selon le compte qui porte l'email (decisions des 30/10/2026) :
+//  - l'email de l'appelant lui-meme : le role rejoint son credit, sans email
+//    (reponse { self: true }) ;
+//  - un autre membre : RIEN n'est envoye. La reponse { match } donne son nom public
+//    et sa photo ; l'ecran propose « Créditer ce membre », qui passe par
+//    POST /api/invitations/project (invitation Accepter / Refuser). Choix assume de
+//    Maxime : un gestionnaire apprend qu'un email a un compte. La limite de 5 par
+//    jour ci-dessous compte aussi ces recherches, ce qui borne l'enumeration ;
+//  - un email inconnu : credit sans compte (ghost credit) et invitation a s'inscrire.
+// Un compte qu'on ne peut pas crediter (admin, suspendu, sans profil) recoit la
+// reponse d'un envoi, sans rien envoyer.
 //
 // Garde-fous :
 //  - seulement sur un film géré par l'inviteur (Responsable ou co-gestionnaire) ;
-//  - invitation TOUJOURS liée à un crédit réel : on crée le ghost credit dans le
-//    même appel (pas de formulaire d'envoi d'email ouvert) ;
 //  - double rate-limit : 5/jour par inviteur + 200/jour global (anti-spam
 //    individuel ET anti-attaque coordonnée) ;
-//  - une seule invitation par (email, projet) : unicité en base -> 409 propre ;
+//  - le nom est obligatoire : il est affiche dans l'equipe tant que la personne n'a
+//    pas de compte, jamais l'email ;
 //  - envoi via Resend uniquement (lib/email) ; en dev sans clé, email sauté.
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -25,12 +38,17 @@ export async function POST(request: NextRequest) {
   if (!body) return invalidBodyResponse();
   const { project_id, email, role, name } = body;
 
-  if (!project_id || !email || !role) {
-    return NextResponse.json({ error: "project_id, email et rôle requis." }, { status: 400 });
+  if (!project_id || !email || !role || typeof name !== "string" || !name.trim()) {
+    return NextResponse.json({ error: "Nom, email et rôle requis." }, { status: 400 });
   }
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "Email invalide." }, { status: 400 });
   }
+  if (!isText(project_id, 64) || !isText(role, MAX_ROLE_LENGTH) || !isText(name.trim(), 120)) {
+    return NextResponse.json({ error: "Nom ou rôle trop long." }, { status: 400 });
+  }
+  const cleanRole = String(role).trim();
+  const cleanName = name.trim();
 
   const admin = createAdminClient();
 
@@ -43,7 +61,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Projet introuvable ou non autorisé." }, { status: 403 });
   }
 
-  // 2) Double plafond journalier (réutilise rate_limits + RPC, fail-open).
+  // 2) Double plafond journalier (réutilise rate_limits + RPC, fail-open). Compte pour
+  //    les trois cas : sinon la limite revelerait quels emails ont un compte.
   if (!(await checkRateLimit(`invite:${user.id}`, 5, 86400))) {
     return NextResponse.json(
       { error: "Limite de 5 invitations par jour atteinte. Réessaie demain." },
@@ -57,14 +76,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3) Créer le ghost credit (crédit réel, sans compte rattaché pour l'instant).
-  const cleanName = typeof name === "string" && name.trim() ? name.trim() : email;
+  // 3) Compte qui porte cet email (fonction reservee au service role).
+  const { data: accountId, error: lookupError } = await admin.rpc("user_id_by_email", { p_email: email });
+  if (lookupError) {
+    console.error("[invitations] recherche du compte :", lookupError);
+    return NextResponse.json({ error: "Erreur lors de l'invitation." }, { status: 500 });
+  }
+  const inviterName = profile.display_name || "Un membre d'Unkast";
+
+  // 3a) Son propre email : le role rejoint son credit.
+  if (accountId === user.id) {
+    if (!(await addCreditRole(admin, project.id, user.id, cleanRole))) {
+      return NextResponse.json({ error: "Erreur lors de l'invitation." }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, self: true }, { status: 201 });
+  }
+
+  // 3b) Un autre membre : aucun email d'inscription. L'ecran propose de le crediter.
+  if (accountId) {
+    const { data: member } = await admin
+      .from("profiles")
+      .select(`id, ${DISPLAY_NAME_COLUMNS}, avatar_url, account_type, is_suspended`)
+      .eq("id", accountId)
+      .maybeSingle();
+    if (!member || member.account_type === "admin" || member.is_suspended) {
+      return NextResponse.json({ success: true }, { status: 201 });
+    }
+    return NextResponse.json({
+      success: true,
+      match: { id: member.id, name: displayNameOf(member as DisplayNameRow), avatar_url: member.avatar_url },
+    });
+  }
+
+  // 3c) Email inconnu : credit sans compte, rattache a l'inscription.
   const { data: credit, error: creditError } = await admin
     .from("project_credits")
     .insert({
       project_id,
       ghost_name: cleanName,
-      role_on_project: role,
+      role_on_project: cleanRole,
     })
     .select("id")
     .single();
@@ -72,13 +122,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erreur lors de la création du crédit." }, { status: 500 });
   }
 
-  // 4) Créer l'invitation (token + expires_at posés par défaut DB).
+  // Invitation (token + expires_at posés par défaut DB).
   const { data: invitation, error: invError } = await admin
     .from("invitations")
     .insert({
       project_id,
       email,
-      role,
+      role: cleanRole,
       inviter_id: user.id,
       credit_id: credit.id,
     })
@@ -88,23 +138,21 @@ export async function POST(request: NextRequest) {
   if (invError || !invitation) {
     // Rollback logique : on retire le ghost credit qu'on vient de créer.
     await admin.from("project_credits").delete().eq("id", credit.id);
-    if (invError?.code === "23505") {
-      return NextResponse.json(
-        { error: "Cette personne a déjà été invitée sur ce film." },
-        { status: 409 }
-      );
-    }
+    // 23505 : cet email est deja invite sur ce film. Meme reponse qu'un envoi, comme
+    // pour un membre deja invite.
+    if (invError?.code === "23505") return NextResponse.json({ success: true }, { status: 201 });
     return NextResponse.json({ error: "Erreur lors de l'invitation." }, { status: 500 });
   }
 
-  // 5) Envoi via Resend (sauté proprement en dev sans clé).
-  const result = await sendInvitationEmail({
+  // Envoi via Resend (sauté proprement en dev sans clé). Le resultat n'est pas
+  // renvoye : il distinguerait ce cas des deux autres.
+  await sendInvitationEmail({
     to: email,
-    inviterName: profile.display_name || "Un membre d'Unkast",
-    role,
+    inviterName,
+    role: cleanRole,
     projectTitle: project.title,
     token: String(invitation.token),
   });
 
-  return NextResponse.json({ success: true, email_sent: result.sent }, { status: 201 });
+  return NextResponse.json({ success: true }, { status: 201 });
 }

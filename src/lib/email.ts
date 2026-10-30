@@ -73,6 +73,55 @@ export async function sendInvitationEmail(
   }
 }
 
+// --- Credit propose a un membre deja inscrit ----------------------------------
+// Il n'a pas a creer de compte : il accepte ou refuse dans /moi, onglet Activite.
+
+export interface SendMemberCreditParams {
+  to: string;
+  inviterName: string;
+  role: string;
+  projectTitle: string;
+}
+
+export async function sendMemberCreditEmail(p: SendMemberCreditParams): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) return { sent: false, reason: "no_api_key" };
+
+  const url = `${siteUrl()}/moi`;
+  const text = [
+    `${p.inviterName} te propose d'apparaître comme ${p.role} dans l'équipe du film « ${p.projectTitle} » sur Unkast.`,
+    "",
+    "Tu n'es crédité·e que si tu acceptes. Accepte ou refuse dans ton profil, onglet Activité :",
+    url,
+    "",
+    "Si tu n'as pas participé à ce film, refuse simplement l'invitation.",
+    "",
+    "— Unkast",
+  ].join("\n");
+  const html = plainHtml(
+    "On te propose un crédit sur Unkast",
+    [
+      `<p style="margin:0 0 16px 0;"><strong style="color:#f0f0f0;">${escapeHtml(p.inviterName)}</strong> te propose d'apparaître comme <strong style="color:#f0f0f0;">${escapeHtml(p.role)}</strong> dans l'équipe du film «&nbsp;<strong style="color:#f0f0f0;">${escapeHtml(p.projectTitle)}</strong>&nbsp;».</p>`,
+      `<p style="margin:0 0 24px 0;">Tu n'es crédité·e que si tu acceptes. Accepte ou refuse dans ton profil, onglet Activité.</p>`,
+      `<a href="${url}" style="display:inline-block;background:#C8FF00;color:#0d0d0d;font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:14px 28px;">Voir l'invitation</a>`,
+      `<p style="margin:24px 0 0 0;font-size:12px;color:#666;">Si tu n'as pas participé à ce film, refuse simplement l'invitation.</p>`,
+    ].join("")
+  );
+
+  try {
+    await resend.emails.send({
+      from: fromAddress(),
+      to: p.to,
+      subject: `${p.inviterName} te propose un crédit sur « ${p.projectTitle} »`,
+      html,
+      text,
+    });
+    return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}
+
 // --- Email de confirmation de compte (chantier confirmation email) -----------
 
 export interface SendConfirmationParams {

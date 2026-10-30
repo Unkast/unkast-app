@@ -1,9 +1,10 @@
 "use client";
 // Un film de la liste : role, statut, visibilite, et ses panneaux (modifier,
 // image, visibilite, crediter par email, gestion).
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CATEGORY_LABELS, MEMBERS_ONLY_WARNING, PROJECT_VISIBILITIES, SERIES_CATEGORY, episodesLabel } from "@/lib/constants";
 import type { ProjectCategory, ProjectVisibility } from "@/types/database";
+import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
@@ -172,45 +173,184 @@ function VisibilityPanel({ project, reload, showToast, close }: PanelProps) {
   );
 }
 
-/* ---------- Crediter par email un collaborateur absent d'Unkast ---------- */
+/* ---------- Crediter : un membre (recherche), ou quelqu'un par email ---------- */
+
+// Membre propose par la recherche (GET /api/members/search) ou reconnu par son email.
+interface MemberHit {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+  role?: string | null;
+}
+
+const sectionTitleCls = "mb-2 text-[13px] font-semibold text-text-primary";
+
+function MemberLine({ member }: { member: MemberHit }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <Avatar url={member.avatar_url} name={member.name || "?"} size={36} className="shrink-0" />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-text-primary">{member.name || "Membre"}</span>
+        {member.role && <span className="block truncate text-xs text-text-secondary">{member.role}</span>}
+      </span>
+    </span>
+  );
+}
 
 function CreditPanel({ project, reload, showToast, close }: PanelProps) {
+  // Recherche d'un membre
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<MemberHit[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [member, setMember] = useState<MemberHit | null>(null);
+  const [memberRole, setMemberRole] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQuery = useRef("");
+  // Invitation par email
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
+  // Email reconnu : le membre qui porte cet email
+  const [match, setMatch] = useState<MemberHit | null>(null);
   const [sending, setSending] = useState(false);
 
-  async function send() {
+  function search(value: string) {
+    setQuery(value);
+    if (timer.current) clearTimeout(timer.current);
+    const q = value.trim();
+    latestQuery.current = q;
+    if (q.length < 2) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    timer.current = setTimeout(async () => {
+      const r = await callApi<{ members?: MemberHit[] }>(`/api/members/search?q=${encodeURIComponent(q)}`);
+      if (latestQuery.current !== q) return; // une saisie plus recente a pris le relais
+      if (!r.ok) showToast(r.error);
+      setResults(r.ok ? r.data.members ?? [] : []);
+      setSearched(true);
+    }, 300);
+  }
+
+  // Invitation a un membre inscrit : il accepte ou refuse depuis son profil.
+  async function inviteMember(target: MemberHit, targetRole: string) {
     setSending(true);
-    const r = await callApi<{ email_sent?: boolean }>("/api/invitations", "POST", {
+    const r = await callApi("/api/invitations/project", "POST", {
       project_id: project.id,
-      email,
-      role,
-      name: name || null,
+      invited_profile_id: target.id,
+      role: targetRole.trim(),
     });
     setSending(false);
     if (!r.ok) {
       showToast(r.error);
       return;
     }
-    showToast(r.data.email_sent ? "Invitation envoyée par email" : "Invitation enregistrée (email non envoyé en dev)");
+    showToast(`Invitation envoyée à ${target.name || "ce membre"}`);
+    await reload();
+    close();
+  }
+
+  async function sendEmail() {
+    setSending(true);
+    const r = await callApi<{ self?: boolean; match?: MemberHit }>("/api/invitations", "POST", {
+      project_id: project.id,
+      email,
+      role,
+      name,
+    });
+    setSending(false);
+    if (!r.ok) {
+      showToast(r.error);
+      return;
+    }
+    // Email d'un membre : rien n'est parti, on propose de le crediter.
+    if (r.data.match) {
+      setMatch(r.data.match);
+      return;
+    }
+    showToast(r.data.self ? "Rôle ajouté à ton crédit" : "Invitation envoyée");
     await reload();
     close();
   }
 
   return (
-    <div>
-      <p className={`mb-3 ${helpCls}`}>
-        Crédite un collaborateur absent d&apos;Unkast : il reçoit un email pour rejoindre et revendiquer son crédit. Pour un membre déjà inscrit, passe par son profil.
+    <div className="flex flex-col gap-5">
+      <p className={helpCls}>
+        Personne n&apos;est crédité sans son accord : un membre accepte ou refuse l&apos;invitation depuis son profil.
       </p>
-      <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
-        <Field aria-label="Nom" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" />
-        <Field aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-        <Field aria-label="Rôle" type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Rôle" />
-      </div>
-      <Button onClick={send} disabled={!email || !role || sending} className="mt-3 w-full sm:w-auto">
-        Inviter
-      </Button>
+
+      {/* 1. Chercher un membre */}
+      <section>
+        <h4 className={sectionTitleCls}>Chercher un membre</h4>
+        {member ? (
+          <div className="flex flex-col gap-3 rounded-card border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <MemberLine member={member} />
+              <Button variant="glass" size="sm" onClick={() => setMember(null)} className="shrink-0">
+                Changer
+              </Button>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Field aria-label="Rôle sur le film" type="text" value={memberRole} onChange={(e) => setMemberRole(e.target.value)} placeholder="Rôle sur le film" className="sm:flex-1" />
+              <Button onClick={() => inviteMember(member, memberRole)} disabled={!memberRole.trim() || sending} className="sm:shrink-0">
+                Inviter
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Field aria-label="Chercher un membre" type="search" value={query} onChange={(e) => search(e.target.value)} placeholder="Nom affiché ou nom de scène" />
+            {results.length > 0 && (
+              <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {results.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => { setMember(m); setMemberRole(""); }}
+                      className="flex min-h-11 w-full items-center rounded-card border border-white/10 bg-white/5 p-2.5 text-left hover:border-lime/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
+                    >
+                      <MemberLine member={m} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {searched && results.length === 0 && <p className={`mt-2 ${helpCls}`}>Aucun membre trouvé.</p>}
+          </>
+        )}
+      </section>
+
+      {/* 2. Pas trouve : inviter par email */}
+      <section className="border-t border-white/10 pt-4">
+        <h4 className={sectionTitleCls}>Pas trouvé ? Inviter par email</h4>
+        {match ? (
+          <div className="flex flex-col gap-3 rounded-card border border-lime/25 bg-white/5 p-3">
+            <p className="text-sm text-text-primary">Cet email correspond au membre {match.name || "Membre"}.</p>
+            <MemberLine member={match} />
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => inviteMember(match, role)} disabled={sending}>
+                Créditer ce membre
+              </Button>
+              <Button variant="glass" onClick={() => setMatch(null)} disabled={sending}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className={`mb-2 ${helpCls}`}>Pour quelqu&apos;un qui n&apos;est pas encore sur Unkast : il reçoit un email pour créer son compte et retrouver son crédit.</p>
+            <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
+              <Field aria-label="Nom" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" />
+              <Field aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+              <Field aria-label="Rôle" type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Rôle" />
+            </div>
+            <Button onClick={sendEmail} disabled={!name.trim() || !email || !role.trim() || sending} className="mt-3 w-full sm:w-auto">
+              Inviter par email
+            </Button>
+          </>
+        )}
+      </section>
     </div>
   );
 }

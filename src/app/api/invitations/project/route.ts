@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
+import { inviteMember, type InviteMemberResult } from "@/lib/project-invitations";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { readJsonBody, invalidBodyResponse, isText, MAX_NOTE_LENGTH, MAX_ROLE_LENGTH } from "@/lib/api";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -44,28 +44,26 @@ export async function POST(request: NextRequest) {
     : { data: null };
   if (!project) return NextResponse.json({ error: "Projet introuvable." }, { status: 404 });
 
-  // Insert invitation
-  const { error } = await admin.from("project_invitations").insert({
-    project_id,
-    invited_profile_id,
-    inviter_id: user.id,
-    role,
-    message: message || null,
+  // Invitation, notification et email (lib/project-invitations).
+  const result = await inviteMember(admin, {
+    projectId: project.id,
+    projectTitle: project.title,
+    invitedId: invited_profile_id,
+    inviterId: user.id,
+    inviterName: guard.profile.display_name || "Un membre d'Unkast",
+    role: role.trim(),
+    message,
   });
-
-  if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json({ error: "Tu as déjà invité cette personne sur ce projet." }, { status: 409 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (result !== "sent") {
+    const refusal: Record<Exclude<InviteMemberResult, "sent">, [string, number]> = {
+      already_credited: ["Cette personne est déjà créditée avec ce rôle sur ce film.", 409],
+      pending: ["Une invitation est déjà en attente pour cette personne sur ce film.", 409],
+      recently_refused: ["Cette personne a refusé une invitation sur ce film il y a moins de 30 jours.", 409],
+      error: ["Erreur lors de l'invitation.", 500],
+    };
+    const [error, status] = refusal[result];
+    return NextResponse.json({ error }, { status });
   }
-
-  // Push notification
-  sendPushToUser(invited_profile_id, {
-    title: "Nouvelle invitation",
-    body: `${guard.profile.display_name} t'invite à rejoindre "${project.title}"`,
-    url: "/moi",
-  }).catch(() => {});
 
   return NextResponse.json({ success: true }, { status: 201 });
 }

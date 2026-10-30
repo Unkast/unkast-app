@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { addCreditRole } from "@/lib/project-invitations";
 
 // PATCH: accept or refuse an invitation (invited talent only)
 export async function PATCH(
@@ -42,7 +43,8 @@ export async function PATCH(
   // Le filtre sur le statut ferme aussi la course entre deux appels simultanes.
   const { data: decided, error: decideError } = await admin
     .from("project_invitations")
-    .update({ status })
+    // responded_at : point de depart du delai de 30 jours avant une reinvitation.
+    .update({ status, responded_at: new Date().toISOString() })
     .eq("id", id)
     .eq("status", "pending")
     .select("id");
@@ -55,17 +57,10 @@ export async function PATCH(
   }
 
   if (status === "accepted") {
-    // Add to project credits
-    const { error: creditError } = await admin.from("project_credits").insert({
-      project_id: inv.project_id,
-      profile_id: user.id,
-      role_on_project: inv.role,
-    });
-    // 23505 : la personne a deja ce role sur ce film (unicite en base), rien a faire.
-    if (creditError && creditError.code !== "23505") {
-      console.error("[invitations/project] credit impossible :", creditError);
+    // Credit : le role rejoint sa ligne s'il est deja credite sur ce film.
+    if (!(await addCreditRole(admin, inv.project_id, user.id, inv.role))) {
       // L'invitation repasse en attente : la personne peut reessayer.
-      await admin.from("project_invitations").update({ status: "pending" }).eq("id", id);
+      await admin.from("project_invitations").update({ status: "pending", responded_at: null }).eq("id", id);
       return NextResponse.json({ error: "Crédit impossible à enregistrer, réessaie." }, { status: 500 });
     }
 

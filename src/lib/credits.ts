@@ -4,15 +4,25 @@
 
 const DIRECTOR_ROLES = new Set(["realisateur", "realisatrice", "realisation", "corealisateur", "corealisatrice"]);
 
-// Le role est decoupe sur & , / puis chaque partie est normalisee
-// (casse, accents, espaces, tirets). « Realisateur & DOP » compte.
+// Une partie de role normalisee : casse, accents, espaces, tirets.
+const normalizeRole = (part: string) =>
+  part.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[-\s]/g, "");
+
+// Le role est decoupe sur & , / puis chaque partie est normalisee.
+// « Realisateur & DOP » compte.
 export function isDirectorRole(role: string | null | undefined): boolean {
   if (!role) return false;
-  return role.split(/[&,/]/).some((part) =>
-    DIRECTOR_ROLES.has(
-      part.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[-\s]/g, "")
-    )
-  );
+  return role.split(/[&,/]/).some((part) => DIRECTOR_ROLES.has(normalizeRole(part)));
+}
+
+/**
+ * Roles d'une meme personne sur un film : une seule ligne de credit, roles separes
+ * par « / » (decision du 30/10/2026). Renvoie null si le role y est deja.
+ */
+export function mergeRoles(current: string, added: string): string | null {
+  const wanted = normalizeRole(added);
+  if (current.split(/[&,/]/).some((part) => normalizeRole(part) === wanted)) return null;
+  return `${current.trim()} / ${added.trim()}`;
 }
 
 /** Noms des realisateurs d'un film, separes par une virgule. Chaine vide si aucun. */
