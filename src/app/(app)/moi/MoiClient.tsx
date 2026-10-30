@@ -400,7 +400,7 @@ export default function MoiClient() {
       <>
         <Toast message={toast} />
 
-        <div className="mx-auto w-full max-w-2xl px-4 pb-10">
+        <div className="mx-auto w-full max-w-2xl px-4 pb-10 lg:max-w-6xl">
           {/* Barre d'actions (reste visible pendant le defilement du formulaire) */}
           <div className="glass-strong sticky top-3 z-30 my-3 flex items-center justify-between gap-2 rounded-pill bg-glass-solid/70 p-1.5">
             <Button variant="glass" size="sm" onClick={() => setIsEditing(false)}>
@@ -412,7 +412,9 @@ export default function MoiClient() {
             </Button>
           </div>
 
-          <EnterList className="flex flex-col gap-4">
+          {/* Ordinateur : photo et identité à gauche, profil pro à droite, le reste sur toute la largeur. */}
+          <EnterList className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
+            <div className="contents lg:col-start-1 lg:flex lg:flex-col lg:gap-4">
             {/* PHOTO */}
             <EnterItem className="glass flex flex-col items-center gap-3 rounded-panel p-5">
               <SectionLabel className="self-start">Photo</SectionLabel>
@@ -448,9 +450,10 @@ export default function MoiClient() {
                 </div>
               </div>
             </EnterItem>
+            </div>
 
             {/* PROFIL PRO */}
-            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5">
+            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5 lg:col-start-2 lg:row-start-1">
               <SectionLabel>Profil pro</SectionLabel>
               <div>
                 <p className={`${labelCls} mb-2`}>Métiers</p>
@@ -488,14 +491,14 @@ export default function MoiClient() {
             </EnterItem>
 
             {/* DISPONIBILITE */}
-            <EnterItem className="glass flex flex-col gap-2 rounded-panel p-5">
+            <EnterItem className="glass flex flex-col gap-2 rounded-panel p-5 lg:col-span-2">
               <SectionLabel>Disponibilité</SectionLabel>
               <Toggle checked={editAvailable} onChange={setEditAvailable} label="Disponible pour des projets" />
             </EnterItem>
 
             {/* RECRUTEMENT : reserve aux comptes Pro createur/recruteur */}
             {isCreatorOrRecruiter && (
-              <EnterItem className="glass flex flex-col gap-3 rounded-panel p-5">
+              <EnterItem className="glass flex flex-col gap-3 rounded-panel p-5 lg:col-span-2">
                 <SectionLabel>Recrutement</SectionLabel>
                 {canRecruit ? (
                   <>
@@ -530,7 +533,7 @@ export default function MoiClient() {
             )}
 
             {/* CONTACT & VISIBILITE */}
-            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5">
+            <EnterItem className="glass flex flex-col gap-4 rounded-panel p-5 lg:col-span-2">
               <SectionLabel>Contact &amp; visibilité</SectionLabel>
               <p className="border-l-2 border-lime pl-3 text-xs leading-relaxed text-text-secondary">
                 Ces informations permettent aux recruteurs de te contacter via Unkast. Elles ne sont pas affichées publiquement sur ton profil.
@@ -628,7 +631,8 @@ export default function MoiClient() {
       <Toast message={toast} />
       <style>{`@keyframes recruiting-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }`}</style>
 
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-10 pt-4 lg:pt-8">
+      {/* Ordinateur : même largeur pour tous les onglets, l'en-tête ne bouge pas. */}
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-10 pt-4 lg:max-w-6xl lg:pt-8">
         <EnterList className="flex flex-col gap-4">
           {/* En-tete : avatar, nom, badges */}
           <EnterItem className="glass flex items-center gap-4 rounded-panel p-5 sm:p-6">
@@ -674,10 +678,10 @@ export default function MoiClient() {
 
         {/* TAB: Profil */}
         {activeTab === "profil" && (
-          <EnterList className="flex flex-col gap-4">
+          <EnterList className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
             {/* Recruteur : modification de description en attente de validation */}
             {reviewStatus === "pending" && (
-              <EnterItem className="glass rounded-card border-lime/25 p-4">
+              <EnterItem className="glass rounded-card border-lime/25 p-4 lg:col-span-2">
                 <p className="text-[13px] font-semibold text-lime">Modification en attente de validation</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
                   Ta nouvelle description est en cours de vérification. Le public voit encore ta version actuelle en attendant.
@@ -692,7 +696,7 @@ export default function MoiClient() {
 
             {/* Recruteur : derniere modification de description refusee */}
             {reviewStatus === "rejected" && (
-              <EnterItem className="glass rounded-card border-red-500/30 p-4">
+              <EnterItem className="glass rounded-card border-red-500/30 p-4 lg:col-span-2">
                 <p className="text-[13px] font-semibold text-red-400">Modification refusée</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
                   Ta nouvelle description n&apos;a pas été validée. Le public voit toujours ta version actuelle. Tu peux modifier ton profil pour soumettre une autre version.
@@ -782,7 +786,7 @@ export default function MoiClient() {
 
         {/* TAB: Content (films, puis participations) */}
         {activeTab === "content" && (
-          <EnterList className="flex flex-col gap-3">
+          <EnterList className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
             {/* Films geres : ouvert a tous les types de compte */}
             <FilmsSection
               films={films}
@@ -796,14 +800,14 @@ export default function MoiClient() {
             {/* ----- Talent et recruteur : Mes participations ----- */}
             {!isCreator && (
               <>
-                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">
+                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6 lg:col-span-2">
                   <h2 className={titleCls}>Mes participations</h2>
                   <p className={subCls}>Les films dans lesquels tu apparais.</p>
                 </EnterItem>
 
                 {/* Confirmed */}
                 {myCredits.length === 0 ? (
-                  <EnterItem className="px-1">
+                  <EnterItem className="px-1 lg:col-span-2">
                     <p className={emptyCls}>Tu n&apos;apparais dans aucun film pour le moment.</p>
                   </EnterItem>
                 ) : (
@@ -830,7 +834,7 @@ export default function MoiClient() {
                 {/* Pending requests */}
                 {pendingSentRequests.length > 0 && (
                   <>
-                    <EnterItem className="px-1 pt-3">
+                    <EnterItem className="px-1 pt-3 lg:col-span-2">
                       <SectionLabel>Demandes de participation envoyees</SectionLabel>
                     </EnterItem>
                     {pendingSentRequests.map((req) => (
@@ -856,10 +860,12 @@ export default function MoiClient() {
 
         {/* TAB: Activity */}
         {activeTab === "activity" && (
-          <EnterList className="flex flex-col gap-3">
+          <EnterList className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-6 lg:gap-y-3">
             {!isCreator ? (
               /* ----- Talent activity ----- */
               <>
+                {/* Ordinateur : mes demandes (puis demandes reçues) à gauche, invitations reçues à droite */}
+                <div className="contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-3">
                 {/* Mes demandes de participation */}
                 <EnterItem className="px-1">
                   <h2 className={titleCls}>Mes demandes de participation</h2>
@@ -900,8 +906,11 @@ export default function MoiClient() {
                   })
                 )}
 
+                </div>
+
                 {/* Invitations reçues */}
-                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">
+                <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-3">
+                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6 lg:mt-0 lg:border-t-0 lg:pt-0">
                   <h2 className={titleCls}>Invitations reçues</h2>
                   <p className={subCls}>Des créateurs t&apos;ont invité à rejoindre leur projet.</p>
                 </EnterItem>
@@ -947,16 +956,26 @@ export default function MoiClient() {
                   ))
                 )}
 
+                </div>
+
                 {/* Demandes recues sur les films geres (un talent peut gerer un film) */}
-                {pendingReceivedCredits.length > 0 && receivedCredits("mt-4 border-t border-white/10 px-1 pt-6")}
+                {pendingReceivedCredits.length > 0 && (
+                  <div className="contents lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col lg:gap-3">
+                    {receivedCredits("mt-4 border-t border-white/10 px-1 pt-6")}
+                  </div>
+                )}
               </>
             ) : (
               /* ----- Creator activity ----- */
               <>
-                {receivedCredits("px-1")}
+                {/* Ordinateur : demandes reçues à gauche, invitations envoyées à droite */}
+                <div className="contents lg:flex lg:flex-col lg:gap-3">
+                  {receivedCredits("px-1")}
+                </div>
 
                 {/* Invitations envoyées */}
-                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6">
+                <div className="contents lg:flex lg:flex-col lg:gap-3">
+                <EnterItem className="mt-4 border-t border-white/10 px-1 pt-6 lg:mt-0 lg:border-t-0 lg:pt-0">
                   <h2 className={titleCls}>Invitations envoyées</h2>
                   <p className={subCls}>Les membres que tu as invités à rejoindre tes projets.</p>
                 </EnterItem>
@@ -983,6 +1002,7 @@ export default function MoiClient() {
                     );
                   })
                 )}
+                </div>
               </>
             )}
           </EnterList>
@@ -993,11 +1013,11 @@ export default function MoiClient() {
           <RecruitmentSpace showToast={showToast} />
         )}
 
-        {/* TAB: Compte */}
+        {/* TAB: Compte. Ordinateur : forfait à gauche, offre Pro et mentions légales à droite. */}
         {activeTab === "compte" && (
-          <EnterList className="flex flex-col gap-4">
+          <EnterList className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
             {/* Mon forfait */}
-            <EnterItem className="glass rounded-panel p-5 sm:p-6">
+            <EnterItem className="glass rounded-panel p-5 sm:p-6 lg:col-start-1 lg:row-start-1">
               <SectionLabel>Mon forfait</SectionLabel>
 
               <div className="mt-3 flex items-center justify-between gap-3">
@@ -1038,6 +1058,7 @@ export default function MoiClient() {
               )}
             </EnterItem>
 
+            <div className="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             {/* Pro upsell card */}
             {plan === "free" && (
               <EnterItem className="glass rounded-panel border-lime/25 p-5 sm:p-6">
@@ -1095,9 +1116,10 @@ export default function MoiClient() {
                 ))}
               </div>
             </EnterItem>
+            </div>
 
             {/* Disconnect — separate */}
-            <EnterItem>
+            <EnterItem className="lg:col-span-2">
               <Button variant="glass" onClick={handleLogout} fullWidth className="border-red-500/25! text-red-400!">
                 Se déconnecter
               </Button>

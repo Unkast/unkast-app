@@ -38,10 +38,10 @@ export function Note({ tone = "error", children }: { tone?: "error" | "ok"; chil
 
 /* ---------- vignette de film ---------- */
 
-export function FilmThumb({ url }: { url: string | null | undefined }) {
+export function FilmThumb({ url, large = false }: { url: string | null | undefined; large?: boolean }) {
   return (
-    // Cadre 16:9 de hauteur fixe
-    <FilmPoster src={url} alt="" sizes="110px" className="h-12 rounded-lg border border-white/10" />
+    // Cadre 16:9 de hauteur fixe ; `large` : plus grand sur ordinateur (cartes de Mes films)
+    <FilmPoster src={url} alt="" sizes={large ? "(min-width: 1024px) 220px, 110px" : "110px"} className={`h-12 rounded-lg border border-white/10 ${large ? "lg:h-28" : ""}`} />
   );
 }
 
@@ -51,7 +51,7 @@ const BONE = "animate-pulse rounded-pill bg-white/10";
 
 export function MoiSkeleton() {
   return (
-    <div role="status" aria-label="Chargement" className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-10 pt-4 lg:pt-8">
+    <div role="status" aria-label="Chargement" className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-10 pt-4 lg:max-w-6xl lg:pt-8">
       <div className="glass flex items-center gap-4 rounded-panel p-5">
         <div className="size-20 shrink-0 animate-pulse rounded-full bg-white/10" />
         <div className="flex flex-1 flex-col gap-3">

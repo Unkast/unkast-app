@@ -62,9 +62,9 @@ function CropPreview({ source, area, className = "" }: { source: string; area: A
 // Les trois endroits ou l'image apparait, en miniature : petite carte du feed, bloc
 // « À la une », page du film. Mis a jour pendant le recadrage.
 function LivePreviews({ source, area }: { source: string; area: Area | null }) {
-  const label = "mt-1.5 text-center text-[10px] leading-tight text-text-secondary";
+  const label = "mt-1.5 text-center text-[10px] leading-tight text-text-secondary lg:mt-2 lg:text-xs";
   return (
-    <div className="mb-4 grid grid-cols-3 items-start gap-3" aria-hidden="true">
+    <div className="mb-4 grid grid-cols-3 items-start gap-3 lg:mb-6 lg:grid-cols-1 lg:gap-6" aria-hidden="true">
       <div>
         <div className="mx-auto w-4/5">
           <CropPreview source={source} area={area} className="rounded-[5px]" />
@@ -255,7 +255,7 @@ export default function PosterUpload({
       {/* Recadrage plein ecran. Porte dans <body> : un ancetre en verre
           (backdrop-filter) deviendrait sinon le bloc conteneur de ce position: fixed. */}
       {source && createPortal(
-        <div role="dialog" aria-modal="true" aria-label="Recadrer l'image du film" className="fixed inset-0 z-[9999] flex flex-col bg-black pt-[env(safe-area-inset-top,0px)]">
+        <div role="dialog" aria-modal="true" aria-label="Recadrer l'image du film" className="fixed inset-0 z-[9999] flex flex-col bg-black pt-[env(safe-area-inset-top,0px)] lg:flex-row">
           <div className="relative min-h-[160px] flex-1">
             <Cropper
               image={source}
@@ -270,8 +270,8 @@ export default function PosterUpload({
             />
           </div>
 
-          <div className="glass-strong max-h-[70dvh] overflow-y-auto rounded-t-panel border-b-0 bg-glass-solid/85 px-5 pt-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))]">
-            <div className="mx-auto w-full max-w-[420px]">
+          <div className="glass-strong max-h-[70dvh] overflow-y-auto rounded-t-panel border-b-0 bg-glass-solid/85 px-5 pt-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))] lg:max-h-none lg:w-[520px] lg:shrink-0 lg:rounded-none lg:px-8 lg:py-8">
+            <div className="mx-auto w-full max-w-[420px] lg:max-w-none">
               {(isVertical || isSmall) && (
                 <div className="mb-3 flex flex-col gap-1.5" role="status">
                   {isVertical && (

@@ -222,13 +222,20 @@ export default function FilmCard({
   userId,
   reload,
   showToast,
+  onPanelChange,
 }: {
   project: ManagedProject;
   userId: string;
   reload: () => Promise<void>;
   showToast: ShowToast;
+  /** Prévient la grille quand un panneau s'ouvre ou se ferme (la carte ouverte prend toute la largeur). */
+  onPanelChange?: (open: boolean) => void;
 }) {
-  const [panel, setPanel] = useState<Panel | null>(null);
+  const [panel, setPanelState] = useState<Panel | null>(null);
+  const setPanel = (next: Panel | null) => {
+    setPanelState(next);
+    onPanelChange?.(next !== null);
+  };
   const [refreshing, setRefreshing] = useState(false);
   const isOwner = project.my_role === "owner";
   const isSeries = project.category === SERIES_CATEGORY;
@@ -265,7 +272,7 @@ export default function FilmCard({
   return (
     <>
       <div className="flex items-center gap-3">
-        <FilmThumb url={project.poster_url} />
+        <FilmThumb url={project.poster_url} large />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm font-semibold leading-snug text-text-primary">{project.title}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">

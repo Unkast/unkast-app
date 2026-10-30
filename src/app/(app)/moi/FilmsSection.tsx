@@ -6,7 +6,23 @@ import { EnterItem } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import FilmCard from "./FilmCard";
 import PublishForm from "./PublishForm";
-import { callApi, type FilmsData, type ShowToast } from "./api";
+import { callApi, type FilmsData, type ManagedProject, type ShowToast } from "./api";
+
+// Carte d'un film. Sur ordinateur les films sont en grille de 2 colonnes ; la carte dont
+// un panneau est ouvert prend les 2 colonnes pour lui donner toute la largeur.
+function FilmItem({ project, userId, reload, showToast }: {
+  project: ManagedProject;
+  userId: string;
+  reload: () => Promise<void>;
+  showToast: ShowToast;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <EnterItem className={`glass rounded-card p-3 ${open ? "lg:col-span-2" : ""}`}>
+      <FilmCard project={project} userId={userId} reload={reload} showToast={showToast} onPanelChange={setOpen} />
+    </EnterItem>
+  );
+}
 
 export default function FilmsSection({
   films,
@@ -41,7 +57,7 @@ export default function FilmsSection({
   return (
     <>
       {/* Jauge : films dont on est Responsable, sur la limite du forfait */}
-      <EnterItem className="glass rounded-panel p-5">
+      <EnterItem className="glass rounded-panel p-5 lg:col-span-2">
         <div className="flex items-end justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">Mes films</h2>
           <p className="text-sm text-text-secondary">
@@ -73,7 +89,7 @@ export default function FilmsSection({
 
       {/* Invitations a co-gerer recues */}
       {invites.map((inv) => (
-        <EnterItem key={inv.request_id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card border-lime/25 p-3 pl-4">
+        <EnterItem key={inv.request_id} className="glass flex flex-wrap items-center justify-between gap-3 rounded-card border-lime/25 p-3 pl-4 lg:col-span-2">
           <div className="min-w-40 flex-1">
             <p className="text-sm font-semibold text-text-primary">{inv.project_title || "Un film"}</p>
             <p className="mt-0.5 text-xs text-text-secondary">
@@ -93,18 +109,16 @@ export default function FilmsSection({
 
       {/* Films geres */}
       {projects.length === 0 && !adding && (
-        <EnterItem className="px-1">
+        <EnterItem className="px-1 lg:col-span-2">
           <p className="text-[13px] text-text-secondary">Tu ne gères aucun film pour le moment.</p>
         </EnterItem>
       )}
       {projects.map((project) => (
-        <EnterItem key={project.id} className="glass rounded-card p-3">
-          <FilmCard project={project} userId={userId} reload={reload} showToast={showToast} />
-        </EnterItem>
+        <FilmItem key={project.id} project={project} userId={userId} reload={reload} showToast={showToast} />
       ))}
 
       {!adding && !limitReached && (
-        <EnterItem>
+        <EnterItem className="lg:col-span-2">
           <Button size="lg" onClick={() => setAdding(true)} fullWidth>
             + Ajouter un film
           </Button>
@@ -112,7 +126,7 @@ export default function FilmsSection({
       )}
 
       {!adding && limitReached && plan !== "pro" && (
-        <EnterItem>
+        <EnterItem className="lg:col-span-2">
           <Button variant="dashed" onClick={onUpsell} fullWidth>
             Passer à Unkast Pro pour publier plus &rarr;
           </Button>
@@ -120,7 +134,7 @@ export default function FilmsSection({
       )}
 
       {adding && (
-        <EnterItem className="glass rounded-panel border-lime/25 p-5">
+        <EnterItem className="glass rounded-panel border-lime/25 p-5 lg:col-span-2">
           <PublishForm
             showToast={showToast}
             onCancel={() => setAdding(false)}

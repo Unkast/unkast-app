@@ -268,9 +268,9 @@ export default function RecruitmentSpace({ showToast }: Props) {
 
       {/* ===================== VUE CANDIDATURES ===================== */}
       {view === "candidates" && (
-        <EnterList className="flex flex-col gap-6">
+        <EnterList className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
           {totalCandidates === 0 ? (
-            <EnterItem className="glass rounded-panel border-dashed px-4 py-7 text-center">
+            <EnterItem className="glass rounded-panel border-dashed px-4 py-7 text-center lg:col-span-2">
               <p className="text-sm text-text-primary">Aucune candidature pour le moment.</p>
               <p className="mt-1 text-xs text-text-secondary">Les talents qui se signalent « Disponible » sur ton profil apparaissent ici, par poste.</p>
             </EnterItem>
@@ -374,9 +374,9 @@ export default function RecruitmentSpace({ showToast }: Props) {
 
       {/* ===================== VUE DOSSIERS ===================== */}
       {view === "folders" && !openFolder && (
-        <EnterList className="flex flex-col gap-2">
+        <EnterList className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3">
           {/* Création */}
-          <EnterItem className="mb-2 flex gap-2">
+          <EnterItem className="mb-2 flex gap-2 lg:col-span-2 lg:mb-0">
             <Field
               aria-label="Nouveau dossier-film"
               value={newFolderName}
@@ -394,7 +394,7 @@ export default function RecruitmentSpace({ showToast }: Props) {
           </EnterItem>
 
           {folders.length === 0 ? (
-            <EnterItem className="glass rounded-panel border-dashed px-4 py-6 text-center">
+            <EnterItem className="glass rounded-panel border-dashed px-4 py-6 text-center lg:col-span-2">
               <p className="text-[13px] leading-relaxed text-text-secondary">Crée un dossier par film en préparation pour y ranger tes candidats. Ces dossiers sont privés, invisibles des talents.</p>
             </EnterItem>
           ) : (
@@ -448,8 +448,8 @@ export default function RecruitmentSpace({ showToast }: Props) {
 
       {/* ===================== DÉTAIL D'UN DOSSIER ===================== */}
       {view === "folders" && openFolder && (
-        <EnterList className="flex flex-col gap-5">
-          <EnterItem className="flex flex-col items-start gap-3">
+        <EnterList className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
+          <EnterItem className="flex flex-col items-start gap-3 lg:col-span-2">
             <Button variant="glass" size="sm" onClick={() => setOpenFolder(null)} className="pl-3!">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
               Tous les dossiers
@@ -461,7 +461,7 @@ export default function RecruitmentSpace({ showToast }: Props) {
           </EnterItem>
 
           {openFolder.roles.length === 0 ? (
-            <EnterItem className="px-1">
+            <EnterItem className="px-1 lg:col-span-2">
               <p className="text-[13px] text-text-secondary">Aucun candidat rangé dans ce dossier. Va dans « Candidatures » pour en ajouter.</p>
             </EnterItem>
           ) : (
