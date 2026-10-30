@@ -63,3 +63,24 @@ export async function recomputePlan(admin: SupabaseClient, profileId: string): P
   const { error } = await admin.rpc("recompute_plan", { p_profile_id: profileId });
   return { error };
 }
+
+// Fin du Pro offert pendant la beta (CGU section 9 : « offerte jusqu'au 1er
+// fevrier 2027 »). Fin de journee, heure de Paris : l'email (formate en UTC
+// cote serveur) et la page /moi affichent tous deux « 1 fevrier 2027 ».
+export const LAUNCH_PRO_UNTIL = "2027-02-01T23:59:59+01:00";
+
+// Pro de lancement pose a l'inscription (email et Google), sans admin
+// (granted_by NULL). Ne fait rien une fois la date passee. Jamais bloquant :
+// en cas d'echec, l'erreur est loguee et l'inscription continue.
+export async function grantLaunchPro(admin: SupabaseClient, profileId: string): Promise<void> {
+  if (Date.now() >= new Date(LAUNCH_PRO_UNTIL).getTime()) return;
+
+  const { error } = await admin.from("profiles").update({
+    pro_grant_type: "launch",
+    pro_grant_expires_at: LAUNCH_PRO_UNTIL,
+    pro_grant_granted_by: null,
+    pro_grant_granted_at: new Date().toISOString(),
+  }).eq("id", profileId);
+  const failure = error ?? (await recomputePlan(admin, profileId)).error;
+  if (failure) console.error(`[pro-plan] Pro de lancement non attribué à ${profileId} :`, failure);
+}

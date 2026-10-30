@@ -201,6 +201,7 @@ function proExpiryReminderText(p: { fullName: string; dateLabel: string }): stri
     ``,
     `Après cette date, ton compte repassera en version gratuite (messagerie et`,
     `visibilité Pro désactivées, publications limitées à ${MAX_PROJECTS_FREE} films).`,
+    `Tes films restent en ligne.`,
     ``,
     `— Unkast`,
   ].join("\n");
@@ -226,7 +227,7 @@ function proExpiryReminderHtml(p: { fullName: string; dateLabel: string }): stri
                   Bonjour <strong style="color:#f0f0f0;">${escapeHtml(p.fullName)}</strong>, ton accès Pro à Unkast
                   expire le <strong style="color:#f0f0f0;">${escapeHtml(p.dateLabel)}</strong>. Après cette date, ton
                   compte repassera en version gratuite (messagerie et visibilité Pro désactivées, publications
-                  limitées à ${MAX_PROJECTS_FREE} films).
+                  limitées à ${MAX_PROJECTS_FREE} films). <strong style="color:#f0f0f0;">Tes films restent en ligne.</strong>
                 </p>
                 <p style="margin:24px 0 0 0;font-size:12px;line-height:1.6;color:#666;">
                   Des questions ? Réponds simplement à cet email.

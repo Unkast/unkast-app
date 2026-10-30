@@ -422,7 +422,7 @@ pour l'intéressé, tant qu'il n'a pas un nouveau grant, dans l'historique `admi
 
 | Type | Échéance | Qui peut le poser | Comment il se retire |
 |---|---|---|---|
-| `launch` | **Obligatoire** (CHECK) — cadeau de lancement, pas de Pro à vie non voulu par oubli | Admin, via `grant_pro` (modal « Offrir Pro… », AdminClient) | Expire seul (cron), ou `revoke_pro_grant` |
+| `launch` | **Obligatoire** (CHECK) — cadeau de lancement, pas de Pro à vie non voulu par oubli | Admin, via `grant_pro` (modal « Offrir Pro… », AdminClient). **Automatique à l'inscription** (email et Google, 2026-10-30) : `grantLaunchPro()` (`lib/pro-plan.ts`) pose `launch` avec l'échéance fixe `LAUNCH_PRO_UNTIL` = `2027-02-01 23:59:59+01` (CGU section 9), `pro_grant_granted_by` NULL. Plus rien n'est posé après cette date | Expire seul (cron), ou `revoke_pro_grant` |
 | `vip` | **Libre** — `null` = à vie, une date reste possible pour une durée longue déterminée | Admin, via `grant_pro` | `revoke_pro_grant`, ou expire si une échéance avait été posée |
 
 > ⚰️ **Un troisième type, `recruiter`, a existé du 10/08/2026 (création, migration
@@ -450,7 +450,7 @@ d'un 500 brut), et le même import côté `AdminClient.tsx` (désactive le bouto
 | `plan`, `pro_since` | **Uniquement** `recompute_plan()` (RPC) |
 | `stripe_customer_id` | `api/billing/checkout` (création), `api/billing/webhook` (rattachement `client_reference_id`) |
 | `stripe_subscription_id`, `subscription_status`, `current_period_end` | **Uniquement** `api/billing/webhook` |
-| `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at` | `api/admin` : `grant_pro` (pose, launch/vip), `revoke_pro_grant` (remise à `null`). ⚠️ Ni `approve_recruiter` ni `revoke_recruiter_approval` n'écrivent ces colonnes depuis le 10/08/2026 — le premier ne pose plus de grant, le second n'a donc plus rien à nettoyer |
+| `pro_grant_type`, `pro_grant_expires_at`, `pro_grant_granted_by`, `pro_grant_granted_at` | `api/admin` : `grant_pro` (pose, launch/vip), `revoke_pro_grant` (remise à `null`). `grantLaunchPro()` (`lib/pro-plan.ts`) à la création du profil : `api/signup` et `lib/google-account.ts` (`/auth/callback`, `/api/auth/google`). Comptes inscrits avant le 2026-10-30 : rattrapage SQL manuel, même grant `launch` à la même échéance. ⚠️ Ni `approve_recruiter` ni `revoke_recruiter_approval` n'écrivent ces colonnes depuis le 10/08/2026 — le premier ne pose plus de grant, le second n'a donc plus rien à nettoyer |
 | `pro_grant_reminder_sent_at` | **Uniquement** `api/cron/pro-expiry`, et seulement si l'email est **réellement parti** (`sendProExpiryReminderEmail` → `{sent:true}`) |
 | `pro_source` | **Personne** — colonne gelée, conservée pour compat historique, `DROP` prévu post-lancement |
 

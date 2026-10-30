@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/utils";
 import { TERMS_VERSION } from "@/lib/legal";
+import { grantLaunchPro } from "@/lib/pro-plan";
 
 // Suite d'une connexion Google, commune aux deux chemins : jeton Google echange
 // dans le navigateur ou l'app (POST /api/auth/google) et ancien retour OAuth
@@ -28,7 +29,7 @@ export async function googleLandingPath(user: User, termsAccepted: boolean, next
       user.user_metadata?.name ||
       user.email?.split("@")[0] ||
       "Utilisateur";
-    await admin.from("profiles").insert({
+    const { error: insertError } = await admin.from("profiles").insert({
       id: user.id,
       full_name: fullName,
       slug: slugify(fullName) + "-" + user.id.slice(0, 6),
@@ -42,6 +43,8 @@ export async function googleLandingPath(user: User, termsAccepted: boolean, next
         ? { terms_version: TERMS_VERSION, terms_accepted_at: new Date().toISOString() }
         : {}),
     });
+    // Pro offert jusqu'au 1er fevrier 2027 (CGU section 9). Jamais bloquant.
+    if (!insertError) await grantLaunchPro(admin, user.id);
     return finalizePath;
   }
 

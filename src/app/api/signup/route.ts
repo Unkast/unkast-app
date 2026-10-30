@@ -16,6 +16,7 @@ import { sendPushToUser } from "@/lib/push";
 import { sendConfirmationEmail, sendAdminNewFilmEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/stripe";
 import { TERMS_VERSION } from "@/lib/legal";
+import { grantLaunchPro } from "@/lib/pro-plan";
 
 export async function POST(request: NextRequest) {
   // Anti-abus : max 5 créations de compte par heure et par IP.
@@ -163,6 +164,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Pro offert jusqu'au 1er fevrier 2027 (CGU section 9). Jamais bloquant.
+  await grantLaunchPro(supabase, userId);
+
   // 3. Insert roles
   if (checkedRoles.roles.length > 0) {
     const roleInserts = checkedRoles.roles.map((role_name) => ({
@@ -220,8 +224,8 @@ export async function POST(request: NextRequest) {
           .map((c: { name: string; role: string }) => ({ profile_id: null, ghost_name: c.name, role: c.role })),
       ];
 
-      // Nouveau compte = toujours 'free' a l'inscription (le passage Pro se fait
-      // ensuite via l'admin) -> plafond gratuit.
+      // Plafond gratuit volontaire meme si le Pro de lancement vient d'etre pose :
+      // un seul film se publie a l'inscription, la limite n'a donc pas d'effet.
       const { data: result, error: projectError } = await supabase.rpc("publish_project", {
         p_profile_id: userId,
         p_title: project.title,

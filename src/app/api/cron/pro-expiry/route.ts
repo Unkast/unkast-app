@@ -19,6 +19,11 @@ import { sendProExpiryReminderEmail } from "@/lib/email";
 // chaque invocation programmee. Verifie AVANT toute autre chose, sinon
 // n'importe qui connaissant l'URL publique pourrait forcer une expiration ou
 // spammer les rappels.
+// Rappel J-7 etale : au plus 2 envois par seconde (limite Resend par defaut)
+// et 200 rappels par passage quotidien.
+const REMINDER_SPACING_MS = 600;
+const REMINDERS_PER_RUN = 200;
+
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -81,7 +86,9 @@ export async function GET(request: NextRequest) {
     .not("pro_grant_expires_at", "is", null)
     .gt("pro_grant_expires_at", nowIso)
     .lte("pro_grant_expires_at", in7DaysIso)
-    .is("pro_grant_reminder_sent_at", null);
+    .is("pro_grant_reminder_sent_at", null)
+    .order("pro_grant_expires_at")
+    .limit(REMINDERS_PER_RUN);
 
   if (reminderQueryError) {
     console.error("[cron/pro-expiry] lecture des candidats au rappel J-7 échouée :", reminderQueryError);
@@ -90,10 +97,13 @@ export async function GET(request: NextRequest) {
 
   let reminderSent = 0;
   let reminderFailed = 0;
-  // Sequentiel (pas Promise.all) : volume attendu minime (grants a echeance
-  // rares), et chaque envoi conditionne une ecriture DB propre a lui — pas de
-  // gain a paralleliser un appel a un service tiers (Resend) pour ce cas.
-  for (const profile of reminderCandidates ?? []) {
+  // Sequentiel et espace : tous les Pro de lancement expirent le meme jour
+  // (LAUNCH_PRO_UNTIL), donc tous les rappels tombent le meme matin. Une pause
+  // entre deux envois respecte la limite de debit Resend ; le plafond par
+  // passage garde la fonction sous sa duree maximale. Le reste part aux
+  // passages suivants (fenetre de 7 jours), les plus proches d'expirer d'abord.
+  for (const [i, profile] of (reminderCandidates ?? []).entries()) {
+    if (i > 0) await new Promise((resolve) => setTimeout(resolve, REMINDER_SPACING_MS));
     const { data: { user } } = await admin.auth.admin.getUserById(profile.id);
     if (!user?.email) {
       reminderFailed++;
