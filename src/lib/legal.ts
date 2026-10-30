@@ -29,7 +29,7 @@ export const LEGAL = {
   governingLaw:
     "Ces conditions sont soumises au droit des Émirats arabes unis, avec compétence des tribunaux de Dubaï. Si tu es consommateur, tu gardes la protection des règles impératives de ton pays de résidence et tu peux saisir le tribunal de ton lieu de résidence.",
   // Representant dans l'Union europeenne (RGPD, article 27), s'il en faut un.
-  euRepresentative: "En cours de désignation. En attendant, écris à contact@unkast.com.",
+  euRepresentative: "en cours de désignation. En attendant, tu peux écrire à contact@unkast.com",
 } as const;
 
 /** Vrai si une information legale n'a pas encore ete remplie. */
