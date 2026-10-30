@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 3600,
   },
   experimental: {
+    agentUpgrade: "security",
     optimizeCss: true,
     optimizePackageImports: ["framer-motion"],
   },
