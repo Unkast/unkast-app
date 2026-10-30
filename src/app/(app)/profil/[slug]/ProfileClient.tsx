@@ -20,6 +20,7 @@ import ReportModal, { ReportButton } from "@/components/ReportModal";
 import RoleSelector from "@/components/RoleSelector";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { directorNames } from "@/lib/credits";
+import { formatDateParis } from "@/lib/utils";
 import { CAREER_KINDS, baseRole, creditRoles, roleFamily } from "@/lib/constants";
 import CastingSummary from "@/components/CastingSummary";
 import ShareButton from "@/components/ShareButton";
@@ -40,6 +41,8 @@ type ProfileData = Omit<Profile, "first_name" | "last_name" | "stage_name" | "di
   // plan='pro') — voir page.tsx. Le client n'a pas le plan et ne rejoue pas la
   // regle : il affiche ce booleen tel quel.
   show_verified_badge: boolean;
+  // « Membre fondateur » : compte cree avant la fin de l'offre de lancement (page.tsx).
+  show_founder_badge: boolean;
   projects: ProjectWithCredits[];
   career: CareerEntry[];
   // Films « membres seulement » vus par un visiteur non connecté : de quoi
@@ -315,6 +318,7 @@ export default function ProfileClient({
               <h1 className="text-[28px] font-semibold text-sheen" style={{ letterSpacing: "-0.5px" }}>
                 {profile.full_name}
               </h1>
+              {profile.show_founder_badge && <Badge variant="founder" />}
               {profile.is_available && <Badge variant="available" />}
             </div>
 
@@ -391,7 +395,7 @@ export default function ProfileClient({
                                 <span style={{ fontSize: 12.5, fontWeight: 600, color: "#22c55e" }}>Disponible — {role}</span>
                               </div>
                               <p style={{ fontSize: 11, color: "#777", margin: 0, marginBottom: 8 }}>
-                                Expire le {new Date(signal.expires_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                                Expire le {formatDateParis(signal.expires_at, "day-month")}
                               </p>
                               <div style={{ display: "flex", gap: 8 }}>
                                 <button onClick={() => extendAvailable(role)} disabled={busy} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#f0f0f0", fontSize: 12, fontWeight: 500, borderRadius: 8, padding: "7px 0", cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>Prolonger</button>

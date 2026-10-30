@@ -11,6 +11,12 @@
   --color-text-secondary: #A8A8B0;
   --color-text-tertiary: #868686;
   --color-lime: #C8FF00;
+  /* Violet secondaire (30/10/2026), tres parcimonieux. Le lime reste la couleur d'action
+     (boutons, focus, etats actifs). violet : decor seulement (lueurs, bordures, fonds de
+     badge). violet-soft : les rares textes en violet (contraste >= 4,5:1 sur le verre).
+     Jamais de bouton principal ni de texte courant en violet. */
+  --color-violet: #8B5CF6;
+  --color-violet-soft: #A78BFA;
   --color-teal: #00D4AA;
   --color-accent-clip: #AA88FF;
   --color-accent-doc: #FF8844;
@@ -37,11 +43,11 @@
 /* Verre liquide — valeurs composees (hors namespaces Tailwind) */
 :root {
   --halo-lime: rgba(200, 255, 0, 0.16);
-  --halo-blue: rgba(64, 132, 255, 0.14);
+  --halo-violet: rgba(139, 92, 246, 0.12); /* remplace l'ancienne lueur bleue (30/10/2026) */
   --halo-pink: rgba(255, 85, 119, 0.12);
   --canvas-halos:
     radial-gradient(60% 50% at 100% 0%, var(--halo-lime) 0%, transparent 70%),
-    radial-gradient(50% 55% at 0% 35%, var(--halo-blue) 0%, transparent 70%),
+    radial-gradient(50% 55% at 0% 35%, var(--halo-violet) 0%, transparent 70%),
     radial-gradient(60% 45% at 50% 100%, var(--halo-pink) 0%, transparent 70%);
 
   --glass-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
@@ -332,6 +338,15 @@ body {
     box-shadow: var(--glass-highlight);
     -webkit-backdrop-filter: var(--glass-blur);
     backdrop-filter: var(--glass-blur);
+  }
+
+  /* Verre a bordure violette fine. A COMBINER avec .glass (class="glass glass-violet") : il
+     ne change que la bordure et l'ombre, le fond, le flou et les replis (.lite, sans
+     backdrop-filter) restent ceux de .glass. Deux usages seulement : la carte « Mon forfait »
+     de /moi et l'ecran LaunchProWelcome. */
+  .glass-violet {
+    border-color: rgba(139, 92, 246, 0.32);
+    box-shadow: var(--glass-highlight), 0 0 32px rgba(139, 92, 246, 0.08);
   }
 
   /* Variante forte — barres de navigation */

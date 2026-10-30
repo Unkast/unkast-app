@@ -5,6 +5,7 @@ import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, withDisplayName, type DisplayNameRow } from "@/lib/profile";
 import { toLockedFilm, type LockedFilm, type LockedFilmRow } from "@/components/LockedFilmCard";
+import { isFoundingMember } from "@/lib/pro-plan";
 import ProfileClient from "./ProfileClient";
 
 export const revalidate = 60; // Cache 1 minute
@@ -30,6 +31,7 @@ type ProfileWithRelations = Omit<Profile, "first_name" | "last_name" | "stage_na
   // recruteur qui resilie perd son badge). Derive ici pour que `plan` ne quitte
   // jamais le serveur : voir getProfile.
   show_verified_badge: boolean;
+  show_founder_badge: boolean;
   projects: (Project & {
     credits: (ProjectCredit & {
       profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
@@ -197,6 +199,8 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     profile_roles: undefined,
     roles,
     show_verified_badge: profile.recruiter_verified === true && plan === "pro",
+    // « Membre fondateur » : derive de created_at (lib/pro-plan.ts), sans colonne.
+    show_founder_badge: isFoundingMember(profile.created_at),
     projects: projectsWithCredits,
     career: (career ?? []) as CareerEntry[],
     locked_films: lockedFilms,

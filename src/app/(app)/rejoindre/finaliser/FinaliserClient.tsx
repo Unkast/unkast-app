@@ -11,6 +11,8 @@ import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import Toggle from "@/components/ui/Toggle";
+import LaunchProWelcome from "@/components/LaunchProWelcome";
+import { isLaunchOfferOpen } from "@/lib/pro-plan";
 
 type FinalizeAccountType = "talent" | "creator";
 
@@ -75,6 +77,7 @@ export default function FinaliserClient({
   const [loading, setLoading] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState("");
+  const [welcome, setWelcome] = useState(false);
 
   const first = firstName.trim();
   const last = lastName.trim();
@@ -87,6 +90,11 @@ export default function FinaliserClient({
     selectedRoles.length === 0 && "au moins un métier",
   ].filter((m): m is string => !!m);
   const ready = missing.length === 0;
+
+  function goNext() {
+    router.replace(next || "/feed");
+    router.refresh();
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -116,8 +124,12 @@ export default function FinaliserClient({
       if (!res.ok) {
         throw new Error(data?.error || "Enregistrement impossible. Réessaie dans un instant.");
       }
-      router.replace(next || "/feed");
-      router.refresh();
+      // Offre de lancement ouverte : ecran de bienvenue, le membre continue lui-meme.
+      if (isLaunchOfferOpen()) {
+        setWelcome(true);
+        return;
+      }
+      goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Enregistrement impossible. Réessaie dans un instant.");
       setLoading(false);
@@ -139,6 +151,8 @@ export default function FinaliserClient({
     }
     window.location.assign(path);
   }
+
+  if (welcome) return <LaunchProWelcome onContinue={goNext} />;
 
   return (
     <EnterList className="mx-auto w-full max-w-xl px-4 py-4 sm:px-6 sm:py-8">

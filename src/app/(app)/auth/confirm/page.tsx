@@ -7,6 +7,8 @@ import { EnterItem, EnterList } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
+import LaunchProWelcome from "@/components/LaunchProWelcome";
+import { isLaunchOfferOpen } from "@/lib/pro-plan";
 
 const TITLE = "text-sheen pb-0.5 text-[26px] font-bold tracking-tight";
 
@@ -16,9 +18,14 @@ const TITLE = "text-sheen pb-0.5 text-[26px] font-bold tracking-tight";
 // (cookies via @supabase/ssr) -> auto-login -> redirection /feed.
 export default function ConfirmPage() {
   const router = useRouter();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "welcome" | "error">("loading");
   const [resendEmail, setResendEmail] = useState("");
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  function goToFeed() {
+    router.replace("/feed");
+    router.refresh();
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -44,7 +51,12 @@ export default function ConfirmPage() {
           setStatus("error");
           return;
         }
-        // Session posée -> auto-login. On laisse une seconde pour la lecture.
+        // Session posée -> auto-login. Offre de lancement ouverte : ecran de bienvenue
+        // (le membre continue lui-meme). Sinon, une seconde pour lire puis /feed.
+        if (isLaunchOfferOpen()) {
+          setStatus("welcome");
+          return;
+        }
         setStatus("success");
         setTimeout(() => {
           router.replace("/feed");
@@ -71,6 +83,8 @@ export default function ConfirmPage() {
       setResendState("error");
     }
   }
+
+  if (status === "welcome") return <LaunchProWelcome onContinue={goToFeed} />;
 
   return (
     <EnterList className="flex min-h-[70vh] items-center justify-center px-4 py-6">

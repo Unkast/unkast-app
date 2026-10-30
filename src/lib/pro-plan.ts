@@ -65,9 +65,33 @@ export async function recomputePlan(admin: SupabaseClient, profileId: string): P
 }
 
 // Fin du Pro offert pendant la beta (CGU section 9 : « offerte jusqu'au 1er
-// fevrier 2027 »). Fin de journee, heure de Paris : l'email (formate en UTC
-// cote serveur) et la page /moi affichent tous deux « 1 fevrier 2027 ».
+// fevrier 2027 »). Fin de journee, heure de Paris. Toutes les dates d'echeance
+// s'affichent en heure de Paris (formatDateParis, lib/utils.ts) : sans cela un
+// navigateur a Dubai (UTC+4) lisait « 2 fevrier ».
 export const LAUNCH_PRO_UNTIL = "2027-02-01T23:59:59+01:00";
+
+// L'offre de lancement est-elle encore ouverte ? (ecran de bienvenue : seulement
+// si l'inscription a lieu avant la fin de l'offre.)
+export function isLaunchOfferOpen(): boolean {
+  return Date.now() < new Date(LAUNCH_PRO_UNTIL).getTime();
+}
+
+// « Membre fondateur » : compte cree jusqu'a la fin de l'offre de lancement.
+// Derive de profiles.created_at, sans colonne ni migration : un membre ne peut pas
+// modifier sa date de creation (pas de GRANT UPDATE dessus). Le badge reste apres
+// la fin du Pro offert.
+export function isFoundingMember(createdAt: string | null | undefined): boolean {
+  if (!createdAt) return false;
+  const t = new Date(createdAt).getTime();
+  return !Number.isNaN(t) && t <= new Date(LAUNCH_PRO_UNTIL).getTime();
+}
+
+// Jours calendaires restants, en heure de Paris : 0 = dernier jour (l'echeance
+// tombe aujourd'hui), jamais negatif.
+export function launchProDaysLeft(expiresAt: string, now: Date = new Date()): number {
+  const parisDay = (d: Date) => new Date(d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" })).getTime();
+  return Math.max(0, Math.round((parisDay(new Date(expiresAt)) - parisDay(now)) / 86_400_000));
+}
 
 // Pro de lancement pose a l'inscription (email et Google), sans admin
 // (granted_by NULL). Ne fait rien une fois la date passee. Jamais bloquant :

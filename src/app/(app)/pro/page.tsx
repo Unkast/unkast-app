@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { isGrantValid } from "@/lib/pro-plan";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
+import { formatDateParis } from "@/lib/utils";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -107,9 +108,7 @@ export default function ProPage() {
   // (ex. un VIP peut vouloir payer quand meme, ou juste comprendre pourquoi il
   // est deja Pro).
   const grantValid = isGrantValid(grantType, grantExpiresAt);
-  const grantExpiryLabel = grantExpiresAt
-    ? new Date(grantExpiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
-    : null;
+  const grantExpiryLabel = grantExpiresAt ? formatDateParis(grantExpiresAt) : null;
 
   // Les boutons d'achat sont visibles si le billing public est activé, OU pour un
   // admin (test). En mode test (billing public OFF) on affiche un bandeau clair.

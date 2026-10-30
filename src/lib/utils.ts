@@ -100,6 +100,30 @@ export function extractPlaylistId(rawUrl: string): string | null {
 export const playlistUrl = (id: string) => `https://www.youtube.com/playlist?list=${id}`;
 export const episodeUrl = (id: string) => `https://www.youtube.com/watch?v=${id}`;
 
+// Dates affichees en heure de Paris, quel que soit le fuseau du navigateur ou du
+// serveur (echeances du Pro, emails, admin) : l'echeance du 1er fevrier 2027 a
+// 23:59 (Paris) restait « 2 fevrier » pour un navigateur a Dubai. Les heures de
+// messages restent en heure locale (elles ne passent pas par ici).
+//   long  : « 1er février 2027 »   short : « 01/02/2027 »
+//   day-month : « 1er février »    datetime : « 01/02/2027 23:59 »
+const PARIS = "Europe/Paris";
+const PARIS_FORMATS = {
+  long: { day: "numeric", month: "long", year: "numeric" },
+  "day-month": { day: "numeric", month: "long" },
+  short: { day: "2-digit", month: "2-digit", year: "numeric" },
+  datetime: { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" },
+} as const satisfies Record<string, Intl.DateTimeFormatOptions>;
+
+export function formatDateParis(
+  value: string | number | Date,
+  style: keyof typeof PARIS_FORMATS = "long"
+): string {
+  const parts = new Intl.DateTimeFormat("fr-FR", { ...PARIS_FORMATS[style], timeZone: PARIS }).formatToParts(new Date(value));
+  // « 1er » pour le premier du mois (forme longue seulement).
+  const long = style === "long" || style === "day-month";
+  return parts.map((p) => (long && p.type === "day" && p.value === "1" ? "1er" : p.value)).join("");
+}
+
 // Adresse de retour apres connexion (parametre ?next=) : uniquement un chemin
 // interne. Tout le reste (URL absolue, « //hote », antislash, « @hote » colle a
 // l'origine) retombe sur la valeur par defaut : pas de redirection ouverte.

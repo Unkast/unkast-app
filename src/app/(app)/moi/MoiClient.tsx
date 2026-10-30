@@ -17,7 +17,8 @@ import CastingSummary from "@/components/CastingSummary";
 import { isActingRole, type CastingFields } from "@/lib/constants";
 import RecruitmentSpace from "./RecruitmentSpace";
 import { createClient } from "@/lib/supabase/client";
-import { isGrantValid } from "@/lib/pro-plan";
+import { isGrantValid, isFoundingMember, launchProDaysLeft } from "@/lib/pro-plan";
+import { formatDateParis } from "@/lib/utils";
 import { EnterList, EnterItem, cardSpring } from "@/components/motion";
 import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
@@ -163,7 +164,7 @@ export default function MoiClient() {
       ? ["active", "trialing", "past_due"].includes(p.subscription_status)
       : false;
     const grantValid = isGrantValid(p.pro_grant_type ?? null, p.pro_grant_expires_at ?? null);
-    const fmt = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const fmt = (iso: string) => formatDateParis(iso);
 
     let grantLabel: string | null = null;
     if (grantValid && p.pro_grant_type === "vip") {
@@ -178,6 +179,18 @@ export default function MoiClient() {
     // plan='pro' sans signal Stripe/grant detectable ici : etat transitoire
     // (juste avant un recompute_plan) ou profil a examiner manuellement.
     return null;
+  })();
+
+  // Compte a rebours « Pro offert » : seulement un Pro de lancement en cours, sans
+  // abonnement Stripe actif (ni VIP). Jours calendaires en heure de Paris.
+  const launchCountdown = (() => {
+    if (!profile || plan !== "pro") return null;
+    const p = profile as Profile;
+    const stripeActive = !!p.subscription_status && ["active", "trialing", "past_due"].includes(p.subscription_status);
+    if (stripeActive || p.pro_grant_type !== "launch" || !p.pro_grant_expires_at) return null;
+    if (!isGrantValid(p.pro_grant_type, p.pro_grant_expires_at)) return null;
+    const days = launchProDaysLeft(p.pro_grant_expires_at);
+    return days === 0 ? "Pro offert, dernier jour" : `Pro offert, il reste ${days} ${days > 1 ? "jours" : "jour"}`;
   })();
 
   function getDisplayName(): string {
@@ -652,6 +665,7 @@ export default function MoiClient() {
   const reviewStatus = isRecruiter ? profile.recruiter_review_status : null;
   // Meme regle que le profil public (profil/[slug]/page.tsx) : verification admin ET Pro actif.
   const showVerifiedBadge = profile.recruiter_verified === true && plan === "pro";
+  const isFounder = isFoundingMember(profile.created_at);
   const recruitingRoles = profile.is_recruiting ? profile.recruiting_roles ?? [] : [];
   const instagram = formatInstagram(profile.instagram_url);
   const pendingSentRequests = myCreditRequests.filter((r) => r.status === "pending");
@@ -763,9 +777,10 @@ export default function MoiClient() {
               <h1 className="text-sheen break-words text-[26px] font-semibold" style={{ letterSpacing: "-0.5px" }}>
                 {getDisplayName()}
               </h1>
-              {(plan === "pro" || showVerifiedBadge || profile.is_available || reviewStatus === "pending") && (
+              {(plan === "pro" || isFounder || showVerifiedBadge || profile.is_available || reviewStatus === "pending") && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {plan === "pro" && <Badge variant="pro" />}
+                  {isFounder && <Badge variant="founder" />}
                   {showVerifiedBadge && <Badge variant="verified">Recruteur vérifié</Badge>}
                   {profile.is_available && <Badge variant="available" />}
                   {reviewStatus === "pending" && <Badge variant="pending">Validation en attente</Badge>}
@@ -1095,7 +1110,7 @@ export default function MoiClient() {
         {activeTab === "compte" && (
           <EnterList className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
             {/* Mon forfait */}
-            <EnterItem className="glass rounded-panel p-5 sm:p-6 lg:col-start-1 lg:row-start-1">
+            <EnterItem className="glass glass-violet rounded-panel p-5 sm:p-6 lg:col-start-1 lg:row-start-1">
               <SectionLabel>Mon forfait</SectionLabel>
 
               <div className="mt-3 flex items-center justify-between gap-3">
@@ -1104,6 +1119,7 @@ export default function MoiClient() {
               </div>
 
               {proOrigin && <p className="mt-2 text-xs text-text-secondary">{proOrigin}</p>}
+              {launchCountdown && <p className="mt-1 text-xs text-violet-soft">{launchCountdown}</p>}
 
               <p className="mt-2 text-[13px] text-text-secondary">
                 Type de compte : {profile.account_type === "creator" ? "Créateur" : profile.account_type === "recruiter" ? "Recruteur" : "Talent"}

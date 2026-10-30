@@ -12,6 +12,10 @@ const VARIANTS = {
   // Statuts d'un film, d'une demande ou d'une invitation (libelle surchargeable en children).
   published: { label: "Publié", className: LIME },
   rejected: { label: "Refusé", className: "border-red-500/25 bg-red-500/10 text-red-400" },
+  // Compte cree avant la fin de l'offre de lancement (isFoundingMember, lib/pro-plan.ts).
+  // Violet secondaire (bordure /30, fond /10, texte violet-soft : >= 4,5:1), volontairement
+  // distinct du badge Pro (lime).
+  founder: { label: "Membre fondateur", className: "border-violet/30 bg-violet/10 text-violet-soft" },
 } as const;
 
 export default function Badge({
@@ -32,6 +36,11 @@ export default function Badge({
       {(variant === "verified" || variant === "published") && (
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
           <path d="M2.5 6.2 5 8.7l4.5-5.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+      {variant === "founder" && (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z" />
         </svg>
       )}
       {variant === "available" && (

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-plan";
 import { CATEGORY_LABELS, DECLARED_ROLES, REFUSAL_REASONS, episodesLabel } from "@/lib/constants";
-import { episodeUrl } from "@/lib/utils";
+import { episodeUrl, formatDateParis } from "@/lib/utils";
 import VideoFacade from "@/components/VideoFacade";
 
 type Tab = "recruiters" | "reports" | "users" | "films" | "claims";
@@ -58,7 +58,7 @@ function proBadge(u: User): ProBadge {
     if (stripeActive && grantValid) return { label: `Pro · Stripe + ${grantLabel}`, tone: "pro" };
     if (stripeActive) return { label: "Pro · Stripe actif", tone: "pro" };
     if (grantValid && u.pro_grant_type === "launch") {
-      const d = u.pro_grant_expires_at ? new Date(u.pro_grant_expires_at).toLocaleDateString("fr-FR") : "?";
+      const d = u.pro_grant_expires_at ? formatDateParis(u.pro_grant_expires_at, "short") : "?";
       return { label: `Pro · Lancement → ${d}`, tone: "pro" };
     }
     if (grantValid && u.pro_grant_type === "vip") return { label: "Pro · Offert VIP", tone: "pro" };
@@ -71,7 +71,7 @@ function proBadge(u: User): ProBadge {
   // plan === 'free' : un grant expire (colonnes conservees comme temoin,
   // jamais nettoyees automatiquement) reste visible pour l'admin.
   if (u.pro_grant_type && u.pro_grant_expires_at && !grantValid) {
-    const d = new Date(u.pro_grant_expires_at).toLocaleDateString("fr-FR");
+    const d = formatDateParis(u.pro_grant_expires_at, "short");
     return { label: `Free · ex-${(grantLabel ?? u.pro_grant_type).toLowerCase()} (expiré le ${d})`, tone: "expired" };
   }
   return { label: "Free", tone: "muted" };
@@ -180,7 +180,7 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
         </div>
 
         <p style={{ fontSize: 11, color: "#868686", marginTop: 8 }}>
-          Proposé le {new Date(f.created_at).toLocaleDateString("fr-FR")} ·{" "}
+          Proposé le {formatDateParis(f.created_at, "short")} ·{" "}
           <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#A8A8B0" }}>Lien vidéo</a>
         </p>
 
@@ -465,7 +465,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
 
   const filmsCount = films.length + editedFilms.length + orphanFilms.length;
   const totalPending = pendingRecruiters.length + recruiterEdits.length + reports.length + filmsCount + claims.length;
-  const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const date = formatDateParis(new Date());
 
   const btnApprove = { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
   const btnDanger = { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 } as const;
@@ -529,7 +529,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   <p style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0" }}>{r.full_name}</p>
                   <p style={{ fontSize: 12, color: "#868686" }}>{r.email}</p>
                 </div>
-                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
+                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{formatDateParis(r.created_at, "short")}</p>
               </div>
               {r.recruiter_company && <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 4 }}>Société : {r.recruiter_company}</p>}
               {r.recruiter_role && <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 4 }}>Poste : {r.recruiter_role}</p>}
@@ -556,7 +556,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                       </div>
                       {e.recruiter_company && <p style={{ fontSize: 12, color: "#868686", marginTop: 2 }}>{e.recruiter_company}</p>}
                     </div>
-                    <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(e.created_at).toLocaleDateString("fr-FR")}</p>
+                    <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{formatDateParis(e.created_at, "short")}</p>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
@@ -628,7 +628,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   </div>
                   <p style={{ fontSize: 12, color: "#868686", marginTop: 4 }}>{r.reporter_id ? `Signalé par ${r.reporter_name}` : "Détection automatique"} · {REASON_LABELS[r.reason] || r.reason}</p>
                 </div>
-                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
+                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace" }}>{formatDateParis(r.created_at, "short")}</p>
               </div>
               {/* Entree du Parcours : son contenu (target_name = profil concerne). */}
               {r.target_type === "career_entry" && (
@@ -690,7 +690,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                     <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, ...badgeStyle }}>{badge.label}</span>
                     {u.is_suspended && <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>Suspendu</span>}
                   </div>
-                  <p style={{ fontSize: 11, color: "#868686" }}>{u.email} · {new Date(u.created_at).toLocaleDateString("fr-FR")}</p>
+                  <p style={{ fontSize: 11, color: "#868686" }}>{u.email} · {formatDateParis(u.created_at, "short")}</p>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                   <button onClick={() => openGrantModal(u.id, `Offrir Pro à ${u.full_name}`)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Offrir Pro…</button>
@@ -733,7 +733,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   <p style={{ fontSize: 12, color: "#f59e0b", overflowWrap: "anywhere" }}>Titre validé : {f.approved_title}</p>
                 )}
                 {f.reported && <p style={{ fontSize: 12, color: "#ef4444" }}>Film signalé</p>}
-                <p style={{ fontSize: 11, color: "#868686" }}>Modifié par {f.edited_by_name || "un compte supprimé"} · {new Date(f.edited_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+                <p style={{ fontSize: 11, color: "#868686" }}>Modifié par {f.edited_by_name || "un compte supprimé"} · {formatDateParis(f.edited_at, "datetime")}</p>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <Link href={`/projet/${f.slug}`} target="_blank" style={{ ...btnNeutral, textDecoration: "none", padding: "6px 12px", fontSize: 12 }}>Voir le film</Link>
@@ -809,7 +809,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                     Demandé par <Link href={`/profil/${c.claimant_slug}`} target="_blank" style={{ color: "#A8A8B0", textDecoration: "none" }}>{c.claimant_name || "compte introuvable"}</Link>
                   </p>
                 </div>
-                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{new Date(c.created_at).toLocaleDateString("fr-FR")}</p>
+                <p style={{ fontSize: 11, color: "#868686", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{formatDateParis(c.created_at, "short")}</p>
               </div>
               <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{c.message}</p>
               <p style={{ fontSize: 12, color: "#868686", marginBottom: 12 }}>
