@@ -2,6 +2,7 @@
 // Gestion d'un film : Responsable, co-gestionnaires, demandes, invitations, transfert.
 // Charge a l'ouverture (GET /api/projects/[id]/managers).
 import { useCallback, useEffect, useState } from "react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import { Note, SectionLabel } from "./parts";
@@ -42,6 +43,8 @@ export default function FilmManagers({
   const [busy, setBusy] = useState(false);
   const [transferTo, setTransferTo] = useState("");
   const [confirmTransfer, setConfirmTransfer] = useState(false);
+  // Co-gestionnaire en attente de confirmation de retrait (ou moi, qui quitte la co-gestion).
+  const [leaving, setLeaving] = useState<{ profileId: string; name: string; isMe: boolean } | null>(null);
 
   const url = `/api/projects/${projectId}/managers`;
 
@@ -105,14 +108,7 @@ export default function FilmManagers({
                   variant="glass"
                   size="sm"
                   disabled={busy}
-                  onClick={() => {
-                    if (!confirm(isMe ? "Quitter la co-gestion de ce film ?" : `Retirer ${nameOf(m)} de la co-gestion ?`)) return;
-                    act(
-                      () => callApi(`${url}?profile_id=${m.profile_id}`, "DELETE"),
-                      isMe ? "Tu ne co-gères plus ce film" : "Co-gestionnaire retiré",
-                      isMe
-                    );
-                  }}
+                  onClick={() => setLeaving({ profileId: m.profile_id, name: nameOf(m), isMe })}
                   className="shrink-0"
                 >
                   {isMe ? "Me retirer" : "Retirer"}
@@ -223,6 +219,24 @@ export default function FilmManagers({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={leaving !== null}
+        title={leaving ? (leaving.isMe ? "Quitter la co-gestion de ce film ?" : `Retirer ${leaving.name} de la co-gestion ?`) : ""}
+        confirmLabel={leaving?.isMe ? "Me retirer" : "Retirer"}
+        busy={busy}
+        onCancel={() => setLeaving(null)}
+        onConfirm={() => {
+          if (!leaving) return;
+          const target = leaving;
+          setLeaving(null);
+          act(
+            () => callApi(`${url}?profile_id=${target.profileId}`, "DELETE"),
+            target.isMe ? "Tu ne co-gères plus ce film" : "Co-gestionnaire retiré",
+            target.isMe
+          );
+        }}
+      />
 
       {error && <Note>{error}</Note>}
     </div>

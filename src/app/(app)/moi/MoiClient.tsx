@@ -8,6 +8,7 @@ import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { PHONE_CODES } from "@/lib/phone-codes";
 import type { Profile, ProfileRole, ProjectCredit, CreditRequest } from "@/types/database";
 import AvatarUpload from "@/components/AvatarUpload";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram, getDisplayName as profileDisplayName } from "@/lib/profile";
 import RoleSelector from "@/components/RoleSelector";
@@ -81,6 +82,8 @@ const linkCls = "inline-flex min-h-11 items-center text-[13px] text-lime hover:u
 export default function MoiClient() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  // Credit a son nom en attente de confirmation de retrait.
+  const [removingCredit, setRemovingCredit] = useState<{ id: string; title: string } | null>(null);
   // Echec du chargement du profil, hors 401 : "network" (requete coupee deux fois de
   // suite) ou "server" (reponse en erreur ou illisible). Le message « Tu dois etre
   // connecte » est reserve a un vrai 401.
@@ -383,8 +386,7 @@ export default function MoiClient() {
   }
 
   // Retirer soi-meme un credit a son nom (le film reste, seul le credit disparait).
-  async function removeMyCredit(id: string, title: string) {
-    if (!window.confirm(`Retirer ton nom du générique de « ${title} » ?`)) return;
+  async function removeMyCredit(id: string) {
     const res = await fetch(`/api/dashboard/credits?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
@@ -938,7 +940,7 @@ export default function MoiClient() {
                             Voir
                           </Button>
                         )}
-                        <Button variant="glass" size="sm" onClick={() => removeMyCredit(credit.id, credit.project_title || "ce film")}>
+                        <Button variant="glass" size="sm" onClick={() => setRemovingCredit({ id: credit.id, title: credit.project_title || "ce film" })}>
                           Retirer
                         </Button>
                       </div>
@@ -1203,6 +1205,19 @@ export default function MoiClient() {
           </EnterList>
         )}
       </div>
+
+      <ConfirmDialog
+        open={removingCredit !== null}
+        title={removingCredit ? `Retirer ton nom du générique de « ${removingCredit.title} » ?` : ""}
+        confirmLabel="Retirer"
+        onCancel={() => setRemovingCredit(null)}
+        onConfirm={() => {
+          if (!removingCredit) return;
+          const target = removingCredit;
+          setRemovingCredit(null);
+          removeMyCredit(target.id);
+        }}
+      />
 
       {/* Pro upsell modal. Fermeture au clic sur le fond seulement si mousedown ET
           mouseup y ont lieu (un glisser-selectionner parti de la carte ne ferme pas). */}

@@ -163,3 +163,10 @@ Composants / modules utilises par 3+ features.
 ## AppShell : attente de session (`sessionHint`, 10/2026)
 
 - `(app)/layout.tsx` passe `sessionHint` quand le compte n'a pas pu etre resolu cote serveur alors qu'un cookie de session existe. AppShell n'affiche alors ni le mode visiteur ni le compte tant que le navigateur n'a pas tranche (`authChecked`). Meme attente entre une connexion et l'arrivee du profil. L'etat `user` suit aussi `initialUser` apres un `router.refresh()`.
+
+## ConfirmDialog (10/2026)
+
+- **Fichier** : `src/components/ConfirmDialog.tsx`
+- **Role** : remplace `confirm()` et `alert()`. Fond floute, carte sombre, portail dans `document.body`, Echap et clic a cote ferment (mousedown ET mouseup sur le fond). `variant="danger"` (defaut) : Annuler + action rouge (`#b91c1c`, contraste 6,5:1). `variant="info"` : un seul bouton « OK », sans rouge. Les textes sont gardes pendant l'animation de fermeture.
+- **Consommateurs** : `TeamList`, `FilmManagers`, `FilmCard`, `RecruitmentSpace`, `CareerSection`, `MoiClient`, `DashboardClient` (confirmations) ; `pro/page`, `ProfileClient` (messages d'erreur, `variant="info"`).
+- **Risque si modifie** : **MODERE** (9 consommateurs). Plus aucun `confirm(` ni `alert(` dans `src/` : ne pas les reintroduire.

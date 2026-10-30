@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CAREER_KINDS, MAX_CAREER_ENTRIES } from "@/lib/constants";
 import type { CareerEntry, CareerKind } from "@/types/database";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import Select from "@/components/ui/Select";
@@ -17,6 +18,8 @@ export default function CareerSection({ showToast }: { showToast: ShowToast }) {
   const [entries, setEntries] = useState<CareerEntry[] | null>(null);
   // null : formulaire ferme ; "new" : ajout ; sinon id de l'entree modifiee.
   const [editing, setEditing] = useState<string | null>(null);
+  // Entree en attente de confirmation de suppression.
+  const [removing, setRemoving] = useState<CareerEntry | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -62,7 +65,6 @@ export default function CareerSection({ showToast }: { showToast: ShowToast }) {
   }
 
   async function remove(entry: CareerEntry) {
-    if (!confirm(`Supprimer « ${entry.title} » de ton Parcours ?`)) return;
     const r = await callApi(`${ENDPOINT}?id=${entry.id}`, "DELETE");
     if (!r.ok) showToast(r.error);
     await load();
@@ -104,7 +106,7 @@ export default function CareerSection({ showToast }: { showToast: ShowToast }) {
               <Button variant="glass" size="sm" onClick={() => open(entry)} className="shrink-0 px-3!">
                 Modifier
               </Button>
-              <Button variant="icon" size="sm" aria-label={`Supprimer ${entry.title}`} onClick={() => remove(entry)} className="shrink-0 text-text-secondary!">
+              <Button variant="icon" size="sm" aria-label={`Supprimer ${entry.title}`} onClick={() => setRemoving(entry)} className="shrink-0 text-text-secondary!">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                 </svg>
@@ -152,6 +154,19 @@ export default function CareerSection({ showToast }: { showToast: ShowToast }) {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={removing ? `Supprimer « ${removing.title} » de ton Parcours ?` : ""}
+        confirmLabel="Supprimer"
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          if (!removing) return;
+          const entry = removing;
+          setRemoving(null);
+          remove(entry);
+        }}
+      />
     </>
   );
 }

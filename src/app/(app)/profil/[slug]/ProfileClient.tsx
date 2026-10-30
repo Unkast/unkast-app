@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { EnterList, EnterItem, enterUp, enterFade, cardSpring } from "@/components/motion";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import AlreadyMember from "@/components/AlreadyMember";
 import Chip from "@/components/ui/Chip";
@@ -58,6 +59,8 @@ export default function ProfileClient({
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("all");
   const [contacting, setContacting] = useState(false);
+  // Message a afficher (remplace setNotice({ message:  })). `then` : suite a donner quand il est ferme.
+  const [notice, setNotice] = useState<{ message: string; then?: () => void } | null>(null);
   // Cible du signalement : le profil, ou une entrée de son Parcours.
   const [reportTarget, setReportTarget] = useState<{ type: "profile" | "career_entry"; id: string } | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
@@ -154,16 +157,16 @@ export default function ProfileClient({
         // Quota gratuit épuisé. Message explicite (distinct de l'ancien « passe
         // à Pro pour contacter ») avant de renvoyer vers l'offre.
         setContacting(false);
-        alert(data.message || "Tu as utilisé tes contacts gratuits.");
-        router.push("/pro");
+        // Le message se ferme avant le renvoi vers l'offre (comme setNotice({ message:  }), qui bloquait).
+        setNotice({ message: data.message || "Tu as utilisé tes contacts gratuits.", then: () => router.push("/pro") });
       } else if (res.status === 403 || data.redirect) {
         router.push(data.redirect || "/pro");
       } else {
-        alert(data.error || "Erreur");
+        setNotice({ message: data.error || "Erreur" });
         setContacting(false);
       }
     } catch {
-      alert("Erreur réseau");
+      setNotice({ message: "Erreur réseau" });
       setContacting(false);
     }
   }
@@ -252,9 +255,9 @@ export default function ProfileClient({
       if (res.ok && data.signal) {
         setAvailSignals((prev) => [...prev.filter((s) => s.role !== role), data.signal]);
       } else {
-        alert(data.error || "Erreur");
+        setNotice({ message: data.error || "Erreur" });
       }
-    } catch { alert("Erreur réseau"); }
+    } catch { setNotice({ message: "Erreur réseau" }); }
     finally { setAvailBusy(null); }
   }
 
@@ -270,9 +273,9 @@ export default function ProfileClient({
       if (res.ok && data.signal) {
         setAvailSignals((prev) => prev.map((s) => (s.role === role ? data.signal : s)));
       } else {
-        alert(data.error || "Erreur");
+        setNotice({ message: data.error || "Erreur" });
       }
-    } catch { alert("Erreur réseau"); }
+    } catch { setNotice({ message: "Erreur réseau" }); }
     finally { setAvailBusy(null); }
   }
 
@@ -288,9 +291,9 @@ export default function ProfileClient({
         setAvailSignals((prev) => prev.filter((s) => s.role !== role));
       } else {
         const data = await res.json();
-        alert(data.error || "Erreur");
+        setNotice({ message: data.error || "Erreur" });
       }
-    } catch { alert("Erreur réseau"); }
+    } catch { setNotice({ message: "Erreur réseau" }); }
     finally { setAvailBusy(null); }
   }
 
@@ -687,6 +690,14 @@ export default function ProfileClient({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        variant="info"
+        open={notice !== null}
+        title={notice?.message ?? ""}
+        onConfirm={() => { const next = notice?.then; setNotice(null); next?.(); }}
+        onCancel={() => { const next = notice?.then; setNotice(null); next?.(); }}
+      />
     </motion.div>
   );
 }

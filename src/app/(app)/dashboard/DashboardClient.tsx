@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AvatarUpload from "@/components/AvatarUpload";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Avatar from "@/components/Avatar";
 import { normalizeUrl, formatInstagram } from "@/lib/profile";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +35,8 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   const router = useRouter();
   const [section, setSection] = useState<DashSection>(initialSection);
   const [loading, setLoading] = useState(true);
+  // Projet en attente de confirmation de suppression.
+  const [deletingProject, setDeletingProject] = useState<string | null>(null);
 
   // Profile state
   const [profile, setProfile] = useState<(Profile & { account_type?: string }) | null>(null);
@@ -231,7 +234,6 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
   }
 
   async function deleteProject(id: string) {
-    if (!confirm("Supprimer ce projet ?")) return;
     await fetch(`/api/dashboard/projects?id=${id}`, { method: "DELETE" });
     await fetchProjects();
   }
@@ -701,7 +703,7 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
                             Voir
                           </Link>
                           {isCreator && (
-                            <button onClick={() => deleteProject(project.id)} className="px-3 py-1.5 border border-white/5 text-text-tertiary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition">
+                            <button onClick={() => setDeletingProject(project.id)} className="px-3 py-1.5 border border-white/5 text-text-tertiary text-xs rounded-lg hover:border-red-500/30 hover:text-red-400 transition">
                               Supprimer
                             </button>
                           )}
@@ -892,6 +894,18 @@ export default function DashboardClient({ initialSection = "profil" }: { initial
             </motion.div>
           )}
         </AnimatePresence>
+        <ConfirmDialog
+          open={deletingProject !== null}
+          title="Supprimer ce projet ?"
+          confirmLabel="Supprimer"
+          onCancel={() => setDeletingProject(null)}
+          onConfirm={() => {
+            if (!deletingProject) return;
+            const id = deletingProject;
+            setDeletingProject(null);
+            deleteProject(id);
+          }}
+        />
       </main>
     </div>
     </motion.div>

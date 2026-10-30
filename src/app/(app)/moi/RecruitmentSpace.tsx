@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import Avatar from "@/components/Avatar";
 import { EnterList, EnterItem } from "@/components/motion";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
 import Field from "@/components/ui/Field";
@@ -55,6 +56,8 @@ const metaCls = "mt-0.5 text-xs text-text-secondary";
 export default function RecruitmentSpace({ showToast }: Props) {
   const router = useRouter();
   const [view, setView] = useState<"candidates" | "folders">("candidates");
+  // Dossier en attente de confirmation de suppression.
+  const [deletingFolder, setDeletingFolder] = useState<string | null>(null);
 
   const [roleGroups, setRoleGroups] = useState<RoleGroup[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -202,7 +205,6 @@ export default function RecruitmentSpace({ showToast }: Props) {
   }
 
   async function deleteFolder(id: string) {
-    if (!confirm("Supprimer ce dossier ? Les rangements seront perdus (les candidats restent dans tes candidatures).")) return;
     await fetch(`/api/recruitment/folders?id=${id}`, { method: "DELETE" });
     if (openFolder?.folder.id === id) setOpenFolder(null);
     await Promise.all([fetchFolders(), fetchCandidates()]);
@@ -435,7 +437,7 @@ export default function RecruitmentSpace({ showToast }: Props) {
                     <Button variant="icon" size="sm" aria-label="Renommer" title="Renommer" onClick={() => { setRenamingId(f.id); setRenameValue(f.name); }} className="shrink-0 text-text-secondary!">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                     </Button>
-                    <Button variant="icon" size="sm" aria-label="Supprimer" title="Supprimer" onClick={() => deleteFolder(f.id)} className="shrink-0 text-text-secondary!">
+                    <Button variant="icon" size="sm" aria-label="Supprimer" title="Supprimer" onClick={() => setDeletingFolder(f.id)} className="shrink-0 text-text-secondary!">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                     </Button>
                   </>
@@ -499,6 +501,20 @@ export default function RecruitmentSpace({ showToast }: Props) {
           d'animation deviendrait sinon son bloc conteneur. Pose 12 px au-dessus de la
           navigation mobile : barre plate (56 px) en navigateur, dock (88 px) dans l'app
           installee, rien en desktop. */}
+      <ConfirmDialog
+        open={deletingFolder !== null}
+        title="Supprimer ce dossier ?"
+        description="Les rangements seront perdus (les candidats restent dans tes candidatures)."
+        confirmLabel="Supprimer"
+        onCancel={() => setDeletingFolder(null)}
+        onConfirm={() => {
+          if (!deletingFolder) return;
+          const id = deletingFolder;
+          setDeletingFolder(null);
+          deleteFolder(id);
+        }}
+      />
+
       {undo && createPortal(
         <div
           role="status"

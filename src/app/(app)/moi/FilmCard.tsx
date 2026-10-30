@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { CATEGORY_LABELS, MEMBERS_ONLY_WARNING, PROJECT_VISIBILITIES, SERIES_CATEGORY, episodesLabel } from "@/lib/constants";
 import type { ProjectCategory, ProjectVisibility } from "@/types/database";
 import Avatar from "@/components/Avatar";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
@@ -390,6 +391,7 @@ export default function FilmCard({
     onPanelChange?.(next !== null);
   };
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const isOwner = project.my_role === "owner";
   const isSeries = project.category === SERIES_CATEGORY;
 
@@ -407,7 +409,6 @@ export default function FilmCard({
   }
 
   async function remove() {
-    if (!confirm("Supprimer ce film ? Cette action est définitive.")) return;
     const r = await callApi(`/api/dashboard/projects?id=${project.id}`, "DELETE");
     if (!r.ok) showToast(r.error);
     await reload();
@@ -437,7 +438,7 @@ export default function FilmCard({
         </div>
         {/* Supprimer : Responsable seul */}
         {isOwner && (
-          <Button variant="icon" size="sm" aria-label="Supprimer le film" onClick={remove} className="shrink-0 self-start text-text-secondary!">
+          <Button variant="icon" size="sm" aria-label="Supprimer le film" onClick={() => setConfirmDelete(true)} className="shrink-0 self-start text-text-secondary!">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
             </svg>
@@ -495,6 +496,15 @@ export default function FilmCard({
           {panel === "managers" && <FilmManagers projectId={project.id} userId={userId} reloadFilms={reload} showToast={showToast} />}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Supprimer ce film ?"
+        description="Cette action est définitive."
+        confirmLabel="Supprimer"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => { setConfirmDelete(false); remove(); }}
+      />
     </>
   );
 }

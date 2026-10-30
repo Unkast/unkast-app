@@ -14,7 +14,7 @@
 //     onConfirm={() => { run(pending); setPending(null); }}
 //     onCancel={() => setPending(null)}
 //   />
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cardSpring } from "@/components/motion";
@@ -24,6 +24,7 @@ const subscribeNothing = () => () => {};
 
 export default function ConfirmDialog({
   open,
+  variant = "danger",
   title,
   description,
   confirmLabel,
@@ -33,14 +34,27 @@ export default function ConfirmDialog({
   onCancel,
 }: {
   open: boolean;
+  /** "danger" : Annuler + action en rouge. "info" : un seul bouton « OK », sans rouge
+   *  (message d'erreur ou d'information, a la place d'alert()). */
+  variant?: "danger" | "info";
   title: string;
   description?: string;
-  confirmLabel: string;
+  /** Libelle de l'action (« OK » par defaut pour "info"). */
+  confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  /** "info" : appele par le bouton OK. */
   onConfirm: () => void;
+  /** Echap, clic a cote et Annuler. Pour "info", a faire fermer le message comme OK. */
   onCancel: () => void;
 }) {
+  const isInfo = variant === "info";
+  // Textes affiches : gardes pendant l'animation de fermeture, meme quand l'appelant
+  // vide ses valeurs a la fermeture (sinon la carte se viderait en disparaissant).
+  const [shown, setShown] = useState({ title, description, confirmLabel });
+  if (open && (shown.title !== title || shown.description !== description || shown.confirmLabel !== confirmLabel)) {
+    setShown({ title, description, confirmLabel });
+  }
   const reduced = useReducedMotion();
   // false au rendu serveur et a l'hydratation : le portail n'existe que dans le navigateur.
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
@@ -83,7 +97,7 @@ export default function ConfirmDialog({
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
-            aria-describedby={description ? "confirm-dialog-description" : undefined}
+            aria-describedby={shown.description ? "confirm-dialog-description" : undefined}
             initial={{ opacity: 0, scale: reduced ? 1 : 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: reduced ? 1 : 0.95 }}
@@ -92,22 +106,30 @@ export default function ConfirmDialog({
             onClick={(e) => e.stopPropagation()}
             className="glass-strong w-full max-w-[380px] rounded-panel bg-glass-solid/80 p-6"
           >
-            <h3 id="confirm-dialog-title" className="text-lg font-semibold leading-snug text-text-primary">{title}</h3>
-            {description && (
-              <p id="confirm-dialog-description" className="mt-2 text-sm leading-relaxed text-text-secondary">{description}</p>
+            <h3 id="confirm-dialog-title" className="text-lg font-semibold leading-snug text-text-primary">{shown.title}</h3>
+            {shown.description && (
+              <p id="confirm-dialog-description" className="mt-2 text-sm leading-relaxed text-text-secondary">{shown.description}</p>
             )}
             <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
-              <Button ref={cancelRef} variant="glass" onClick={onCancel} disabled={busy} className="sm:min-w-28">
-                {cancelLabel}
-              </Button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={busy}
-                className="press-spring inline-flex min-h-11 items-center justify-center rounded-pill bg-[#b91c1c] px-5 text-sm font-bold text-white hover:bg-[#c81e1e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-200 disabled:pointer-events-none disabled:opacity-50 sm:min-w-28"
-              >
-                {confirmLabel}
-              </button>
+              {isInfo ? (
+                <Button ref={cancelRef} onClick={onConfirm} className="sm:min-w-28">
+                  {shown.confirmLabel ?? "OK"}
+                </Button>
+              ) : (
+                <>
+                  <Button ref={cancelRef} variant="glass" onClick={onCancel} disabled={busy} className="sm:min-w-28">
+                    {cancelLabel}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={onConfirm}
+                    disabled={busy}
+                    className="press-spring inline-flex min-h-11 items-center justify-center rounded-pill bg-[#b91c1c] px-5 text-sm font-bold text-white hover:bg-[#c81e1e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-200 disabled:pointer-events-none disabled:opacity-50 sm:min-w-28"
+                  >
+                    {shown.confirmLabel}
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </motion.div>

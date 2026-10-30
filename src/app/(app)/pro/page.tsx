@@ -6,6 +6,7 @@ import { isGrantValid } from "@/lib/pro-plan";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
@@ -64,6 +65,8 @@ function Feature({ label, included, accent = false }: { label: string; included:
 export default function ProPage() {
   // Waitlist (public)
   const [email, setEmail] = useState("");
+  // Message d'erreur a afficher (remplace setNotice()).
+  const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -137,8 +140,8 @@ export default function ProPage() {
       const data = await res.json();
       if (res.status === 401) { window.location.href = "/rejoindre"; return; }
       if (res.ok && data.url) { window.location.href = data.url; return; }
-      alert(data.error || "Erreur");
-    } catch { alert("Erreur réseau"); }
+      setNotice(data.error || "Erreur");
+    } catch { setNotice("Erreur réseau"); }
     finally { setBusy(null); }
   }
 
@@ -148,8 +151,8 @@ export default function ProPage() {
       const res = await fetch("/api/billing/portal", { method: "POST" });
       const data = await res.json();
       if (res.ok && data.url) { window.location.href = data.url; return; }
-      alert(data.error || "Erreur");
-    } catch { alert("Erreur réseau"); }
+      setNotice(data.error || "Erreur");
+    } catch { setNotice("Erreur réseau"); }
     finally { setBusy(null); }
   }
 
@@ -292,6 +295,14 @@ export default function ProPage() {
           Des questions ? <Link href="mailto:pro@unkast.com" className="inline-flex min-h-11 items-center text-lime hover:underline">pro@unkast.com</Link>
         </p>
       </EnterItem>
+
+      <ConfirmDialog
+        variant="info"
+        open={notice !== null}
+        title={notice ?? ""}
+        onConfirm={() => setNotice(null)}
+        onCancel={() => setNotice(null)}
+      />
     </EnterList>
   );
 }
