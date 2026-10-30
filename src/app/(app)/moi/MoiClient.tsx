@@ -132,6 +132,14 @@ export default function MoiClient() {
   const [receivedInvitations, setReceivedInvitations] = useState<any[]>([]);
   const [sentInvitations, setSentInvitations] = useState<any[]>([]);
 
+  /* --- suppression du compte --- */
+  // accountEmail : email Auth du compte (aussi pour un compte Google), lu a l'ouverture.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   /* --- pro upsell --- */
   const [showProModal, setShowProModal] = useState(false);
   const pressedOnBackdrop = useRef(false);
@@ -440,6 +448,46 @@ export default function MoiClient() {
     router.replace("/");
     router.refresh();
   }
+
+  async function openDeleteAccount() {
+    setDeleteEmail("");
+    setDeleteError("");
+    const { data: { user } } = await createClient().auth.getUser();
+    setAccountEmail(user?.email ?? "");
+    setDeleteOpen(true);
+  }
+
+  // Meme sortie que la deconnexion, puis l'accueil affiche « Compte supprimé ».
+  async function deleteAccount() {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: deleteEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setDeleteError(data?.error || "Suppression impossible. Réessaie dans un instant.");
+        setDeleting(false);
+        return;
+      }
+    } catch {
+      setDeleteError("Connexion impossible. Vérifie ton réseau et réessaie.");
+      setDeleting(false);
+      return;
+    }
+    await createClient().auth.signOut({ scope: "local" }).catch(() => {});
+    await fetch("/api/logout", { method: "POST" }).catch(() => {});
+    sessionStorage.removeItem("unkast_has_explored");
+    localStorage.removeItem("unkast_splash_time");
+    router.replace("/?compte=supprime");
+    router.refresh();
+  }
+
+  const deleteEmailMatches =
+    accountEmail !== "" && deleteEmail.trim().toLowerCase() === accountEmail.trim().toLowerCase();
 
   /* ---------- pending credit requests on my projects ---------- */
   const pendingReceivedCredits = creditRequests.filter((cr) => cr.status === "pending");
@@ -1218,6 +1266,19 @@ export default function MoiClient() {
                 Se déconnecter
               </Button>
             </EnterItem>
+
+            {/* Suppression du compte : discrete, absente pour le compte admin */}
+            {profile.account_type !== "admin" && !(profile as Profile).is_admin && (
+              <EnterItem className="flex justify-center lg:col-span-2">
+                <button
+                  type="button"
+                  onClick={openDeleteAccount}
+                  className="inline-flex min-h-11 items-center px-3 text-[13px] text-red-400 hover:text-red-300 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-200"
+                >
+                  Supprimer mon compte
+                </button>
+              </EnterItem>
+            )}
           </EnterList>
         )}
       </div>
@@ -1234,6 +1295,49 @@ export default function MoiClient() {
           removeMyCredit(target.id);
         }}
       />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Supprimer ton compte ?"
+        description="C'est définitif, rien ne pourra être récupéré."
+        confirmLabel={deleting ? "Suppression…" : "Supprimer"}
+        busy={deleting}
+        confirmDisabled={!deleteEmailMatches}
+        onCancel={() => { if (!deleting) setDeleteOpen(false); }}
+        onConfirm={deleteAccount}
+      >
+        <ul className="mt-4 flex list-disc flex-col gap-2 pl-5 text-[13px] leading-relaxed text-text-secondary">
+          <li>
+            <span className="text-text-primary">Supprimés :</span> ton profil, tes films dont tu es le seul crédité, tes
+            demandes et invitations, tes fichiers.
+          </li>
+          <li>
+            Tes conversations disparaissent, <span className="text-text-primary">aussi chez l&apos;autre personne</span>.
+          </li>
+          <li>
+            <span className="text-text-primary">Restent :</span> ton nom au générique des films des autres. Un film où
+            d&apos;autres personnes sont créditées passe à un co-gestionnaire, sinon il est dépublié.
+          </li>
+          <li>
+            Un abonnement Pro est résilié tout de suite, <span className="text-text-primary">sans remboursement</span> de
+            la période en cours.
+          </li>
+        </ul>
+        <Field
+          className="mt-4"
+          label="Tape ton email pour confirmer"
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={deleteEmail}
+          onChange={(e) => setDeleteEmail(e.target.value)}
+          placeholder={accountEmail || "ton@email.com"}
+          disabled={deleting}
+        />
+        {deleteError && <p role="alert" className="mt-3 text-[13px] text-red-400">{deleteError}</p>}
+      </ConfirmDialog>
 
       {/* Pro upsell modal. Fermeture au clic sur le fond seulement si mousedown ET
           mouseup y ont lieu (un glisser-selectionner parti de la carte ne ferme pas). */}

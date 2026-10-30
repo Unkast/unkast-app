@@ -5,11 +5,26 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import LegalLinks from "@/components/LegalLinks";
+import Toast from "@/components/ui/Toast";
 import { createBrowserClient } from "@supabase/ssr";
 
 export default function WelcomeClient() {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
+  // Retour de /moi apres la suppression du compte (/?compte=supprime) : message bref,
+  // puis l'adresse est nettoyee pour qu'un rechargement ne le reaffiche pas.
+  // Toast ne rend rien cote serveur : pas d'ecart a l'hydratation.
+  const [notice, setNotice] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("compte") === "supprime"
+      ? "Compte supprimé"
+      : ""
+  );
+  useEffect(() => {
+    if (!notice) return;
+    window.history.replaceState(null, "", "/");
+    const t = setTimeout(() => setNotice(""), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   // Barres systeme de l'app Android : transparentes des le lancement (capacitor.config.ts),
   // rien a regler ici. Le contenu, cale en bas, reste au-dessus de la barre de navigation.
@@ -43,10 +58,11 @@ export default function WelcomeClient() {
     router.replace("/feed");
   }
 
-  if (!visible) return null;
+  if (!visible) return <Toast message={notice} />;
 
   return (
     <main className="relative overflow-hidden" style={{ height: "100dvh" }}>
+      <Toast message={notice} />
       <Image
         src="/welcome-bg.png"
         alt=""

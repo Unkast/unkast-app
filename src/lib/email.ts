@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { siteUrl } from "@/lib/stripe";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { formatDateParis } from "@/lib/utils";
+import { LEGAL } from "@/lib/legal";
 
 // Client email SERVEUR uniquement (clé via env, JAMAIS dans le code versionné).
 // Singleton paresseux, même esprit que lib/stripe.ts : on n'instancie qu'au
@@ -187,6 +188,48 @@ export async function sendPasswordResetEmail(params: { to: string; resetUrl: str
       text,
     });
     return { sent: true };
+  } catch {
+    return { sent: false, reason: "error" };
+  }
+}
+
+// --- Compte supprime par le membre (/api/account/delete) ----------------------
+// Envoye apres la suppression, a l'adresse lue avant : il n'y a plus de compte.
+
+export async function sendAccountDeletedEmail(params: { to: string }): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) return { sent: false, reason: "no_api_key" };
+
+  const text = [
+    "Ton compte Unkast a été supprimé, comme tu l'as demandé.",
+    "",
+    "Ton profil, tes films dont tu étais le seul crédité, tes conversations et tes fichiers ont été effacés. Si tu avais un abonnement Pro, il est résilié.",
+    "",
+    "Ton nom reste au générique des films des autres membres, tel qu'il y figurait.",
+    "",
+    `Si tu n'es pas à l'origine de cette suppression, écris-nous à ${LEGAL.contactEmail}.`,
+    "",
+    "— Unkast",
+  ].join("\n");
+  const html = plainHtml(
+    "Ton compte a été supprimé",
+    [
+      `<p style="margin:0 0 16px 0;">Ton compte Unkast a été supprimé, comme tu l'as demandé.</p>`,
+      `<p style="margin:0 0 16px 0;">Ton profil, tes films dont tu étais le seul crédité, tes conversations et tes fichiers ont été effacés. Si tu avais un abonnement Pro, il est résilié.</p>`,
+      `<p style="margin:0 0 16px 0;">Ton nom reste au générique des films des autres membres, tel qu'il y figurait.</p>`,
+      `<p style="margin:24px 0 0 0;font-size:12px;color:#666;">Si tu n'es pas à l'origine de cette suppression, écris-nous à <a href="mailto:${LEGAL.contactEmail}" style="color:#C8FF00;text-decoration:none;">${LEGAL.contactEmail}</a>.</p>`,
+    ].join("")
+  );
+
+  try {
+    const { error } = await resend.emails.send({
+      from: authFromAddress(),
+      to: params.to,
+      subject: "Ton compte Unkast a été supprimé",
+      html,
+      text,
+    });
+    return error ? { sent: false, reason: "error" } : { sent: true };
   } catch {
     return { sent: false, reason: "error" };
   }

@@ -14,7 +14,7 @@
 //     onConfirm={() => { run(pending); setPending(null); }}
 //     onCancel={() => setPending(null)}
 //   />
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cardSpring } from "@/components/motion";
@@ -30,6 +30,8 @@ export default function ConfirmDialog({
   confirmLabel,
   cancelLabel = "Annuler",
   busy = false,
+  confirmDisabled = false,
+  children,
   onConfirm,
   onCancel,
 }: {
@@ -43,6 +45,10 @@ export default function ConfirmDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  /** Grise seulement le bouton d'action (ex. tant qu'un champ de confirmation ne correspond pas). */
+  confirmDisabled?: boolean;
+  /** Contenu entre la description et les boutons (ex. un champ a remplir). */
+  children?: ReactNode;
   /** "info" : appele par le bouton OK. */
   onConfirm: () => void;
   /** Echap, clic a cote et Annuler. Pour "info", a faire fermer le message comme OK. */
@@ -104,12 +110,13 @@ export default function ConfirmDialog({
             transition={reduced ? { duration: 0.15 } : cardSpring}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            className="glass-strong w-full max-w-[380px] rounded-panel bg-glass-solid/80 p-6"
+            className="glass-strong max-h-[calc(100dvh-2rem)] w-full max-w-[380px] overflow-y-auto rounded-panel bg-glass-solid/80 p-6"
           >
             <h3 id="confirm-dialog-title" className="text-lg font-semibold leading-snug text-text-primary">{shown.title}</h3>
             {shown.description && (
               <p id="confirm-dialog-description" className="mt-2 text-sm leading-relaxed text-text-secondary">{shown.description}</p>
             )}
+            {children}
             <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
               {isInfo ? (
                 <Button ref={cancelRef} onClick={onConfirm} className="sm:min-w-28">
@@ -123,7 +130,7 @@ export default function ConfirmDialog({
                   <button
                     type="button"
                     onClick={onConfirm}
-                    disabled={busy}
+                    disabled={busy || confirmDisabled}
                     className="press-spring inline-flex min-h-11 items-center justify-center rounded-pill bg-[#b91c1c] px-5 text-sm font-bold text-white hover:bg-[#c81e1e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-200 disabled:pointer-events-none disabled:opacity-50 sm:min-w-28"
                   >
                     {shown.confirmLabel}
