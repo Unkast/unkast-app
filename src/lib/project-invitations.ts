@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { mergeRoles } from "@/lib/credits";
 import { sendPushToUser } from "@/lib/push";
@@ -10,6 +11,24 @@ import { sendMemberCreditEmail } from "@/lib/email";
 // le film.
 
 type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Droits de l'appelant sur un film : gestionnaire (Responsable ou co-gestionnaire)
+ * et Responsable. `project` est null si le film n'existe pas ou n'est pas gere par
+ * l'appelant. `supabase` : client utilisateur (is_project_manager lit auth.uid()).
+ */
+export async function projectAccess(
+  supabase: SupabaseClient,
+  admin: Admin,
+  projectId: string,
+  userId: string
+): Promise<{ project: { id: string; title: string; profile_id: string } | null; isOwner: boolean }> {
+  if (!/^[0-9a-f-]{36}$/i.test(projectId)) return { project: null, isOwner: false };
+  const { data: isManager } = await supabase.rpc("is_project_manager", { p_project_id: projectId });
+  if (!isManager) return { project: null, isOwner: false };
+  const { data: project } = await admin.from("projects").select("id, title, profile_id").eq("id", projectId).maybeSingle();
+  return { project: project ?? null, isOwner: project?.profile_id === userId };
+}
 
 // Reinvitation apres un refus : pas avant 30 jours (decision du 30/10/2026).
 const REINVITE_DELAY_MS = 30 * 24 * 3600 * 1000;

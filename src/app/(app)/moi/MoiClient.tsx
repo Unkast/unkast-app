@@ -39,6 +39,33 @@ interface CreditRequestWithProject extends CreditRequest {
   requester_name?: string;
 }
 
+/* ---------- chargement protege ---------- */
+
+// Lecture d'une route au chargement de la page : ne leve jamais. Une requete coupee
+// ou un echec reseau est retente une seule fois apres 1 seconde ; si elle echoue
+// encore, la fonction rend null et la page reste sur ses valeurs actuelles. Une
+// reponse HTTP (meme 401 ou 500) n'est jamais retentee : c'est a l'appelant de la lire.
+async function fetchOnce(url: string): Promise<Response | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await fetch(url);
+    } catch {
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+  return null;
+}
+
+// Corps JSON d'une reponse reussie, ou null (reponse absente, en erreur ou illisible).
+async function readJson(res: Response | null): Promise<Record<string, any> | null> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (!res || !res.ok) return null;
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- style helpers ---------- */
 
 const labelCls = "text-sm font-medium text-text-secondary";
@@ -54,6 +81,10 @@ const linkCls = "inline-flex min-h-11 items-center text-[13px] text-lime hover:u
 export default function MoiClient() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  // Echec du chargement du profil, hors 401 : "network" (requete coupee deux fois de
+  // suite) ou "server" (reponse en erreur ou illisible). Le message « Tu dois etre
+  // connecte » est reserve a un vrai 401.
+  const [loadFailure, setLoadFailure] = useState<"network" | "server" | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
@@ -159,22 +190,29 @@ export default function MoiClient() {
   /* ---------- data fetching ---------- */
 
   const fetchProfile = useCallback(async () => {
-    const res = await fetch("/api/dashboard/profile");
+    const res = await fetchOnce("/api/dashboard/profile");
+    if (!res) {
+      setLoadFailure("network");
+      return;
+    }
+    // Redirection seulement sur un vrai 401, jamais sur une requete coupee.
     if (res.status === 401) {
       router.push("/rejoindre");
       return;
     }
-    const data = await res.json();
-    if (data.profile) {
+    const data = await readJson(res);
+    if (data?.profile) {
       setProfile(data.profile);
       setRoles(data.roles);
+      setLoadFailure(null);
+    } else {
+      setLoadFailure("server");
     }
   }, [router]);
 
   const fetchProjects = useCallback(async () => {
-    const res = await fetch("/api/dashboard/projects");
-    if (res.ok) {
-      const data = await res.json();
+    const data = await readJson(await fetchOnce("/api/dashboard/projects"));
+    if (data) {
       setFilms({
         projects: data.projects ?? [],
         owned_count: data.owned_count ?? 0,
@@ -185,9 +223,8 @@ export default function MoiClient() {
   }, []);
 
   const fetchCreditRequests = useCallback(async () => {
-    const res = await fetch("/api/dashboard/credits");
-    if (res.ok) {
-      const data = await res.json();
+    const data = await readJson(await fetchOnce("/api/dashboard/credits"));
+    if (data) {
       setCreditRequests(data.received || []);
       setMyCredits(data.my_credits || []);
       setMyCreditRequests(data.my_requests || []);
@@ -195,19 +232,30 @@ export default function MoiClient() {
   }, []);
 
   const fetchInvitations = useCallback(async () => {
-    const res = await fetch("/api/invitations/project");
-    if (res.ok) {
-      const data = await res.json();
+    const data = await readJson(await fetchOnce("/api/invitations/project"));
+    if (data) {
       setReceivedInvitations(data.received || []);
       setSentInvitations(data.sent || []);
     }
   }, []);
 
+  const loadAll = useCallback(
+    () =>
+      Promise.all([fetchProfile(), fetchProjects(), fetchCreditRequests(), fetchInvitations()]).finally(() =>
+        setLoading(false)
+      ),
+    [fetchProfile, fetchProjects, fetchCreditRequests, fetchInvitations]
+  );
+
   useEffect(() => {
-    Promise.all([fetchProfile(), fetchProjects(), fetchCreditRequests(), fetchInvitations()]).finally(() =>
-      setLoading(false)
-    );
-  }, [fetchProfile, fetchProjects, fetchCreditRequests, fetchInvitations]);
+    loadAll();
+  }, [loadAll]);
+
+  function retryLoad() {
+    setLoadFailure(null);
+    setLoading(true);
+    loadAll();
+  }
 
   /* ---------- edit helpers ---------- */
 
@@ -386,6 +434,19 @@ export default function MoiClient() {
   if (loading) return <MoiSkeleton />;
 
   if (!profile) {
+    // Echec hors 401 : on propose de recharger, sans dire a tort que la personne est deconnectee.
+    if (loadFailure) {
+      return (
+        <div className="flex items-center justify-center px-4 py-20">
+          <GlassCard radius="panel" role="alert" className="flex max-w-sm flex-col items-center gap-5 p-8 text-center">
+            <p className="text-sm text-text-secondary">
+              {loadFailure === "network" ? "Connexion impossible, vérifie ton réseau." : "Chargement impossible pour le moment. Réessaie."}
+            </p>
+            <Button onClick={retryLoad}>Réessayer</Button>
+          </GlassCard>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center justify-center px-4 py-20">
         <GlassCard radius="panel" className="flex max-w-sm flex-col items-center gap-5 p-8 text-center">

@@ -47,6 +47,10 @@
 | `/api/invitations` | POST | `projects`, `profiles`, `rate_limits` | `project_credits`, `invitations` + email Resend |
 | `/api/invitations/claim` | GET | `invitations`, `projects` | — (lecture) |
 | `/api/members/search` | GET | `profiles`, `profile_roles`, `rate_limits` | — (lecture) |
+| `/api/invitations/[id]` | DELETE | `invitations`, `projects` | `invitations` |
+| `/api/invitations/[id]/resend` | POST | `invitations`, `projects`, `rate_limits` | `invitations` + email Resend |
+| `/api/projects/[id]/credits` | GET | `project_credits`, `invitations`, `project_invitations`, `profiles` | — (lecture) |
+| `/api/projects/[id]/credits/[creditId]` | PATCH, DELETE | `project_credits`, `projects` | `project_credits` |
 | `/api/invitations/project` | POST, GET | `projects`, `project_invitations`, `profiles` | `project_invitations` |
 | `/api/invitations/project/[id]` | PATCH, DELETE | `project_invitations`, `project_credits`, `profiles`, `projects` | `project_invitations`, `project_credits` |
 | `/api/credits/request` | POST | `project_credits`, `projects`, `profiles`, `credit_requests` | `credit_requests` |
@@ -258,6 +262,13 @@ Met a jour le profil. **Double client d'ecriture** : les colonnes editables par 
 > **Depuis le 30/10/2026 (migration `20261030_credit_by_email.sql`)** : POST cherche d'abord le compte qui porte l'email (RPC `user_id_by_email`, service role). Son propre email : le rôle rejoint son crédit (`addCreditRole`, rôles fusionnés sur une ligne « A / B »), sans email, réponse `{ success, self: true }`. Un autre membre : **rien n'est envoyé**, réponse `{ success, match: { id, name, avatar_url } }` (nom public) ; l'écran propose « Créditer ce membre », qui appelle `POST /api/invitations/project`. Choix assumé de Maxime : un gestionnaire apprend qu'un email a un compte ; la limite de 5 par jour compte aussi ces recherches. Compte admin, suspendu ou sans profil : réponse d'un envoi, sans rien envoyer. Email inconnu : ghost credit + invitation comme ci-dessus ; un email déjà invité sur ce film répond aussi `{ success }`. **Le nom est obligatoire** (affiché dans l'équipe à la place de l'email). Plus de `email_sent`. Ouvert aux gestionnaires du film (Responsable et co-gestionnaires).
 > **`GET /api/members/search?q=`** (30/10/2026) : sélecteur de membres de l'onglet Créditer. Connecté (`getActiveUser`), service role, limite 5 par seconde et 60 par minute par compte, `q` de 2 à 60 caractères. Cherche sur `display_name` seulement (jamais le vrai nom), profils `approved`, non suspendus, hors admin et hors l'appelant, 8 au plus. Renvoie `{ members: [{ id, name, avatar_url, role }] }` (`role` = premier métier).
 > `POST /api/invitations/project` passe par le même `inviteMember` (email en plus de la notification) : 409 si déjà crédité avec ce rôle, invitation déjà en attente, ou refus de moins de 30 jours. `PATCH /api/invitations/project/[id]` écrit `responded_at` et crée le crédit par `addCreditRole`.
+
+> **Équipe d'un film, onglet Créditer (30/10/2026)** : toutes en service role après contrôle dans la route (`projectAccess`, `lib/project-invitations.ts`).
+> - `GET /api/projects/[id]/credits` (gestionnaires) : `{ is_owner, me, team }`, lignes `member` (crédit confirmé), `ghost` (crédit sans compte + état de son invitation email `pending`/`expired`, `resend_count`), `invited` (invitation membre en attente). L'email invité n'est pas renvoyé.
+> - `PATCH /api/projects/[id]/credits/[creditId]` `{ role }` : gestionnaires ; 409 si la personne a déjà ce rôle sur une autre ligne. `DELETE` : **Responsable seul** (un membre se retire lui-même par `DELETE /api/dashboard/credits`).
+> - `DELETE /api/invitations/project/[id]` : auteur de l'invitation **ou Responsable**, invitation en attente seulement.
+> - `DELETE /api/invitations/[id]` : annule une invitation par email non acceptée (auteur ou Responsable) ; le crédit sans compte reste.
+> - `POST /api/invitations/[id]/resend` : gestionnaires ; nouveau token, `expires_at` à 30 jours, `status = pending`, `resend_count + 1` (3 au plus, colonne de `20261031_invitation_resends.sql`), compte dans la limite `invite:<userId>` de 5 par jour.
 
 **GET /claim?token=** : résout une invitation pour pré-remplir l'inscription. **Anti-énumération** : renvoie `{ valid:false }` générique si token absent/invalide/expiré/déjà consommé ; sinon `{ valid:true, email, role, project_title }` (l'email sert à pré-remplir **et verrouiller** le champ dans `RejoindreClient`).
 

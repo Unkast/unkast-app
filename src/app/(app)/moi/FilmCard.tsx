@@ -13,6 +13,7 @@ import { FilmThumb, Note } from "./parts";
 import { callApi, type ManagedProject, type ShowToast } from "./api";
 import FilmManagers from "./FilmManagers";
 import PosterUpload from "./PosterUpload";
+import TeamList from "./TeamList";
 import RightsDeclaration, {
   EMPTY_DECLARATION,
   declarationPayload,
@@ -197,7 +198,7 @@ function MemberLine({ member }: { member: MemberHit }) {
   );
 }
 
-function CreditPanel({ project, reload, showToast, close }: PanelProps) {
+function CreditPanel({ project, reload, showToast }: PanelProps) {
   // Recherche d'un membre
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MemberHit[]>([]);
@@ -213,6 +214,8 @@ function CreditPanel({ project, reload, showToast, close }: PanelProps) {
   // Email reconnu : le membre qui porte cet email
   const [match, setMatch] = useState<MemberHit | null>(null);
   const [sending, setSending] = useState(false);
+  // Relit l'equipe apres une invitation (la liste se recharge a chaque changement).
+  const [teamVersion, setTeamVersion] = useState(0);
 
   function search(value: string) {
     setQuery(value);
@@ -247,8 +250,12 @@ function CreditPanel({ project, reload, showToast, close }: PanelProps) {
       return;
     }
     showToast(`Invitation envoyée à ${target.name || "ce membre"}`);
-    await reload();
-    close();
+    setMember(null);
+    setMatch(null);
+    setQuery("");
+    setResults([]);
+    setSearched(false);
+    setTeamVersion((v) => v + 1);
   }
 
   async function sendEmail() {
@@ -270,8 +277,11 @@ function CreditPanel({ project, reload, showToast, close }: PanelProps) {
       return;
     }
     showToast(r.data.self ? "Rôle ajouté à ton crédit" : "Invitation envoyée");
+    setName("");
+    setEmail("");
+    setRole("");
+    setTeamVersion((v) => v + 1);
     await reload();
-    close();
   }
 
   return (
@@ -321,7 +331,10 @@ function CreditPanel({ project, reload, showToast, close }: PanelProps) {
         )}
       </section>
 
-      {/* 2. Pas trouve : inviter par email */}
+      {/* 2. Equipe du film */}
+      <TeamList key={teamVersion} projectId={project.id} showToast={showToast} />
+
+      {/* 3. Pas trouve : inviter par email */}
       <section className="border-t border-white/10 pt-4">
         <h4 className={sectionTitleCls}>Pas trouvé ? Inviter par email</h4>
         {match ? (

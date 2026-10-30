@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
-import { addCreditRole } from "@/lib/project-invitations";
+import { addCreditRole, projectAccess } from "@/lib/project-invitations";
 
 // PATCH: accept or refuse an invitation (invited talent only)
 export async function PATCH(
@@ -83,7 +83,8 @@ export async function PATCH(
   return NextResponse.json({ success: true });
 }
 
-// DELETE: cancel an invitation (creator only)
+// DELETE: annuler une invitation en attente. Son auteur, ou le Responsable du film
+// (decision du 30/10/2026, onglet « Créditer »).
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -98,7 +99,17 @@ export async function DELETE(
 
   const { id } = await params;
   const admin = createAdminClient();
-  await admin.from("project_invitations").delete().eq("id", id).eq("inviter_id", user.id);
+  const { data: inv } = await admin.from("project_invitations").select("id, project_id, inviter_id, status").eq("id", id).maybeSingle();
+  if (!inv) return NextResponse.json({ error: "Invitation introuvable." }, { status: 404 });
+  if (inv.inviter_id !== user.id) {
+    const { isOwner } = await projectAccess(supabase, admin, inv.project_id, user.id);
+    if (!isOwner) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+  }
+  if (inv.status !== "pending") {
+    return NextResponse.json({ error: "Invitation déjà traitée." }, { status: 409 });
+  }
+
+  await admin.from("project_invitations").delete().eq("id", id).eq("status", "pending");
 
   return NextResponse.json({ success: true });
 }
