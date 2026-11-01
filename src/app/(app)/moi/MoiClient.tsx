@@ -1217,7 +1217,7 @@ export default function MoiClient() {
                 </div>
 
                 <div className="my-4 flex flex-col gap-2">
-                  {["Jusqu'à 30 films", "Messagerie directe", "Contacter les talents", "Badge Pro vérifié", "Priorité dans les résultats"].map((f) => (
+                  {["Films illimités", "Messagerie directe", "Contacter les talents", "Badge Pro vérifié", "Priorité dans les résultats"].map((f) => (
                     <div key={f} className="flex items-center gap-2">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-lime" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
                       <span className="text-[13px] text-text-primary">{f}</span>
