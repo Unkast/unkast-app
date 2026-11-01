@@ -233,7 +233,7 @@ export function Network({ film }: { film: SiteFilm | null }) {
           <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.65", color: "var(--mut)" }}>Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur la réalisatrice qui l&apos;a dirigé, puis sur sa prochaine cheffe op. Chaque crédit est une porte d&apos;entrée vers ton travail.</p>
           <a className={cx(s.btn, s["btn-y"], s.rv)} href={APP.join} style={{ alignSelf: "flex-start" }}>Récupérer mes crédits <Arrow /></a>
         </div>
-        <div className={s.zoom} aria-hidden="true" style={{ position: "relative", aspectRatio: "560 / 520", width: "100%" }}>
+        <div className={cx(s.zoom, s.net)} aria-hidden="true" style={{ position: "relative", aspectRatio: "560 / 520", width: "100%" }}>
           <svg viewBox="0 0 560 520" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", overflow: "visible" }}>
             <g fill="none" strokeWidth="1.5">
               <path className={s.dash} d="M280 260 C 200 200, 140 120, 90 70" stroke={VIOLET_LINE}></path>
@@ -254,7 +254,9 @@ export function Network({ film }: { film: SiteFilm | null }) {
             {film && <div style={{ padding: "10px 6px 4px", fontSize: "13px", fontWeight: "700", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{film.title}</div>}
           </div>
           {NODES.map((n) => (
-            <div key={n.role} className={cx(s.floaty, !n.invited && s.glass)} style={{ position: "absolute", left: n.left, top: n.top, transform: "translate(-50%, -50%)", borderRadius: "999px", padding: "6px 14px 6px 6px", display: "flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap", fontSize: "13px", fontWeight: "600", zIndex: "3", animationDelay: n.delay, ...(n.invited && { border: "1px dashed rgba(255,255,255,.35)", background: "rgba(10,10,14,.6)" }) }}>
+            // `translate` et non `transform` : l'animation .floaty ecrase transform, la
+            // pastille se placait par son bord gauche au lieu de son centre (maquette).
+            <div key={n.role} className={cx(s.floaty, !n.invited && s.glass)} style={{ position: "absolute", left: n.left, top: n.top, translate: "-50% -50%", borderRadius: "999px", padding: "6px 14px 6px 6px", display: "flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap", fontSize: "13px", fontWeight: "600", zIndex: "3", animationDelay: n.delay, ...(n.invited && { border: "1px dashed rgba(255,255,255,.35)", background: "rgba(10,10,14,.6)" }) }}>
               {n.invited
                 ? <span style={{ width: "28px", height: "28px", borderRadius: "50%", border: "1px dashed rgba(255,255,255,.4)", display: "grid", placeItems: "center", fontSize: "13px", color: "var(--mut)" }}>?</span>
                 : <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: n.bg }}></span>}

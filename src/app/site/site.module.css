@@ -91,6 +91,18 @@
 .step{position:relative !important;top:auto !important}
 .ctaH{font-size:52px !important}
 }
+/* Ajouts hors maquette, mobile seulement.
+   - Credits croises : le visuel est resserre, sinon les pastilles de droite sont
+     coupees par le bord de l'ecran (deja le cas dans la maquette).
+   - Allegement : le grain (filtre SVG plein ecran en mode de fusion) et les halos
+     flous de 100 px se repeignent a chaque image quand ils bougent. Sur telephone
+     ils restent affiches mais figes ; le rendu desktop ne change pas. */
+@media (max-width:600px){
+.net{width:78% !important;margin:0 auto}
+}
+@media (max-width:960px){
+.grain,.blob{animation:none;will-change:auto}
+}
 @media (prefers-reduced-motion:reduce){
 .blob,.floaty,.mq,.sheen,.grain,.dash,.orb,.pulse{animation:none !important}
 .rv,.rv2,.w,.zoom,.parx,.line>span,.in{animation:none !important;opacity:1 !important;transform:none !important;filter:none !important}
