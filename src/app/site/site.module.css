@@ -103,7 +103,21 @@
 @media (max-width:960px){
 .grain,.blob{animation:none;will-change:auto}
 }
+/* Ancres du menu : defilement doux, limite a cette page (:has(.root)) pour ne pas
+   toucher au defilement de l'app. La duree est celle du navigateur (non reglable en
+   CSS). scroll-margin-top : le titre de chaque section s'arrete a ~120 px du haut,
+   sous la nav flottante (16 px + ~64 px de haut). Valeur = 120 px moins le padding
+   haut de la section (concept 170, etapes 60, pourqui 80, tarifs 60) : a revoir si
+   ces paddings changent. */
+:global(html):has(.root){scroll-behavior:smooth}
+.root [id="top"]{scroll-margin-top:0}
+.root [id="concept"]{scroll-margin-top:-50px}
+.root [id="etapes"]{scroll-margin-top:60px}
+.root [id="pourqui"]{scroll-margin-top:40px}
+.root [id="tarifs"]{scroll-margin-top:60px}
+.root [id="rejoindre"]{scroll-margin-top:96px}
 @media (prefers-reduced-motion:reduce){
+:global(html):has(.root){scroll-behavior:auto}
 .blob,.floaty,.mq,.sheen,.grain,.dash,.orb,.pulse{animation:none !important}
 .rv,.rv2,.w,.zoom,.parx,.line>span,.in{animation:none !important;opacity:1 !important;transform:none !important;filter:none !important}
 }
