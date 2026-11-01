@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-plan";
 import { CATEGORY_LABELS, DECLARED_ROLES, REFUSAL_REASONS, episodesLabel } from "@/lib/constants";
@@ -25,7 +25,7 @@ interface Report { id: string; reporter_id: string | null; reporter_name: string
 // (2026-08-10) — necessaires pour afficher l'ORIGINE du Pro (Stripe / offert /
 // recruteur), pas seulement le badge `plan` opaque. Voir GET tab=users
 // (src/app/api/admin/route.ts) qui les selectionne desormais.
-interface User { id: string; full_name: string; slug: string; email: string; account_type: string; plan: string; is_suspended: boolean; status: string; created_at: string; pro_grant_type: string | null; pro_grant_expires_at: string | null; subscription_status: string | null; }
+interface User { id: string; full_name: string; slug: string; email: string; account_type: string; is_admin?: boolean; plan: string; is_suspended: boolean; status: string; created_at: string; pro_grant_type: string | null; pro_grant_expires_at: string | null; subscription_status: string | null; }
 interface Film { id: string; title: string; slug: string; category: string; year: number; video_url: string; poster_url: string | null; preview_url: string | null; owner_name: string; owner_slug: string; status: string; created_at: string; profile_id: string | null; source_title: string | null; source_author: string | null; source_duration: number | null; declared_role: string | null; episode_count: number | null; episodes: { id: string; title: string }[] | null; }
 // Gestion des films (lot 2 de la route) : films approuves modifies, films sans
 // Responsable, signalements / revendications de films.
@@ -237,7 +237,7 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
         </p>
 
         {!refusing ? (
-          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
             <button onClick={onApprove} disabled={busy} style={{ ...bigBtn, background: "#22c55e", border: "none", color: "#0d0d0d", opacity: busy ? 0.5 : 1 }}>Approuver</button>
             <button onClick={() => setRefusing(true)} disabled={busy} style={{ ...bigBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.35)", color: "#ef4444", opacity: busy ? 0.5 : 1 }}>Refuser</button>
           </div>
@@ -324,6 +324,8 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
   const [recruiterEdits, setRecruiterEdits] = useState<RecruiterEdit[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  // Admin connecte (renvoye par GET tab=users) : pas d'actions sur son propre compte.
+  const [meId, setMeId] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [films, setFilms] = useState<Film[]>([]);
   const [editedFilms, setEditedFilms] = useState<EditedFilm[]>([]);
@@ -352,7 +354,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
     const data = await res.json();
     if (key === "recruiters") { setPendingRecruiters(data.pending || []); setApprovedRecruiters(data.approved || []); setRecruiterEdits(data.edits || []); }
     if (key === "reports") setReports(data.reports || []);
-    if (key === "users") setUsers(data.users || []);
+    if (key === "users") { setUsers(data.users || []); setMeId(data.me ?? null); }
     if (key === "films") { setFilms(data.films || []); setEditedFilms(data.edited || []); setOrphanFilms(data.orphans || []); }
     if (key === "claims") setClaims(data.claims || []);
   }, []);
@@ -364,6 +366,18 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
   }, [tab, userSearch, loadTab]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Onglets : l'onglet actif reste visible, et le fondu de droite disparait en bout de course.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [tabsFade, setTabsFade] = useState(false);
+  const updateTabsFade = useCallback(() => {
+    const el = tabsRef.current;
+    if (el) setTabsFade(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+  useEffect(() => {
+    document.getElementById(`admin-tab-${tab}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    updateTabsFade();
+  }, [tab, updateTabsFade]);
 
   // Pastilles des onglets : visibles des l'ouverture de l'admin, sans attendre
   // qu'un onglet soit ouvert. Une fois, au montage (l'onglet actif est charge
@@ -534,7 +548,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
   const pill = { fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#A8A8B0", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace", whiteSpace: "nowrap" } as const;
 
   return (
-    <div style={{ padding: "20px 16px 120px", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="px-4 pb-[120px] pt-4 md:pt-5" style={{ maxWidth: 1100, margin: "0 auto" }}>
       {/* Toast */}
       {toast && (
         <div style={{ position: "fixed", top: "calc(16px + env(safe-area-inset-top, 0px))", right: 16, zIndex: 150, maxWidth: "calc(100vw - 32px)", padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
@@ -543,11 +557,12 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
       )}
 
       {/* Header */}
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#f0f0f0", marginBottom: 4 }}>Administration Unkast</h1>
-      <p style={{ fontSize: 13, color: "#868686", marginBottom: 24 }}>{date} · {totalPending} action{totalPending !== 1 ? "s" : ""} en attente</p>
+      <h1 className="text-xl md:text-2xl" style={{ fontWeight: 700, color: "#f0f0f0", marginBottom: 4 }}>Administration Unkast</h1>
+      <p className="mb-4 text-xs md:mb-6 md:text-[13px]" style={{ color: "#868686" }}>{date} · {totalPending} action{totalPending !== 1 ? "s" : ""} en attente</p>
 
-      {/* Tabs */}
-      <div className="no-scrollbar" style={{ display: "flex", gap: 6, marginBottom: 24, overflowX: "auto" }}>
+      {/* Tabs : defilement horizontal, fondu a droite tant qu'il reste des onglets (mobile). */}
+      <div className="relative mb-4 max-md:-mx-4 md:mb-6">
+      <div ref={tabsRef} onScroll={updateTabsFade} className="no-scrollbar flex gap-1.5 overflow-x-auto max-md:px-4">
         {([
           ["recruiters", "Recruteurs", pendingRecruiters.length + recruiterEdits.length],
           ["reports", "Signalements", reports.length],
@@ -557,6 +572,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
         ] as const).map(([key, label, count]) => (
           <button
             key={key}
+            id={`admin-tab-${key}`}
             onClick={() => setTab(key as Tab)}
             style={{
               padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: tab === key ? 600 : 400, cursor: "pointer",
@@ -572,6 +588,8 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
             )}
           </button>
         ))}
+      </div>
+      {tabsFade && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-12 md:hidden" style={{ background: "linear-gradient(to right, rgba(13,13,13,0), #0d0d0d)" }} />}
       </div>
 
       {loading && <p style={{ color: "#868686", fontSize: 13 }}>Chargement...</p>}
@@ -740,6 +758,8 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
             // le seul garde-fou existant etait ici, cote UI). Ce type n'existe
             // plus dans le modele (lib/pro-plan.ts) : plus rien a exclure.
             const canRevokeGrant = isGrantValid(u.pro_grant_type, u.pro_grant_expires_at);
+            // Comptes admin et compte connecte : listes, sans actions (refus 403 cote serveur aussi).
+            const noActions = u.is_admin || u.account_type === "admin" || u.id === meId;
             return (
               <div key={u.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <div>
@@ -751,14 +771,14 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
                   </div>
                   <p style={{ fontSize: 11, color: "#868686" }}>{u.email} · {formatDateParis(u.created_at, "short")}</p>
                 </div>
-                <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+                {!noActions && <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                   <button onClick={() => openGrantModal(u.id, `Offrir Pro à ${u.full_name}`)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Offrir Pro…</button>
                   {canRevokeGrant && <button onClick={() => confirmAction("revoke_pro_grant", u.id, `Retirer le Pro offert de ${u.full_name}`)} style={{ ...btnDanger, padding: "6px 10px", fontSize: 11 }}>Retirer le Pro offert</button>}
                   {u.is_suspended
                     ? <button onClick={() => doAction("reactivate_user", u.id)} style={{ ...btnApprove, padding: "6px 10px", fontSize: 11 }}>Reactiver</button>
                     : <button onClick={() => confirmAction("suspend_user", u.id, `Suspendre ${u.full_name}`)} style={{ ...btnDanger, padding: "6px 10px", fontSize: 11 }}>Suspendre</button>
                   }
-                </div>
+                </div>}
               </div>
             );
           })}

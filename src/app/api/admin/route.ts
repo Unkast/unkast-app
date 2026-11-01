@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     // pour que l'admin voie l'ORIGINE du Pro (Stripe / offert / recruteur),
     // pas seulement le badge plan opaque (chantier grants, 2026-08-10).
     let query = admin.from("profiles")
-      .select("id, full_name, slug, account_type, plan, is_suspended, status, created_at, pro_grant_type, pro_grant_expires_at, subscription_status")
+      .select("id, full_name, slug, account_type, is_admin, plan, is_suspended, status, created_at, pro_grant_type, pro_grant_expires_at, subscription_status")
       .order("created_at", { ascending: false });
 
     if (search) {
@@ -138,7 +138,8 @@ export async function GET(request: NextRequest) {
       return { ...p, email: user?.email || "" };
     }));
 
-    return NextResponse.json({ users: enriched, total: count || 0, page });
+    // me : l'admin connecte, pour masquer les actions sur son propre compte.
+    return NextResponse.json({ users: enriched, total: count || 0, page, me: adminId });
   }
 
   if (tab === "films") {
@@ -355,6 +356,21 @@ export async function PATCH(request: NextRequest) {
       { error: "Auto-protection : un admin ne peut pas appliquer cette action à son propre compte." },
       { status: 403 }
     );
+  }
+
+  // Comptes admin intouchables (decision produit du 01/11/2026) : ni suspension,
+  // ni Pro offert ou retire, sur un admin (is_admin ou account_type 'admin') ni
+  // sur soi-meme. Remplace, pour grant_pro et revoke_pro_grant, la tolerance
+  // « avantage a soi » decrite plus haut.
+  const ADMIN_PROTECTED_ACTIONS = ["suspend_user", "grant_pro", "revoke_pro_grant"];
+  if (ADMIN_PROTECTED_ACTIONS.includes(action)) {
+    const { data: target } = await admin.from("profiles").select("is_admin, account_type").eq("id", target_id).maybeSingle();
+    if (target_id === adminId || target?.is_admin || target?.account_type === "admin") {
+      return NextResponse.json(
+        { error: target_id === adminId ? "Action impossible sur ton propre compte." : "Action impossible sur un compte admin." },
+        { status: 403 }
+      );
+    }
   }
 
   // Fiabilite (audit) : chaque action = une ecriture metier + une ligne d'audit,

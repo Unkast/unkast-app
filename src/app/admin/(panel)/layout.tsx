@@ -18,16 +18,17 @@ export default async function AdminLayout({
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
+      {/* Mobile : titre puis « Voir le site comme » sur une ligne en dessous ; bureau : une seule ligne. */}
       <header
+        className="flex items-center justify-between max-md:flex-col max-md:items-start max-md:gap-1.5 max-md:pb-2.5 max-md:pt-1"
         style={{
           position: "sticky",
           top: 0,
           zIndex: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           // Zone sure : dans l'app Android la page passe sous la barre d'etat.
-          padding: "env(safe-area-inset-top, 0px) 16px 0",
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingTop: "env(safe-area-inset-top, 0px)",
           minHeight: "calc(52px + env(safe-area-inset-top, 0px))",
           background: "rgba(13,13,13,0.9)",
           backdropFilter: "blur(12px)",
