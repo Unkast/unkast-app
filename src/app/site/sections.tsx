@@ -1,7 +1,8 @@
 // Sections sans etat de la page de vente (composants serveur).
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { LEGAL } from "@/lib/legal";
 import s from "./site.module.css";
-import { APP, Eyebrow, LIME_DEEP, Play, Poster, TONES, cx, type SiteFilm } from "./ui";
+import { APP, Arrow, Eyebrow, LIME_DEEP, Play, Poster, TONES, cx, type SiteFilm } from "./ui";
 
 export function Nav() {
   return (
@@ -205,5 +206,133 @@ export function Steps() {
         </div>
       </div>
     </section>
+  );
+}
+
+// Pastilles de metier autour du film (credits croises). Positions de la maquette.
+const NODES: { left: string; top: string; role: string; bg?: string; delay?: string; invited?: boolean }[] = [
+  { left: "16%", top: "13.5%", role: "Réalisatrice", bg: "var(--v)" },
+  { left: "84%", top: "13.5%", role: "Cheffe op", bg: "var(--y)", delay: "-1.5s" },
+  { left: "8%", top: "50%", role: "Comédien", bg: "#6D28D9", delay: "-3s" },
+  { left: "92%", top: "50%", role: "Monteur", bg: "var(--y)", delay: "-4.5s" },
+  { left: "16%", top: "86.5%", role: "Compositrice", bg: "#3B3550", delay: "-2.2s" },
+  { left: "84%", top: "86.5%", role: "Ingé son · invité", delay: "-5s", invited: true },
+];
+const VIOLET_LINE = "rgba(167,139,250,.6)";
+const LIME_LINE = "rgba(200,255,0,.55)";
+
+export function Network({ film }: { film: SiteFilm | null }) {
+  return (
+    <section style={{ position: "relative", padding: "120px 0 160px", overflow: "hidden" }}>
+      <div aria-hidden="true" className={s.blob} style={{ width: "640px", height: "640px", right: "-120px", top: "40px", background: "var(--v)", opacity: ".13" }}></div>
+      <div className={cx(s.g2, s.pad)} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", padding: "0 32px", display: "grid", gridTemplateColumns: "minmax(0, 0.85fr) minmax(0, 1.15fr)", gap: "60px", alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "26px" }}>
+          <Eyebrow>Crédits croisés</Eyebrow>
+          <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "64px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.04em" }}>Un film.<br /><span className={s.serif} style={{ color: "var(--y)" }}>Toute une équipe.</span></h2>
+          <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.65", color: "var(--mut)" }}>Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur la réalisatrice qui l&apos;a dirigé, puis sur sa prochaine cheffe op. Chaque crédit est une porte d&apos;entrée vers ton travail.</p>
+          <a className={cx(s.btn, s["btn-y"], s.rv)} href={APP.join} style={{ alignSelf: "flex-start" }}>Récupérer mes crédits <Arrow /></a>
+        </div>
+        <div className={s.zoom} aria-hidden="true" style={{ position: "relative", aspectRatio: "560 / 520", width: "100%" }}>
+          <svg viewBox="0 0 560 520" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", overflow: "visible" }}>
+            <g fill="none" strokeWidth="1.5">
+              <path className={s.dash} d="M280 260 C 200 200, 140 120, 90 70" stroke={VIOLET_LINE}></path>
+              <path className={s.dash} d="M280 260 C 360 200, 420 120, 470 70" stroke={LIME_LINE}></path>
+              <path className={s.dash} d="M280 260 C 190 260, 110 260, 40 260" stroke={VIOLET_LINE}></path>
+              <path className={s.dash} d="M280 260 C 370 260, 450 260, 520 260" stroke={LIME_LINE}></path>
+              <path className={s.dash} d="M280 260 C 200 320, 140 400, 90 450" stroke={LIME_LINE}></path>
+              <path className={s.dash} d="M280 260 C 360 320, 420 400, 470 450" stroke={VIOLET_LINE}></path>
+            </g>
+            <circle cx="280" cy="260" r="130" fill="none" stroke="rgba(255,255,255,.06)"></circle>
+            <circle cx="280" cy="260" r="210" fill="none" stroke="rgba(255,255,255,.04)"></circle>
+          </svg>
+          <div className={s.glass} style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "42%", borderRadius: "22px", padding: "8px", zIndex: "3" }}>
+            <div className={cx(s.lbox, s.tone1)} style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "15px", overflow: "hidden", display: "grid", placeItems: "center" }}>
+              {film && <Poster film={film} sizes="240px" />}
+              <span style={{ position: "relative", zIndex: "2", width: "42px", height: "42px", borderRadius: "50%", background: "rgba(255,255,255,.16)", display: "grid", placeItems: "center" }}><Play size={15} /></span>
+            </div>
+            {film && <div style={{ padding: "10px 6px 4px", fontSize: "13px", fontWeight: "700", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{film.title}</div>}
+          </div>
+          {NODES.map((n) => (
+            <div key={n.role} className={cx(s.floaty, !n.invited && s.glass)} style={{ position: "absolute", left: n.left, top: n.top, transform: "translate(-50%, -50%)", borderRadius: "999px", padding: "6px 14px 6px 6px", display: "flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap", fontSize: "13px", fontWeight: "600", zIndex: "3", animationDelay: n.delay, ...(n.invited && { border: "1px dashed rgba(255,255,255,.35)", background: "rgba(10,10,14,.6)" }) }}>
+              {n.invited
+                ? <span style={{ width: "28px", height: "28px", borderRadius: "50%", border: "1px dashed rgba(255,255,255,.4)", display: "grid", placeItems: "center", fontSize: "13px", color: "var(--mut)" }}>?</span>
+                : <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: n.bg }}></span>}
+              {n.role}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const TRUST: { title: string; text: string; violet?: boolean; icon: ReactNode }[] = [
+  { title: "Films validés un par un", text: "Chaque film est validé à la main avant sa mise en ligne.", icon: <><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M10 9l5 3-5 3z"></path></> },
+  { title: "Premier contact protégé", text: "Tes coordonnées ne sont jamais affichées. Le premier contact passe par la messagerie Unkast.", violet: true, icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path> },
+  { title: "Recruteurs vérifiés", text: "Chaque recruteur est vérifié à la main.", icon: <><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path><path d="M16 4l2 2 3-3"></path></> },
+  { title: "Tes droits respectés", text: "Un responsable par film et un bouton pour signaler ou revendiquer.", violet: true, icon: <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8 9.5 8z"></path> },
+];
+
+export function Trust() {
+  return (
+    <section className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "40px 32px 170px", boxSizing: "border-box" }}>
+      <div className={s.g2} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "40px", alignItems: "end", marginBottom: "56px" }}>
+        <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "64px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.04em" }}>Un réseau propre,<br /><span className={s.serif} style={{ color: "var(--y)" }}>fait pour les pros.</span></h2>
+        <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.6", color: "var(--mut)", maxWidth: "460px" }}>Films validés, recruteurs vérifiés, coordonnées protégées. Unkast garde un niveau d&apos;exigence qui protège ton image.</p>
+      </div>
+      <div className={s.g4} style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "16px" }}>
+        {TRUST.map((c, i) => (
+          <div key={c.title} className={cx(i % 2 ? s.rv2 : s.rv, s.glass)} style={{ borderRadius: "26px", padding: "28px", display: "flex", flexDirection: "column", gap: "16px", minHeight: "250px" }}>
+            <span style={{ width: "48px", height: "48px", borderRadius: "14px", background: c.violet ? "color-mix(in srgb, var(--v) 25%, transparent)" : "color-mix(in srgb, var(--y) 16%, transparent)", display: "grid", placeItems: "center" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.violet ? "var(--vl)" : "var(--y)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{c.icon}</svg></span>
+            <span style={{ fontSize: "19px", fontWeight: "700" }}>{c.title}</span>
+            <span style={{ fontSize: "15px", lineHeight: "1.6", color: "var(--mut)" }}>{c.text}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function FinalCta({ offerUntil }: { offerUntil: string | null }) {
+  return (
+    <section id="rejoindre" className={s.pad} style={{ padding: "0 32px 120px", boxSizing: "border-box" }}>
+      <div className={s.zoom} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", borderRadius: "48px", overflow: "hidden", padding: "130px 40px", textAlign: "center", background: "#0D0D0D", boxSizing: "border-box" }}>
+        <div aria-hidden="true" style={{ position: "absolute", inset: "0", overflow: "hidden" }}>
+          <div className={s.orb} style={{ position: "absolute", left: "50%", top: "50%", width: "1100px", height: "1100px", margin: "-550px 0 0 -550px", borderRadius: "50%", background: "conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--v) 40%, transparent), transparent 35%, color-mix(in srgb, var(--y) 50%, transparent), transparent 70%)", filter: "blur(80px)", opacity: ".6" }}></div>
+          <div style={{ position: "absolute", inset: "0", background: "radial-gradient(60% 70% at 50% 50%, transparent, #0D0D0D 85%)" }}></div>
+        </div>
+        <div className={s.glass} aria-hidden="true" style={{ position: "absolute", inset: "24px", borderRadius: "32px", background: "rgba(255,255,255,.02)" }}></div>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "30px" }}>
+          <h2 className={s.ctaH} style={{ margin: "0", fontSize: "96px", lineHeight: ".98", fontWeight: "700", letterSpacing: "-0.05em", maxWidth: "960px" }}>Ton prochain projet <span className={cx(s.serif, s.sheen)}>commence par un film.</span></h2>
+          <p style={{ margin: "0", fontSize: "19px", color: "#D6D1E6", maxWidth: "520px", lineHeight: "1.55" }}>Crée ton profil en quelques minutes.{offerUntil && <> Pro offert jusqu&apos;au {offerUntil}.</>}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
+            <a className={cx(s.btn, s["btn-y"])} href={APP.join} style={{ minHeight: "60px", padding: "0 34px", fontSize: "17px" }}>Rejoindre Unkast <Arrow /></a>
+            <a className={cx(s.btn, s["btn-g"], s.glass)} href={APP.feed} style={{ minHeight: "60px", padding: "0 30px", fontSize: "17px" }}>Explorer les films</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Lien Instagram : a ajouter ici quand l'adresse sera fixee (masque pour l'instant).
+const FOOTER_LINKS = [
+  { href: APP.page("/cgu"), label: "CGU" },
+  { href: APP.page("/mentions-legales"), label: "Mentions légales" },
+  { href: APP.page("/confidentialite"), label: "Confidentialité" },
+  { href: `mailto:${LEGAL.contactEmail}`, label: "Contact" },
+];
+
+export function Footer() {
+  return (
+    <footer className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 32px 60px", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "24px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,.08)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><span style={{ fontWeight: "800", fontSize: "18px", letterSpacing: "0.16em" }}>UNKAST</span><span style={{ fontSize: "14px", color: "var(--mut)" }}>Découvre l&apos;œuvre. Trouve le talent.</span></div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+          {FOOTER_LINKS.map((l) => <a key={l.label} className={s["nav-a"]} href={l.href}>{l.label}</a>)}
+        </div>
+        <span style={{ fontSize: "13px", color: "var(--mut)" }}>© {new Date().getFullYear()} {LEGAL.company}</span>
+      </div>
+    </footer>
   );
 }

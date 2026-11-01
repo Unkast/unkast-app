@@ -9,6 +9,9 @@ export const APP = {
   login: `${SITE_URL}/connexion`,
   feed: `${SITE_URL}/feed`,
   film: (slug: string) => `${SITE_URL}/projet/${slug}`,
+  page: (path: string) => `${SITE_URL}${path}`,
+  // Paiement ouvert : page /pro. Sinon l'inscription (Pro offert au lancement).
+  pro: process.env.NEXT_PUBLIC_BILLING_ENABLED === "true" ? `${SITE_URL}/pro` : `${SITE_URL}/rejoindre`,
 };
 
 // Film public et approuve, prepare cote serveur (page.tsx). `team` = initiales,
