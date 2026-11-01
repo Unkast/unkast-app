@@ -17,6 +17,9 @@ Dernière mise à jour : 1er novembre 2026 (page de vente unkast.com ; promesses
 - [x] Textes alignés sur le code (2 contacts à vie, 5 nouvelles conversations par jour, badge Recruteur vérifié = vérification admin + Pro, validation des films à la main). Limites, prix d'offre et date du Pro offert lus dans le code.
 - [x] Vrais films (publics, validés, lus comme un visiteur) ; blocs masqués s'il n'y en a pas (cas actuel de la base). Bascule Annuel masquée (`PRO_ANNUAL_PRICE` dans `src/app/site/interactive.tsx`).
 - [ ] Vercel : ajouter les domaines `unkast.com` et `www.unkast.com` au projet, puis vérifier unkast.com (page de vente) et app.unkast.com (accueil inchangé).
+- [x] Films d'exemple (5 affiches générées par IA, `src/app/site/exemples.ts`) tant qu'il y a moins de 6 vrais films, puces « Exemple » et mention « images générées par IA » sous le catalogue. Horizons écarté (logo Volvo visible). Titres entiers : fond prolongé au ratio 16:10, pas de recadrage.
+- [ ] **Maxime : vérifier les droits d'usage commercial des affiches générées avant toute mise en ligne** (outil de génération ; les 3 PNG testés portent un identifiant de travail `hf-job-id`). Les noms imprimés sur les affiches sont fictifs (homonymes possibles).
+- [ ] `public/thumbnails/` (12 PNG, 105 Mo) reste inutilisé par l'app et déployé ; seuls 5 films en ont une copie dans `public/site/exemples/` (voir audit performance du 10/10/2026).
 - [ ] Vérifier sur téléphone la fluidité (verre, halos) et l'aperçu de partage.
 - [ ] Lien Instagram du pied de page (masqué en attendant l'adresse).
 - [ ] Mobile : « Se connecter » est masqué dans la barre (comme la maquette), il n'y a que « Rejoindre ». À trancher.

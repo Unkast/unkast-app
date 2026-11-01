@@ -255,7 +255,12 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `site/page.tsx` | [utilise] | `lib/constants.ts` (`MAX_PROJECTS_FREE`), `lib/messaging.ts` (`FREE_CONTACT_LIMIT`, `DAILY_CONVERSATION_LIMIT`), `lib/pro-plan.ts` (`LAUNCH_PRO_UNTIL`, `isLaunchOfferOpen`), `lib/utils.ts` (`formatDateParis`) |
 | `site/films.ts` | [utilise] | `lib/film-team.ts` (`fetchVisitorCredits`), `lib/credits.ts` (`directorNames`), `lib/constants.ts` (`CATEGORY_LABELS`) |
 | `site/films.ts` | [persiste dans] | `projects` (lecture, cle publique sans session), RPC `public_project_credits` |
+| `site/page.tsx` | [utilise] | `site/exemples.ts` (`EXAMPLE_FILMS`, `EXAMPLES_BELOW`) : exemples si moins de 6 vrais films |
+| `site/exemples.ts` | [depend de] | `public/site/exemples/*-16x10.webp` (copies prolongees de `public/thumbnails/*-paysage.png`, non utilises ailleurs) |
+| `site/sections.tsx` (`FilmCard`, `Catalogue`, `Network`), `site/Hero.tsx`, `site/interactive.tsx` (`Audience`) | [utilise] | `site/ui.tsx` (`ExampleChip`, `Poster`, `SiteFilm.example`) |
 | `site/sections.tsx` | [utilise] | `lib/legal.ts` (`LEGAL.company`, `LEGAL.contactEmail`) |
+| `site/page.tsx` | [utilise] | `site/Nav.tsx` (nav flottante et menu mobile, liens `APP.login` et `APP.join` de `site/ui.tsx`) |
+| `site/interactive.tsx` (`Audience`) | [utilise] | `site/exemples.ts` (`EXAMPLE_FILMS`) : affiches des maquettes Talents et Recruteurs |
 | `site/ui.tsx` | [utilise] | `lib/site.ts` (`SITE_URL` : liens vers /rejoindre, /connexion, /feed, /projet, pages legales, /pro), `next/image` |
 | `site/*` | [depend de] | `site/site.module.css` (aucune classe de `globals.css`) |
 | Changement de `MAX_PROJECTS_FREE`, `FREE_CONTACT_LIMIT`, `DAILY_CONVERSATION_LIMIT`, `LAUNCH_PRO_UNTIL` | [impacte] | textes de la page de vente (tarifs, FAQ, bandeaux) |

@@ -177,6 +177,21 @@ FEATURE  Page de vente — unkast.com (src/app/site/, 01/11/2026, ADR 0018) — 
     session (comme sitemap.ts) ; equipe via fetchVisitorCredits (lib/film-team.ts), reduite a des
     initiales ; realisateur via directorNames. Aucun film : hero sans titre, catalogue masque
     (moins de 6 films), credits croises et onglet Createurs sans titre.
+  - exemples.ts : 5 films d'EXEMPLE fictifs (affiches generees par IA, public/site/exemples/*-16x10.webp),
+    servis par page.tsx seulement tant que la base compte moins de EXAMPLES_BELOW (6) vrais films
+    (jamais melanges ; remplacement automatique). `SiteFilm.example` : carte sans lien (ces films n'existent
+    pas dans l'app), puce « Exemple » (ExampleChip, ui.tsx), libelle « Exemples de films » et mention
+    « images generees par IA » sous le catalogue (sections.tsx), texte alternatif « film fictif ».
+    Ni realisateur, ni equipe, ni annee. Pas d'affiche « Horizons » (logo d'une vraie marque).
+    Affiches : copies WebP 1600 x 1000 (16:10 exact) des PNG de public/thumbnails (jamais modifies, non
+    utilises par l'app), fond PROLONGE (bords repetes, floutes, fondus) et non recadre : les titres restent
+    entiers. Une affiche s'affiche en entier (classe .bare : sans bandes noires, sans puce de categorie).
+    Nom de fichier suffixe -16x10 : le cache d'images de Next garde l'ancienne version sous un meme nom.
+    Droits d'usage commercial de l'outil de generation : a verifier par Maxime avant mise en ligne.
+  - Nav.tsx [Client] : nav flottante. <= 960 px : bouton menu qui ouvre un panneau en verre (ancres
+    concept, etapes, pourqui, tarifs, faq + Se connecter + Rejoindre). Fermeture au clic sur un lien,
+    au toucher hors du panneau (pas sur une fin de selection de texte) ou par Echap. Le panneau et son
+    voile sont hors du <nav> : le backdrop-filter de .glass ferait du <nav> le repere du position fixed.
   - Hero.tsx [Client] : carte et halos qui suivent la souris (requestAnimationFrame).
   - interactive.tsx [Client] : onglets Pour qui, tarifs (PRO_MONTHLY_PRICE ; PRO_ANNUAL_PRICE = null
     masque la bascule Mensuel / Annuel), FAQ.
@@ -186,6 +201,10 @@ FEATURE  Page de vente — unkast.com (src/app/site/, 01/11/2026, ADR 0018) — 
     Animations au scroll en CSS pur (@supports animation-timeline). Ecarts : #C4B0FF -> #A78BFA,
     pastilles des credits croises centrees par `translate` (l'animation ecrasait transform), mobile :
     visuel des credits resserre (600 px), grain et halos figes (960 px). prefers-reduced-motion garde.
+    Telephone (<= 600 px, 01/11/2026) : bloc final de site.module.css, titres, marges, cartes et
+    espaces reduits section par section (hauteur a 375 px : 14 358 -> ~10 340 px), zones de toucher
+    >= 44 px. Les styles de la maquette etant en ligne, chaque element vise porte une classe et la
+    regle passe en !important. scroll-margin-top des ancres recalcule pour les paddings mobiles.
 
 FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   Bloc « A la une » + rangees par categorie + talents a decouvrir.
