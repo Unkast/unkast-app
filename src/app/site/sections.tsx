@@ -318,11 +318,11 @@ export function FinalCta({ offerUntil }: { offerUntil: string | null }) {
   );
 }
 
-// Lien Instagram : a ajouter ici quand l'adresse sera fixee (masque pour l'instant).
-const FOOTER_LINKS = [
+const FOOTER_LINKS: { href: string; label: string; external?: boolean }[] = [
   { href: APP.page("/cgu"), label: "CGU" },
   { href: APP.page("/mentions-legales"), label: "Mentions légales" },
   { href: APP.page("/confidentialite"), label: "Confidentialité" },
+  { href: "https://www.instagram.com/unkast.app/", label: "Instagram", external: true },
   { href: `mailto:${LEGAL.contactEmail}`, label: "Contact" },
 ];
 
@@ -332,7 +332,7 @@ export function Footer() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "24px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,.08)" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><span style={{ fontWeight: "800", fontSize: "18px", letterSpacing: "0.16em" }}>UNKAST</span><span style={{ fontSize: "14px", color: "var(--mut)" }}>Découvre l&apos;œuvre. Trouve le talent.</span></div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-          {FOOTER_LINKS.map((l) => <a key={l.label} className={s["nav-a"]} href={l.href}>{l.label}</a>)}
+          {FOOTER_LINKS.map((l) => <a key={l.label} className={s["nav-a"]} href={l.href} {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{l.label}</a>)}
         </div>
         <span style={{ fontSize: "13px", color: "var(--mut)" }}>© {new Date().getFullYear()} {LEGAL.company}</span>
       </div>
