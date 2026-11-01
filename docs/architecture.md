@@ -340,6 +340,15 @@ CORE  Cron expiration Pro — /api/cron/pro-expiry (src/app/api/cron/pro-expiry/
   partiel profiles_pro_grant_expiry_idx).
   [persiste dans] profiles (plan via recompute_plan, pro_grant_reminder_sent_at)
 
+CORE  Cron conservation des donnees — /api/cron/retention (src/app/api/cron/retention/,
+  2026-11-01) — Vercel Cron quotidien (vercel.json, 30 4 * * *), meme CRON_SECRET que pro-expiry.
+  Tient les durees promises dans /confidentialite et /supprimer-mon-compte :
+  rate_limits de plus de 7 jours supprimees ; justificatifs de revendication supprimes du bucket
+  claims 1 an apres reviewed_at (document_path vide, ligne project_claims gardee).
+  Deux passes independantes. Fonctions Vercel en region cdg1 (Paris, vercel.json "regions"),
+  pres de la base Supabase eu-west-3.
+  [persiste dans] rate_limits (DELETE), project_claims (document_path), Storage claims
+
 FEATURE  Suspendu — /suspended (src/app/(app)/suspended/)
   Ecran pour comptes is_suspended (lit suspended_reason).
 

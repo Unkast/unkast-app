@@ -73,7 +73,7 @@ export default function SupprimerMonComptePage() {
           <li>Les déclarations de droits de ces films, sans lien avec toi.</li>
           <li>Les signalements que tu avais faits, sans ton nom.</li>
           <li>Tes factures Stripe, que la loi nous oblige à conserver.</li>
-          <li>Les journaux techniques, pendant 12 mois.</li>
+          <li>Les journaux techniques (voir les délais ci-dessous).</li>
         </ul>
       </Section>
 
@@ -83,7 +83,10 @@ export default function SupprimerMonComptePage() {
             <strong>Tes données sont supprimées immédiatement</strong>, au moment où tu confirmes.
           </li>
           <li>Les copies de sauvegarde disparaissent dans les 30 jours.</li>
-          <li>Les journaux techniques sont gardés 12 mois.</li>
+          <li>
+            <strong>Journaux techniques</strong> (adresse IP, appareil, actions de connexion) : conservés au plus
+            12 mois, la plupart quelques jours seulement.
+          </li>
         </ul>
         <p>
           Plus de détails dans la <Link href="/confidentialite">politique de confidentialité</Link>.

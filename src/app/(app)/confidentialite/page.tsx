@@ -182,14 +182,15 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Ce qui reste après la suppression</strong> : ton nom au générique des films des autres ;
             les déclarations de droits des films qui restent, sans lien avec toi ; tes factures Stripe, que
-            la loi nous oblige à conserver ; les journaux techniques (12 mois, voir ci-dessous).
+            la loi nous oblige à conserver ; les journaux techniques (voir ci-dessous).
           </li>
           <li>
             <strong>Justificatifs de revendication</strong> : 1 an après la décision, ou supprimés avec ton
             compte s&apos;il est supprimé avant.
           </li>
           <li>
-            <strong>Journaux techniques</strong> : 12 mois.
+            <strong>Journaux techniques</strong> (adresse IP, appareil, actions de connexion) : conservés au plus
+            12 mois, la plupart quelques jours seulement.
           </li>
         </ul>
       </Section>

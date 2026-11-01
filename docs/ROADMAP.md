@@ -6,11 +6,21 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 31 octobre 2026 (suppression de compte par le membre : route, bouton, page publique, textes légaux ; migration 20261101 exécutée) ; précédemment 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
+Dernière mise à jour : 1er novembre 2026 (promesses légales, étape A : cron de conservation, région Paris, textes des journaux, mentions Supabase) ; précédemment 31 octobre 2026 (suppression de compte par le membre : route, bouton, page publique, textes légaux ; migration 20261101 exécutée) ; précédemment 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
 
 ---
 
 ## ✅ Terminé
+
+### Promesses légales tenues par le code — étape A *(1er novembre 2026)*
+- [x] Cron quotidien `GET /api/cron/retention` : `rate_limits` de plus de 7 jours supprimées ; justificatifs de revendication supprimés du bucket `claims` 1 an après `reviewed_at` (`document_path` vidé, ligne gardée). Testé en local : 401 sans en-tête, avec un mauvais secret et sans `CRON_SECRET`. Simulation en lecture seule sur la prod : 4 lignes `rate_limits` sur 20 à purger, 0 justificatif.
+- [x] `vercel.json` : `"regions": ["cdg1"]` (fonctions à Paris, près de la base `eu-west-3`).
+- [x] `/confidentialite` et `/supprimer-mon-compte` : « Journaux techniques (adresse IP, appareil, actions de connexion) : conservés au plus 12 mois, la plupart quelques jours seulement. » `TERMS_VERSION` inchangé.
+- [x] `/mentions-legales` : Supabase Pte. Ltd., 65 Chulia Street #38-02/03, OCBC Centre, Singapour 049513.
+- [ ] Supabase : activer « Disable writing auth audit logs to project database » (Authentication > Audit Logs), puis purger une fois `auth.audit_log_entries` (SQL manuel).
+- [ ] Vérifier après déploiement : région `cdg1` dans le résumé du déploiement, et le cron `retention` dans Vercel > Cron Jobs.
+- [ ] Téléphones manquants des mentions légales : éditeur (à fournir), Vercel et Supabase (aucun numéro publié sur leurs pages officielles).
+- [ ] Étape B : action admin de suppression de compte (demande par email), logique partagée `src/lib/account-deletion.ts`.
 
 ### Suppression de compte par le membre *(31 octobre 2026, RGPD et Google Play)*
 - [x] `20261101_account_deletion.sql` exécutée en prod : nom figé au générique = nom affiché (`display_name`), fonction `solo_projects_of`, films solo supprimés avec le compte, `reports.reporter_id` en `ON DELETE SET NULL`. Rollback : `20261101_account_deletion_rollback.sql`.

@@ -47,8 +47,12 @@ export default function MentionsLegalesPage() {
           ).
         </p>
         <p>
-          La base de données et les fichiers sont hébergés par <strong>Supabase</strong>, région{" "}
-          <Info value={LEGAL.hostingRegion} />.
+          La base de données et les fichiers sont hébergés par <strong>Supabase Pte. Ltd.</strong>, 65 Chulia
+          Street #38-02/03, OCBC Centre, Singapour 049513 (
+          <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">
+            supabase.com
+          </a>
+          ), région <Info value={LEGAL.hostingRegion} />.
         </p>
       </Section>
 

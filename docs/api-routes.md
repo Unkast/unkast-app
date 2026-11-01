@@ -17,6 +17,7 @@
 |---|---|---|---|---|
 | `/api/billing/webhook` | POST | — | `profiles` | **Stripe** — pas d'auth utilisateur, **vérif de signature** sur raw body. Seule source de vérité pour la comptabilité Stripe (`plan` est désormais dérivé, voir `recompute_plan`) |
 | `/api/cron/pro-expiry` | GET | `profiles` | `profiles` | **Cron Vercel** — pas d'auth utilisateur, secouru par `CRON_SECRET` (header `Authorization: Bearer …`) |
+| `/api/cron/retention` | GET | `project_claims` | `rate_limits` (DELETE), `project_claims` (UPDATE `document_path`), Storage `claims` | **Cron Vercel** (2026-11-01), même authentification que `pro-expiry`. Durées de conservation promises dans `/confidentialite` |
 | `/api/search` | GET | `profiles`, `profile_roles`, `projects` | — | filtre `status='approved'` |
 | `/api/signup` | POST | — | `profiles`, `profile_roles`, `projects`, `project_credits`, `credit_requests` | rate-limit 5/IP/h ; **email à confirmer** (generateLink + Resend) |
 | `/api/auth/google` | POST | `profiles`, `profile_roles` | `profiles` | **lot 11** : suite d'une connexion Google par jeton (session déjà ouverte par `signInWithIdToken`). Corps `{ next?, terms? }`. Crée le profil minimal à la première connexion (CGU enregistrées si `terms` est la version en vigueur), répond `{ redirect }` : finalisation ou page demandée. 401 sans session, 403 si le compte n'est pas relié à Google. Règle partagée avec `/auth/callback` : `lib/google-account.ts` |
@@ -168,6 +169,14 @@ Deux passes indépendantes, **jamais** de balayage global sur `profiles` (chaque
 1. **Grants `'launch'` échus** (`pro_grant_expires_at < now()`) → `recompute_plan()` (RPC) par profil concerné. Les colonnes du grant ne sont **pas** nettoyées (témoin conservé en base) ; seul `plan` est réévalué.
 2. **Rappel J-7** : grants à échéance (`launch` ou `vip` daté) expirant sous 7 jours, pas encore expirés, jamais relancés (`pro_grant_reminder_sent_at IS NULL`) → email via `sendProExpiryReminderEmail` (`lib/email.ts`, mentionne « Tes films restent en ligne »). **Étalé (2026-10-30)** : tous les Pro de lancement expirant le même jour, les rappels partent un par un avec 600 ms d'écart (limite Resend) et 200 au plus par passage, les plus proches d'expirer d'abord ; le reste part aux passages suivants dans la fenêtre de 7 jours. `pro_grant_reminder_sent_at` n'est posée **que** si l'envoi renvoie `{sent: true}` — tant que `RESEND_API_KEY` n'est pas branchée, chaque échec est loggé explicitement (`console.error`) et compté dans la réponse, sans jamais marquer un rappel comme envoyé à tort.
 Réponse JSON : `{ expired_launch: { matched, recomputed, errors }, reminders: { candidates, sent, failed } }` — aucun décompte silencieux.
+
+### GET /api/cron/retention *(2026-11-01, promesses légales)*
+Cron Vercel (`vercel.json`, `30 4 * * *`). Même authentification que `pro-expiry` : `Authorization: Bearer <CRON_SECRET>` vérifié en premier, 401 sinon (et toujours 401 si `CRON_SECRET` est absent, comme en local).
+Deux passes **indépendantes** (lancées ensemble, chacune dans son `try` ; l'échec de l'une n'arrête jamais l'autre) :
+1. **`rate_limits`** : supprime les lignes dont `window_start` a plus de **7 jours**. La plus longue fenêtre du code est de 1 jour (`invite:*`, `claim:*`, `invite:global`) : aucune limite en cours n'est remise à zéro. Les clés contiennent des IP, des identifiants de compte et des emails.
+2. **Justificatifs de revendication** : revendications décidées (`status` `accepted`/`rejected`) dont `reviewed_at` a plus d'**1 an** et qui ont un `document_path` (500 au plus par passage, les plus anciennes d'abord). Suppression des fichiers du bucket privé `claims`, puis `document_path` vidé par **UPDATE** : la ligne `project_claims` est toujours gardée (historique de modération). Si le Storage échoue, rien n'est vidé (nouvel essai le lendemain) ; un fichier déjà absent n'est pas une erreur.
+Réponse : `{ rate_limits: { deleted, error }, claim_documents: { matched, cleared, error } }`, statut 500 si une passe a échoué (les deux ont quand même tourné).
+Hors de cette route : les journaux d'audit Auth de Supabase (`auth.audit_log_entries`, IP et appareil) se règlent dans le tableau de bord (Authentication > Audit Logs, « Disable writing auth audit logs to project database ») puis une purge SQL manuelle unique.
 
 ### Gestion des films *(lots 2 et 3, 08/10/2026 ; dépend de la migration `20261008`, ⚠️ pas encore en production)*
 
