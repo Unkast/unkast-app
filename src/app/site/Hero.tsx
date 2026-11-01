@@ -118,7 +118,7 @@ export default function Hero({ film, offerUntil }: { film: SiteFilm | null; offe
 
           <div className={cx(s["hide-m"], s.floaty, s.glass)} style={{ position: "absolute", right: "-28px", top: "-36px", borderRadius: "20px", padding: "14px 18px 14px 14px", display: "flex", gap: "12px", alignItems: "center", animationDelay: "-2s", ...vars({ "--r": "3deg" }) }}>
             <span style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(135deg, var(--v), #4C1D95)", display: "grid", placeItems: "center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg></span>
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}><span style={{ fontSize: "13px", fontWeight: "700" }}>Nouveau message</span><span style={{ fontSize: "12px", color: "var(--mut)" }}>Une productrice t&apos;a écrit</span></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}><span style={{ fontSize: "13px", fontWeight: "700" }}>Nouveau message</span><span style={{ fontSize: "12px", color: "var(--mut)" }}>Un producteur t&apos;a écrit</span></div>
           </div>
 
           <div className={cx(s["hide-m"], s.floaty, s.glass)} style={{ position: "absolute", left: "-44px", bottom: "-30px", borderRadius: "20px", padding: "14px 18px 14px 14px", display: "flex", gap: "12px", alignItems: "center", animationDelay: "-4.5s", ...vars({ "--r": "-3deg" }) }}>

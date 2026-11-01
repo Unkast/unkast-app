@@ -27,7 +27,7 @@ export function Nav() {
   );
 }
 
-const ROLE_NAMES = ["Réalisatrice", "Chef opérateur", "Monteuse", "Comédien", "Ingé son", "Scénariste", "Productrice", "Étalonneur", "Compositrice", "Directeur de casting"];
+const ROLE_NAMES = ["Réalisateur", "Chef opérateur", "Monteur", "Comédien", "Ingé son", "Scénariste", "Producteur", "Étalonneur", "Compositeur", "Directeur de casting"];
 
 export function RolesMarquee() {
   // Liste doublee : la boucle defile de -50 % sans saut.
@@ -183,10 +183,10 @@ export function Steps() {
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <span className={s.mono} style={stepNum}>02</span>
             <h3 style={stepH3}>Crédite ton équipe</h3>
-            <p style={stepP}>Chaque personne qui a bossé sur le film apparaît au générique. Pas encore inscrite ? Elle reçoit une invitation et récupère son crédit en arrivant.</p>
+            <p style={stepP}>Chaque collaborateur qui a bossé sur le film apparaît au générique. Pas encore inscrit ? Il reçoit une invitation et récupère son crédit en arrivant.</p>
           </div>
           <div className={s.glass} aria-hidden="true" style={{ borderRadius: "24px", padding: "14px", display: "flex", flexDirection: "column", gap: "6px" }}>
-            <CreditRow role="Cheffe opératrice" status="Sur Unkast" avatar={{ background: "linear-gradient(135deg, var(--v), #4C1D95)" }} />
+            <CreditRow role="Chef opérateur" status="Sur Unkast" avatar={{ background: "linear-gradient(135deg, var(--v), #4C1D95)" }} />
             <CreditRow role="Montage" status="Sur Unkast" avatar={{ background: `linear-gradient(135deg, var(--y), ${LIME_DEEP})` }} />
             <CreditRow role="Ingé son" status="Invitation envoyée" invited />
             <span className={cx(s.btn, s["btn-g"])} style={{ marginTop: "6px", background: "rgba(255,255,255,.06)", minHeight: "48px", fontSize: "14px" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Ajouter un collaborateur</span>
@@ -200,7 +200,7 @@ export function Steps() {
             <p style={stepP}>Producteurs, directeurs de casting, réalisateurs. Ils regardent, ils aiment, ils t&apos;écrivent directement sur Unkast. Répondre est toujours gratuit.</p>
           </div>
           <div aria-hidden="true" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div className={s.glass} style={{ alignSelf: "flex-start", maxWidth: "340px", borderRadius: "22px 22px 22px 6px", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "6px" }}><span style={{ fontSize: "12px", color: "var(--vl)", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>Productrice <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--y)" aria-hidden="true"><path d="M12 2l2.6 2 3.3-.2.9 3.2 2.7 2-1 3.1 1 3.1-2.7 2-.9 3.2-3.3-.2L12 22l-2.6-2-3.3.2-.9-3.2-2.7-2 1-3.1-1-3.1 2.7-2 .9-3.2 3.3.2z"></path></svg></span><span style={{ fontSize: "15px", lineHeight: "1.5" }}>J&apos;ai vu ton court. Le travail sur la lumière est top. Tu serais dispo en mars ?</span></div>
+            <div className={s.glass} style={{ alignSelf: "flex-start", maxWidth: "340px", borderRadius: "22px 22px 22px 6px", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "6px" }}><span style={{ fontSize: "12px", color: "var(--vl)", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>Producteur<svg width="13" height="13" viewBox="0 0 24 24" fill="var(--y)" aria-hidden="true"><path d="M12 2l2.6 2 3.3-.2.9 3.2 2.7 2-1 3.1 1 3.1-2.7 2-.9 3.2-3.3-.2L12 22l-2.6-2-3.3.2-.9-3.2-2.7-2 1-3.1-1-3.1 2.7-2 .9-3.2 3.3.2z"></path></svg></span><span style={{ fontSize: "15px", lineHeight: "1.5" }}>J&apos;ai vu ton court. Le travail sur la lumière est top. Tu serais dispo en mars ?</span></div>
             <div style={{ alignSelf: "flex-end", maxWidth: "300px", borderRadius: "22px 22px 6px 22px", padding: "16px 18px", background: "var(--y)", color: "#0A0A0A", fontSize: "15px", lineHeight: "1.5", fontWeight: "500" }}>Avec plaisir, on s&apos;appelle cette semaine ?</div>
             <div style={{ alignSelf: "center", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--mut)", marginTop: "6px" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>Premier contact par la messagerie Unkast</div>
           </div>
@@ -212,11 +212,11 @@ export function Steps() {
 
 // Pastilles de metier autour du film (credits croises). Positions de la maquette.
 const NODES: { left: string; top: string; role: string; bg?: string; delay?: string; invited?: boolean }[] = [
-  { left: "16%", top: "13.5%", role: "Réalisatrice", bg: "var(--v)" },
-  { left: "84%", top: "13.5%", role: "Cheffe op", bg: "var(--y)", delay: "-1.5s" },
+  { left: "16%", top: "13.5%", role: "Réalisateur", bg: "var(--v)" },
+  { left: "84%", top: "13.5%", role: "Chef op", bg: "var(--y)", delay: "-1.5s" },
   { left: "8%", top: "50%", role: "Comédien", bg: "#6D28D9", delay: "-3s" },
   { left: "92%", top: "50%", role: "Monteur", bg: "var(--y)", delay: "-4.5s" },
-  { left: "16%", top: "86.5%", role: "Compositrice", bg: "#3B3550", delay: "-2.2s" },
+  { left: "16%", top: "86.5%", role: "Compositeur", bg: "#3B3550", delay: "-2.2s" },
   { left: "84%", top: "86.5%", role: "Ingé son · invité", delay: "-5s", invited: true },
 ];
 const VIOLET_LINE = "rgba(167,139,250,.6)";
@@ -230,7 +230,7 @@ export function Network({ film }: { film: SiteFilm | null }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "26px" }}>
           <Eyebrow>Crédits croisés</Eyebrow>
           <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "64px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.04em" }}>Un film.<br /><span className={s.serif} style={{ color: "var(--y)" }}>Toute une équipe.</span></h2>
-          <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.65", color: "var(--mut)" }}>Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur la réalisatrice qui l&apos;a dirigé, puis sur sa prochaine cheffe op. Chaque crédit est une porte d&apos;entrée vers ton travail.</p>
+          <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.65", color: "var(--mut)" }}>Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur le réalisateur qui l&apos;a dirigé, puis sur son prochain chef op. Chaque crédit est une porte d&apos;entrée vers ton travail.</p>
           <a className={cx(s.btn, s["btn-y"], s.rv)} href={APP.join} style={{ alignSelf: "flex-start" }}>Récupérer mes crédits <Arrow /></a>
         </div>
         <div className={cx(s.zoom, s.net)} aria-hidden="true" style={{ position: "relative", aspectRatio: "560 / 520", width: "100%" }}>
