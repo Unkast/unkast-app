@@ -64,7 +64,8 @@ export default function SupprimerMonComptePage() {
         <ul>
           <li>
             <strong>Ton nom au générique des films des autres</strong>, tel qu&apos;il y figurait, sans lien vers
-            un compte.
+            un compte. Tu peux demander son retrait
+            (voir la section 6).
           </li>
           <li>
             Un film où d&apos;autres personnes sont créditées passe au co-gestionnaire le plus ancien. S&apos;il
@@ -100,7 +101,17 @@ export default function SupprimerMonComptePage() {
           ta demande dans les 30 jours.
         </p>
         <p>
-          Un compte suspendu ne peut pas se supprimer lui-même : c&apos;est la seule voie.
+          Un compte suspendu ne peut pas se supprimer lui-même : c&apos;est la seule voie, avec un délai de 30 jours.
+        </p>
+      </Section>
+
+      <Section title="6. Faire retirer ton nom d'un générique">
+        <p>
+          Après la suppression de ton compte, ton nom reste au générique des films des autres. Il en va de même
+          si tu étais crédité sans avoir de compte. Pour le faire retirer, écris à{" "}
+          <Info value={LEGAL.contactEmail} /> en indiquant le titre du film. Écris depuis l&apos;adresse de ton
+          compte, ou depuis l&apos;adresse où tu as reçu l&apos;invitation si tu n&apos;en as pas. Nous répondons
+          dans un délai de 30 jours et nous t&apos;écrivons une fois le retrait fait.
         </p>
       </Section>
     </LegalPage>

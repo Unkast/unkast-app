@@ -32,6 +32,8 @@ Dernière mise à jour : 1er novembre 2026 (page de vente unkast.com ; promesses
 - [ ] Supabase : activer « Disable writing auth audit logs to project database » (Authentication > Audit Logs), puis purger une fois `auth.audit_log_entries` (SQL manuel).
 - [ ] Vérifier après déploiement : région `cdg1` dans le résumé du déploiement, et le cron `retention` dans Vercel > Cron Jobs.
 - [ ] Téléphones manquants des mentions légales : éditeur (à fournir), Vercel et Supabase (aucun numéro publié sur leurs pages officielles).
+- [ ] Purge automatique de la waitlist à 12 mois (cron retention). En attendant : nettoyage manuel, promesse faite dans `/confidentialite`.
+- [ ] Retrait de nom d'un générique : procédure SQL manuelle, outil admin à prévoir (demandes par email, promesse de 30 jours dans `/supprimer-mon-compte`).
 - [ ] Étape B : action admin de suppression de compte (demande par email), logique partagée `src/lib/account-deletion.ts`.
 
 ### Suppression de compte par le membre *(31 octobre 2026, RGPD et Google Play)*

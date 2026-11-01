@@ -32,7 +32,8 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Ton profil</strong> : nom, prénom, nom de scène, photo, ville, métiers, bio, parcours,
-            disponibilité.
+            disponibilité, et, si tu les renseignes pour le casting, tes âges de jeu, ton type de rôle et
+            tes langues.
           </li>
           <li>
             <strong>Tes coordonnées</strong>, si tu les renseignes : email de contact, téléphone, Instagram,
@@ -55,6 +56,17 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>L&apos;acceptation des CGU</strong> : la version acceptée et la date.
+          </li>
+          <li>
+            <strong>La liste d&apos;attente</strong> : si tu laisses ton adresse email pour être prévenu de
+            l&apos;ouverture, nous la gardons 12 mois au plus, puis nous la supprimons.
+          </li>
+          <li>
+            <strong>Les personnes créditées sans compte</strong> : quand un membre crédite quelqu&apos;un qui
+            n&apos;a pas de compte, nous enregistrons son nom pour l&apos;afficher au générique et, s&apos;il
+            l&apos;invite à s&apos;inscrire, son adresse email pour lui envoyer l&apos;invitation. Si tu es
+            dans ce cas, écris à <Info value={LEGAL.contactEmail} /> pour demander le retrait de ton nom ou la
+            suppression de ton adresse. Nous répondons dans un délai d&apos;un mois.
           </li>
         </ul>
         <p>
@@ -176,8 +188,9 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Après la suppression de ton compte</strong> : tes données sont supprimées
-            immédiatement. Les copies de sauvegarde disparaissent dans les 30 jours. Ton nom reste dans le
-            générique des films des autres, tel qu&apos;il y figurait, sauf si tu demandes son retrait.
+            immédiatement, sauf si ton compte est suspendu (voir plus bas). Les copies de sauvegarde
+            disparaissent dans les 30 jours. Ton nom reste dans le générique des films des autres, tel qu&apos;il
+            y figurait, sauf si tu demandes son retrait par email.
           </li>
           <li>
             <strong>Ce qui reste après la suppression</strong> : ton nom au générique des films des autres ;
@@ -191,6 +204,14 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Journaux techniques</strong> (adresse IP, appareil, actions de connexion) : conservés au plus
             12 mois, la plupart quelques jours seulement.
+          </li>
+          <li>
+            <strong>Compte suspendu</strong> : un compte suspendu ne peut pas se supprimer lui-même. Écris à{" "}
+            <Info value={LEGAL.contactEmail} /> depuis l&apos;adresse de ton compte : la suppression est faite
+            dans un délai de 30 jours.
+          </li>
+          <li>
+            <strong>Liste d&apos;attente</strong> : 12 mois au plus après ton inscription.
           </li>
         </ul>
       </Section>
