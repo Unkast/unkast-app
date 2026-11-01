@@ -116,6 +116,20 @@
 .root [id="pourqui"]{scroll-margin-top:40px}
 .root [id="tarifs"]{scroll-margin-top:60px}
 .root [id="rejoindre"]{scroll-margin-top:96px}
+/* Anti-scintillement (rendu visible inchange).
+   Cause : Chrome recalcule le flou d'arriere-plan (backdrop-filter) a chaque image.
+   - Etapes : 3 cartes sticky qui se recouvrent, chacune avec son backdrop-filter et
+     un second verre imbrique ; quand la carte 3 glisse sur la 2, le flou de la 3 doit
+     relire la 2 et ses verres internes. Ce flou ne servait qu'a masquer le texte de la
+     carte du dessous (fonds a 94-97 %). Les fonds sont maintenant opaques (memes
+     couleurs aplaties sur #0D0D0D, dans sections.tsx) : meme rendu, plus de flou, et
+     chaque carte garde sa couche (will-change).
+   - Pour qui : le groupe d'onglets et le panneau sont des verres qui portent aussi
+     une animation au scroll en filter + opacity + transform (et .swap au changement
+     d'onglet), ce qui les rend « racine d'arriere-plan » par intermittence. Le fond
+     derriere est uni (#0D0D0D) : le flou n'y change rien, retire. */
+.step,.step .glass,.aud .glass{-webkit-backdrop-filter:none;backdrop-filter:none}
+.step{will-change:transform}
 @media (prefers-reduced-motion:reduce){
 :global(html):has(.root){scroll-behavior:auto}
 .blob,.floaty,.mq,.sheen,.grain,.dash,.orb,.pulse{animation:none !important}

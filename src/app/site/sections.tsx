@@ -164,7 +164,7 @@ export function Steps() {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-        <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "110px", background: "linear-gradient(145deg, rgba(26,26,26,.94), rgba(14,14,14,.96))" }}>
+        <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "110px", background: "linear-gradient(145deg, rgb(25,25,25), rgb(14,14,14))" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <span className={s.mono} style={stepNum}>01</span>
             <h3 style={stepH3}>Publie ton film</h3>
@@ -179,7 +179,7 @@ export function Steps() {
           </div>
         </div>
 
-        <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "138px", background: "linear-gradient(145deg, rgba(26,23,34,.95), rgba(14,14,16,.96))" }}>
+        <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "138px", background: "linear-gradient(145deg, rgb(25,23,33), rgb(14,14,16))" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <span className={s.mono} style={stepNum}>02</span>
             <h3 style={stepH3}>Crédite ton équipe</h3>
@@ -193,7 +193,7 @@ export function Steps() {
           </div>
         </div>
 
-        <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "166px", background: "linear-gradient(145deg, rgba(28,34,10,.95), rgba(14,15,11,.97))" }}>
+        <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "166px", background: "linear-gradient(145deg, rgb(27,33,10), rgb(14,15,11))" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <span className={s.mono} style={stepNum}>03</span>
             <h3 style={stepH3}>Fais-toi repérer</h3>

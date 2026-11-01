@@ -48,7 +48,7 @@ function ResultRow({ tone }: { tone: string }) {
 export function Audience({ film }: { film: SiteFilm | null }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("talents");
   return (
-    <section id="pourqui" className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "80px 32px 160px", boxSizing: "border-box" }}>
+    <section id="pourqui" className={cx(s.pad, s.aud)} style={{ maxWidth: "1240px", margin: "0 auto", padding: "80px 32px 160px", boxSizing: "border-box" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "28px", textAlign: "center", marginBottom: "56px" }}>
         <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "72px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.045em" }}>Pensé pour <span className={s.serif} style={{ color: "var(--y)" }}>chaque métier.</span></h2>
         <div className={cx(s.glass, s.rv)} role="group" aria-label="Choisir un profil" style={{ display: "inline-flex", gap: "4px", padding: "5px", borderRadius: "999px" }}>
