@@ -6,11 +6,20 @@
 > cours de route dans la bonne section, (4) mets à jour la date en bas.
 > Ne supprime jamais une ligne terminée — on garde l'historique.
 
-Dernière mise à jour : 1er novembre 2026 (promesses légales, étape A : cron de conservation, région Paris, textes des journaux, mentions Supabase) ; précédemment 31 octobre 2026 (suppression de compte par le membre : route, bouton, page publique, textes légaux ; migration 20261101 exécutée) ; précédemment 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
+Dernière mise à jour : 1er novembre 2026 (page de vente unkast.com ; promesses légales, étape A : cron de conservation, région Paris, textes des journaux, mentions Supabase) ; précédemment 31 octobre 2026 (suppression de compte par le membre : route, bouton, page publique, textes légaux ; migration 20261101 exécutée) ; précédemment 24 septembre 2026 (audit sécurité : migrations exécutées en prod ; bug suppression d'un utilisateur crédité corrigé)
 
 ---
 
 ## ✅ Terminé
+
+### Page de vente unkast.com *(1er novembre 2026, [ADR 0018](adr/0018-page-de-vente-meme-projet.md))*
+- [x] Maquette `docs/page-de-vente/maquette-page-de-vente.dc.html` traduite en React : `src/app/site/`, servie sur unkast.com par une réécriture de `next.config.ts`. app.unkast.com garde son accueil (app Android). Le reste de unkast.com renvoie vers app.unkast.com.
+- [x] Textes alignés sur le code (2 contacts à vie, 5 nouvelles conversations par jour, badge Recruteur vérifié = vérification admin + Pro, validation des films à la main). Limites, prix d'offre et date du Pro offert lus dans le code.
+- [x] Vrais films (publics, validés, lus comme un visiteur) ; blocs masqués s'il n'y en a pas (cas actuel de la base). Bascule Annuel masquée (`PRO_ANNUAL_PRICE` dans `src/app/site/interactive.tsx`).
+- [ ] Vercel : ajouter les domaines `unkast.com` et `www.unkast.com` au projet, puis vérifier unkast.com (page de vente) et app.unkast.com (accueil inchangé).
+- [ ] Vérifier sur téléphone la fluidité (verre, halos) et l'aperçu de partage.
+- [ ] Lien Instagram du pied de page (masqué en attendant l'adresse).
+- [ ] Mobile : « Se connecter » est masqué dans la barre (comme la maquette), il n'y a que « Rejoindre ». À trancher.
 
 ### Promesses légales tenues par le code — étape A *(1er novembre 2026)*
 - [x] Cron quotidien `GET /api/cron/retention` : `rate_limits` de plus de 7 jours supprimées ; justificatifs de revendication supprimés du bucket `claims` 1 an après `reviewed_at` (`document_path` vidé, ligne gardée). Testé en local : 401 sans en-tête, avec un mauvais secret et sans `CRON_SECRET`. Simulation en lecture seule sur la prod : 4 lignes `rate_limits` sur 20 à purger, 0 justificatif.
@@ -87,7 +96,7 @@ Dernière mise à jour : 1er novembre 2026 (promesses légales, étape A : cron 
 
 ## 🐛 Bugs connus (backlog)
 
-_Aucun bug ouvert._
+- [ ] **Page `/pro` incohérente avec le code** (relevé le 1er novembre 2026, non corrigé à la demande de Maxime) : le Gratuit y a « Messagerie directe » et « Contact talents » barrés, alors que le code autorise 2 personnes contactées (`FREE_CONTACT_LIMIT`, `src/lib/messaging.ts`) et que répondre est toujours gratuit ; « Badge Pro vérifié » est annoncé pour tout Pro, alors que le badge exige aussi la vérification recruteur par l'admin (`recruiter_verified`). Le Pro n'a pas de contacts illimités : 5 nouvelles conversations par jour pour tous (`DAILY_CONVERSATION_LIMIT`). Textes de référence : page de vente, `src/app/site/interactive.tsx`.
 
 ---
 

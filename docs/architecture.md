@@ -160,6 +160,32 @@ HOOK  usePushNotifications (src/hooks/usePushNotifications.ts) — enregistremen
 ```
 FEATURE  Welcome / racine — / (src/app/page.tsx + WelcomeClient.tsx)
   /?compte=supprime : Toast « Compte supprimé » (retour de la suppression du compte), adresse nettoyee.
+  Reste l'accueil de app.unkast.com : l'app Android s'ouvre dessus (capacitor.config.ts).
+
+FEATURE  Page de vente — unkast.com (src/app/site/, 01/11/2026, ADR 0018) — HORS groupe (app), sans AppShell
+  Servie sur unkast.com et www.unkast.com par next.config.ts : rewrites beforeFiles / -> /site
+  (condition `has` sur le domaine) ; redirections du reste de unkast.com vers app.unkast.com
+  (sauf /site, /_next/, chemins avec extension). src/proxy.ts n'est pas concerne.
+  Traduite de docs/page-de-vente/maquette-page-de-vente.dc.html : 12 sections (nav, hero, metiers,
+  manifeste, catalogue, etapes, credits croises, pour qui, confiance, tarifs, FAQ, appel final + pied).
+  - layout.tsx : polices Inter Tight et Instrument Serif (next/font, cette route seulement ; JetBrains
+    Mono vient du layout racine), metadonnees propres, canonique https://unkast.com (MARKETING_URL).
+  - page.tsx [Server, revalidate 3600] : limites lues dans le code (MAX_PROJECTS_FREE,
+    FREE_CONTACT_LIMIT, DAILY_CONVERSATION_LIMIT), date du Pro offert (LAUNCH_PRO_UNTIL,
+    isLaunchOfferOpen, formatDateParis ; bandeaux masques une fois l'offre finie).
+  - films.ts : loadSiteFilms(), films publics approuves, Responsable non suspendu, cle publique SANS
+    session (comme sitemap.ts) ; equipe via fetchVisitorCredits (lib/film-team.ts), reduite a des
+    initiales ; realisateur via directorNames. Aucun film : hero sans titre, catalogue masque
+    (moins de 6 films), credits croises et onglet Createurs sans titre.
+  - Hero.tsx [Client] : carte et halos qui suivent la souris (requestAnimationFrame).
+  - interactive.tsx [Client] : onglets Pour qui, tarifs (PRO_MONTHLY_PRICE ; PRO_ANNUAL_PRICE = null
+    masque la bascule Mensuel / Annuel), FAQ.
+  - sections.tsx [Server] : sections sans etat. ui.tsx : liens APP (SITE_URL ; « Passer Pro » vers /pro
+    si NEXT_PUBLIC_BILLING_ENABLED, sinon /rejoindre), type SiteFilm, petites briques.
+  - site.module.css : styles de la maquette en CSS Module (globals.css a deja .glass et .lite .glass).
+    Animations au scroll en CSS pur (@supports animation-timeline). Ecarts : #C4B0FF -> #A78BFA,
+    pastilles des credits croises centrees par `translate` (l'animation ecrasait transform), mobile :
+    visuel des credits resserre (600 px), grain et halos figes (960 px). prefers-reduced-motion garde.
 
 FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   Bloc « A la une » + rangees par categorie + talents a decouvrir.
@@ -484,7 +510,8 @@ UTILITY  Vitrine UI — /dev/ui (src/app/dev/ui/page.tsx + UiShowcase.tsx) — H
 
 - `src/app/robots.ts` : `/robots.txt`. Ferme `/api/`, `/admin`, `/auth/callback`, `/dev/`. Les pages privees restent explorables expres : elles portent `noindex`, qu'un robot ne lit que s'il peut charger la page.
 - `src/app/sitemap.ts` : `/sitemap.xml`, recalcule au plus une fois par heure. Feed, recherche, categories, films publics approuves (Responsable approuve et non suspendu) et profils approuves. Lecture avec la cle publique sans session : la RLS repond comme a un visiteur.
-- `src/lib/site.ts` : `SITE_URL` (`NEXT_PUBLIC_SITE_URL`, sinon `https://app.unkast.com`), aussi `metadataBase` du layout racine.
+- `src/lib/site.ts` : `SITE_URL` (`NEXT_PUBLIC_SITE_URL`, sinon `https://app.unkast.com`), aussi `metadataBase` du layout racine. `MARKETING_URL` (`https://unkast.com`) : base et canonique de la page de vente.
+- `robots.txt` et `sitemap.xml` sont communs a app.unkast.com et unkast.com (ADR 0018).
 - `noindex` : layouts serveur dedies pour les pages clientes (`messages`, `suspended`, `compte-introuvable`, `pro/success`, `pro/cancel`, `auth/confirm`), et metadonnees de `/moi`, `/dashboard`, `/admin`.
 - Image de partage : `generateMetadata` de `projet/[slug]` ajoute `poster_url` (Open Graph et carte Twitter) pour les films publics seulement.
 

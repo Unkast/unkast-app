@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Unkast, page de vente</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&amp;family=Instrument+Serif:ital@0;1&amp;family=JetBrains+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0;background:#0D0D0D}
+a{color:#C8FF00}a:hover{color:#ffffff}
+.u-root{--ink:#0D0D0D;--txt:#F4F4F6;--mut:#A9A9B8;font-family:'Inter Tight',system-ui,sans-serif;color:var(--txt);background:var(--ink);overflow-x:clip;position:relative;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-0.01em}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.glass{position:relative;isolation:isolate;background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035) 42%,rgba(255,255,255,.02));-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05),inset 0 0 30px rgba(255,255,255,.025),0 30px 80px -24px rgba(0,0,0,.75)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,rgba(255,255,255,.5),rgba(255,255,255,.06) 32%,color-mix(in srgb,var(--v) 28%,transparent) 70%,color-mix(in srgb,var(--y) 45%,transparent));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:2}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 70% at 18% 0%,rgba(255,255,255,.13),transparent 55%);pointer-events:none;z-index:-1}
+.glass-v{background:linear-gradient(145deg,color-mix(in srgb,var(--v) 15%,transparent),color-mix(in srgb,var(--v) 4%,transparent) 55%,rgba(255,255,255,.03))}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 26px;border-radius:999px;font:600 16px/1 'Inter Tight',sans-serif;text-decoration:none;cursor:pointer;border:0;transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s,background .45s,color .3s;white-space:nowrap}
+.btn-y{background:var(--y);color:#0A0A0A;box-shadow:0 12px 40px -12px color-mix(in srgb,var(--y) 75%,transparent),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -2px 0 rgba(0,0,0,.12)}
+.btn-y:hover{color:#0A0A0A;transform:translateY(-2px) scale(1.03);box-shadow:0 22px 60px -14px color-mix(in srgb,var(--y) 90%,transparent),inset 0 1px 0 rgba(255,255,255,.7)}
+.btn-g{color:var(--txt)}
+.btn-g:hover{color:#ffffff;transform:translateY(-2px)}
+.btn-y .arr,.btn-g .arr{transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.btn:hover .arr{transform:translateX(4px)}
+.nav-a{color:var(--mut);text-decoration:none;font-size:14px;font-weight:500;padding:10px 14px;border-radius:999px;transition:color .3s,background .3s}
+.nav-a:hover{color:#ffffff;background:rgba(255,255,255,.07)}
+.blob{position:absolute;border-radius:50%;filter:blur(100px);animation:drift 20s ease-in-out infinite alternate;will-change:transform}
+@keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(70px,-50px,0) scale(1.18)}100%{transform:translate3d(-50px,40px,0) scale(.92)}}
+.floaty{animation:floaty 7s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-14px) rotate(var(--r,0deg))}}
+.line{display:block;overflow:hidden;padding-bottom:.08em;margin-bottom:-.08em}
+.line>span{display:inline-block;animation:lineUp 1.3s cubic-bezier(.16,1,.3,1) both}
+@keyframes lineUp{from{transform:translateY(110%) rotate(3deg);opacity:0}to{transform:none;opacity:1}}
+.in{animation:inUp 1.2s cubic-bezier(.16,1,.3,1) both}
+@keyframes inUp{from{opacity:0;transform:translateY(30px);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+.sheen{background:linear-gradient(100deg,var(--y) 0%,var(--y) 38%,#F1FFC4 50%,var(--y) 62%,var(--y) 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheen 7s ease-in-out infinite;padding-right:.12em}
+@keyframes sheen{0%,20%{background-position:100% 0}60%,100%{background-position:0% 0}}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--y) 70%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+.mq-wrap{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.mq{display:flex;width:max-content;animation:mq 55s linear infinite}
+.mq.fast{animation-duration:38s}
+.mq.rev{animation-direction:reverse}
+.mq-wrap:hover .mq{animation-play-state:paused}
+@keyframes mq{to{transform:translateX(-50%)}}
+.card{transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.card:hover{transform:translateY(-8px) scale(1.02)}
+.tone1{background:radial-gradient(90% 80% at 80% 10%,color-mix(in srgb,var(--v) 38%,transparent),transparent 60%),radial-gradient(70% 60% at 10% 100%,color-mix(in srgb,var(--y) 28%,transparent),transparent 60%),#111111}
+.tone2{background:radial-gradient(80% 70% at 15% 20%,color-mix(in srgb,var(--y) 40%,transparent),transparent 60%),radial-gradient(80% 80% at 100% 100%,color-mix(in srgb,var(--v) 20%,transparent),transparent 60%),#0F100C}
+.tone3{background:radial-gradient(100% 60% at 50% 0%,color-mix(in srgb,var(--v) 28%,#1a1a1a),transparent 70%),linear-gradient(180deg,#111111,#080808)}
+.tone4{background:radial-gradient(60% 50% at 70% 60%,color-mix(in srgb,var(--y) 32%,transparent),transparent 70%),radial-gradient(90% 80% at 0% 0%,color-mix(in srgb,var(--v) 26%,transparent),transparent 65%),#0E0E0E}
+.lbox::before,.lbox::after{content:"";position:absolute;left:0;right:0;height:9%;background:#000;z-index:1}
+.lbox::before{top:0}.lbox::after{bottom:0}
+.dash{stroke-dasharray:4 7;animation:dash 1.6s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-22}}
+.tab{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:transparent;color:var(--mut);font:600 15px 'Inter Tight',sans-serif;cursor:pointer;transition:background .4s,color .4s}
+.tab:hover{color:#ffffff}
+.tab.on{background:var(--y);color:#0A0A0A;box-shadow:0 8px 30px -10px color-mix(in srgb,var(--y) 80%,transparent)}
+.faq-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:24px;background:transparent;border:0;color:var(--txt);font:600 20px/1.3 'Inter Tight',sans-serif;text-align:left;padding:26px 0;cursor:pointer}
+.faq-btn:hover{color:var(--y)}
+.swap{animation:inUp .7s cubic-bezier(.16,1,.3,1) both}
+.grain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:60;opacity:.07;mix-blend-mode:overlay;animation:grain 1s steps(4) infinite}
+@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-2%,1%)}50%{transform:translate(1%,-2%)}75%{transform:translate(2%,2%)}100%{transform:translate(0,0)}}
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:70;background:linear-gradient(90deg,var(--v),var(--y));transform-origin:left;transform:scaleX(0)}
+.tilt{transition:transform .8s cubic-bezier(.16,1,.3,1)}
+.orb{animation:spin 30s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@supports (animation-timeline: view()){
+.rv{animation:rvUp linear both;animation-timeline:view();animation-range:entry 0% entry 70%}
+.rv2{animation:rvUp linear both;animation-timeline:view();animation-range:entry 10% entry 90%}
+.w{animation:wl linear both;animation-timeline:view();animation-range:cover 18% cover 42%}
+.zoom{animation:zoomIn linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+.progress{animation:grow linear both;animation-timeline:scroll(root)}
+.parx{animation:parx linear both;animation-timeline:view();animation-range:cover 0% cover 100%}
+}
+@keyframes rvUp{from{opacity:0;transform:translateY(70px) scale(.96);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+@keyframes wl{from{opacity:.13;filter:blur(2px)}to{opacity:1;filter:none}}
+@keyframes zoomIn{from{transform:scale(.86);opacity:.25;border-radius:60px}to{transform:scale(1);opacity:1}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes parx{from{transform:translateY(80px)}to{transform:translateY(-80px)}}
+@media (max-width:960px){
+.g2{grid-template-columns:minmax(0,1fr) !important}
+.g3,.g4{grid-template-columns:minmax(0,1fr) !important}
+.hide-m{display:none !important}
+.h1{font-size:56px !important}
+.h2{font-size:42px !important}
+.mani{font-size:40px !important}
+.pad{padding-left:20px !important;padding-right:20px !important}
+.step{position:relative !important;top:auto !important}
+.ctaH{font-size:52px !important}
+}
+@media (prefers-reduced-motion:reduce){
+.blob,.floaty,.mq,.sheen,.grain,.dash,.orb,.pulse{animation:none !important}
+.rv,.rv2,.w,.zoom,.parx,.line>span,.in{animation:none !important;opacity:1 !important;transform:none !important;filter:none !important}
+}
+</style>
+</helmet>
+<div class="u-root" style="--y: {{yellow}}; --v: {{violet}};">
+
+<div class="progress" aria-hidden="true"></div>
+<svg class="grain" aria-hidden="true"><filter id="unk-noise"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#unk-noise)"></rect></svg>
+
+<!-- NAV -->
+<div style="position: sticky; top: 16px; z-index: 50; display: flex; justify-content: center; padding: 0 16px;">
+<nav class="glass in" style="width: 100%; max-width: 1180px; border-radius: 999px; padding: 10px 10px 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-sizing: border-box;">
+<a href="#top" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #ffffff;">
+<span style="width: 26px; height: 26px; border-radius: 8px; background: var(--y); display: grid; place-items: center; box-shadow: 0 0 24px color-mix(in srgb, var(--y) 60%, transparent);"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9L10.5 6z" fill="#0A0A0A"></path></svg></span>
+<span style="font-weight: 800; font-size: 19px; letter-spacing: 0.16em;">UNKAST</span>
+</a>
+<div class="hide-m" style="display: flex; gap: 2px;">
+<a class="nav-a" href="#concept">Le concept</a>
+<a class="nav-a" href="#etapes">Comment ça marche</a>
+<a class="nav-a" href="#pourqui">Pour qui</a>
+<a class="nav-a" href="#tarifs">Tarifs</a>
+</div>
+<div style="display: flex; gap: 6px; align-items: center;">
+<a class="nav-a hide-m" href="#connexion">Se connecter</a>
+<a class="btn btn-y" href="#rejoindre" style="min-height: 44px; padding: 0 20px; font-size: 14px;">Rejoindre</a>
+</div>
+</nav>
+</div>
+
+<!-- HERO -->
+<section id="top" onMouseMove="{{onMove}}" onMouseLeave="{{onLeave}}" style="position: relative; margin-top: -76px; padding: 190px 0 140px;">
+<div aria-hidden="true" style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
+<div class="tilt" style="position: absolute; inset: 0; transform: {{blobTf}};">
+<div class="blob" style="width: 720px; height: 720px; left: 48%; top: -160px; background: var(--v); opacity: 0.22;"></div>
+<div class="blob" style="width: 520px; height: 520px; left: 72%; top: 300px; background: var(--y); opacity: 0.16; animation-delay: -6s;"></div>
+<div class="blob" style="width: 460px; height: 460px; left: -8%; top: 380px; background: var(--y); opacity: 0.07; animation-delay: -11s;"></div>
+</div>
+<div style="position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 80px 80px; -webkit-mask-image: radial-gradient(70% 60% at 50% 40%, #000, transparent); mask-image: radial-gradient(70% 60% at 50% 40%, #000, transparent);"></div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 220px; background: linear-gradient(180deg, transparent, var(--ink));"></div>
+</div>
+
+<div class="g2 pad" style="position: relative; max-width: 1240px; margin: 0 auto; padding: 0 32px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px; align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 30px;">
+<div class="glass in" style="align-self: flex-start; border-radius: 999px; padding: 8px 16px 8px 10px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: #E7E7EE; animation-delay: .1s;">
+<span class="pulse" style="width: 8px; height: 8px; border-radius: 50%; background: var(--y);"></span>
+<span>Lancement privé · Pro offert jusqu'au 1er février</span>
+</div>
+<h1 class="h1" style="margin: 0; font-size: 92px; line-height: 0.98; font-weight: 700; letter-spacing: -0.045em;">
+<span class="line"><span style="animation-delay: .15s;">Découvre l'œuvre.</span></span>
+<span class="line"><span class="serif sheen" style="animation-delay: .32s; font-size: 1.08em;">Trouve le talent.</span></span>
+</h1>
+<p class="in" style="margin: 0; max-width: 520px; font-size: 20px; line-height: 1.55; color: var(--mut); animation-delay: .55s;">La plateforme où les jeunes talents du cinéma et de l'audiovisuel se font repérer par leurs films. <span style="color: #ffffff;">Pas par leur CV.</span></p>
+<div class="in" style="display: flex; flex-wrap: wrap; gap: 12px; animation-delay: .7s;">
+<a class="btn btn-y" href="#rejoindre">Créer mon profil gratuit <svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></a>
+<a class="btn btn-g glass" href="#etapes"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15L19.5 12z"></path></svg> Voir comment ça marche</a>
+</div>
+<div class="in" style="display: flex; flex-wrap: wrap; gap: 22px; font-size: 13px; color: var(--mut); animation-delay: .85s;">
+<span style="display: flex; align-items: center; gap: 8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Gratuit pour commencer</span>
+<span style="display: flex; align-items: center; gap: 8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Films validés un par un</span>
+<span style="display: flex; align-items: center; gap: 8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Contact protégé</span>
+</div>
+</div>
+
+<!-- Hero visual -->
+<div class="in" style="position: relative; animation-delay: .45s;">
+<div class="tilt" style="transform: {{cardTf}}; transform-style: preserve-3d;">
+<div class="floaty" style="--r: -1.5deg;">
+<div class="glass" style="border-radius: 30px; padding: 14px;">
+<div class="lbox tone3" style="position: relative; aspect-ratio: 16 / 10; border-radius: 20px; overflow: hidden;">
+<div style="position: absolute; inset: 0; background: radial-gradient(40% 55% at 72% 46%, color-mix(in srgb, var(--y) 38%, transparent), transparent 70%);"></div>
+<div style="position: absolute; left: 0; right: 0; bottom: 9%; height: 42%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.75));"></div>
+<div style="position: absolute; left: 14px; top: calc(9% + 12px); z-index: 2; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.75);">[Extrait du film]</div>
+<div class="mono" style="position: absolute; right: 14px; top: calc(9% + 12px); z-index: 2; font-size: 11px; color: rgba(255,255,255,.7);">REC ● 00:04:12:08</div>
+<button class="glass" aria-label="Lire le film" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; z-index: 3;"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button>
+<div style="position: absolute; left: 16px; right: 16px; bottom: calc(9% + 14px); z-index: 2; height: 3px; border-radius: 3px; background: rgba(255,255,255,.18);"><div style="width: 38%; height: 100%; border-radius: 3px; background: var(--y);"></div></div>
+</div>
+<div style="padding: 18px 8px 6px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--mut);"><span style="padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--v) 28%, transparent); color: #DCCFFF; font-weight: 600;">Court métrage</span><span>[Année]</span></div>
+<div style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">[Titre du film]</div>
+<div style="font-size: 13px; color: var(--mut);">Réalisé par [Nom du réalisateur]</div>
+</div>
+</div>
+<div style="height: 1px; background: rgba(255,255,255,.08);"></div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+<div style="display: flex; align-items: center;">
+<span style="width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: linear-gradient(135deg, var(--v), #4C1D95); border: 2px solid #12101A;">C.M</span>
+<span style="width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #0A0A0A; background: linear-gradient(135deg, var(--y), #E0A800); border: 2px solid #12101A; margin-left: -10px;">J.L</span>
+<span style="width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: linear-gradient(135deg, #3B3550, #1D1A28); border: 2px solid #12101A; margin-left: -10px;">S.R</span>
+<span style="width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: linear-gradient(135deg, #6D28D9, #2E1065); border: 2px solid #12101A; margin-left: -10px;">A.D</span>
+<span style="width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--mut); background: #17151F; border: 2px solid #12101A; margin-left: -10px;">+5</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--mut);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 018 0v4"></path></svg>Connecte-toi pour voir toute l'équipe</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="hide-m floaty glass" style="position: absolute; right: -28px; top: -36px; border-radius: 20px; padding: 14px 18px 14px 14px; display: flex; gap: 12px; align-items: center; --r: 3deg; animation-delay: -2s;">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--v), #4C1D95); display: grid; place-items: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 13px; font-weight: 700;">Nouveau message</span><span style="font-size: 12px; color: var(--mut);">Une productrice a vu ton film</span></div>
+</div>
+
+<div class="hide-m floaty glass" style="position: absolute; left: -44px; bottom: -30px; border-radius: 20px; padding: 14px 18px 14px 14px; display: flex; gap: 12px; align-items: center; --r: -3deg; animation-delay: -4.5s;">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: var(--y); display: grid; place-items: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 2.2 3.7-.1 1.1 3.5L22 10.5 21 14l1 3.5-3.2 1.9-1.1 3.5-3.7-.1L12 22l-3-2.2-3.7.1-1.1-3.5L1 14.5 2 11 1 7.5l3.2-1.9L5.3 2.1 9 2.2z"></path><path d="M8.5 12l2.3 2.3L15.5 9.5"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 13px; font-weight: 700;">Recruteur vérifié</span><span style="font-size: 12px; color: var(--mut);">Compte validé par Unkast</span></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ROLES MARQUEE -->
+<section aria-label="Métiers présents sur Unkast" style="padding: 10px 0 40px; border-top: 1px solid rgba(255,255,255,.06); border-bottom: 1px solid rgba(255,255,255,.06);">
+<div class="mq-wrap" style="padding: 26px 0;">
+<div class="mq" style="gap: 48px; align-items: center; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: rgba(255,255,255,.82);">
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="20">
+<span style="display: flex; align-items: center; gap: 48px; white-space: nowrap;"><span class="{{r.cls}}">{{r.label}}</span><span style="color: var(--y); font-size: 18px;">✦</span></span>
+</sc-for>
+</div>
+</div>
+</section>
+
+<!-- MANIFESTO -->
+<section id="concept" class="pad" style="max-width: 1240px; margin: 0 auto; padding: 170px 32px 150px; box-sizing: border-box;">
+<div class="rv" style="display: flex; align-items: center; gap: 12px; margin-bottom: 40px; font-size: 13px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--vl, #C4B0FF);"><span style="width: 32px; height: 1px; background: currentColor;"></span>Le concept</div>
+<p class="mani" style="margin: 0; font-size: 74px; line-height: 1.06; font-weight: 600; letter-spacing: -0.04em; max-width: 1150px;">
+<span class="w">Un</span> <span class="w">CV</span> <span class="w">dit</span> <span class="w">ce</span> <span class="w">que</span> <span class="w">tu</span> <span class="w">as</span> <span class="w">fait.</span>
+<span class="w serif" style="color: var(--y);">Un</span> <span class="w serif" style="color: var(--y);">film</span> <span class="w serif" style="color: var(--y);">montre</span> <span class="w serif" style="color: var(--y);">ce</span> <span class="w serif" style="color: var(--y);">que</span> <span class="w serif" style="color: var(--y);">tu</span> <span class="w serif" style="color: var(--y);">sais</span> <span class="w serif" style="color: var(--y);">faire.</span>
+</p>
+<div class="g3" style="margin-top: 90px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+<div class="rv glass" style="border-radius: 26px; padding: 30px; display: flex; flex-direction: column; gap: 14px;">
+<span class="mono" style="font-size: 12px; color: var(--y);">01 · ON REGARDE</span>
+<span style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">Le travail d'abord</span>
+<span style="font-size: 16px; line-height: 1.6; color: var(--mut);">Chaque profil se juge sur des films réels, visibles en entier. Pas sur des lignes de CV.</span>
+</div>
+<div class="rv2 glass" style="border-radius: 26px; padding: 30px; display: flex; flex-direction: column; gap: 14px;">
+<span class="mono" style="font-size: 12px; color: var(--y);">02 · ON DÉCOUVRE</span>
+<span style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">Toute l'équipe derrière</span>
+<span style="font-size: 16px; line-height: 1.6; color: var(--mut);">Un film te plaît ? Tu remontes le générique et tu tombes sur chaque personne qui l'a fait.</span>
+</div>
+<div class="rv glass glass-v" style="border-radius: 26px; padding: 30px; display: flex; flex-direction: column; gap: 14px;">
+<span class="mono" style="font-size: 12px; color: var(--y);">03 · ON SE PARLE</span>
+<span style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">Le bon contact, direct</span>
+<span style="font-size: 16px; line-height: 1.6; color: #D9D2EE;">Tu écris à la bonne personne en un clic, via une messagerie pensée pour les pros.</span>
+</div>
+</div>
+</section>
+
+<!-- CATALOGUE -->
+<section style="padding: 60px 0 170px; position: relative;">
+<div aria-hidden="true" class="blob" style="width: 700px; height: 400px; left: 30%; top: 120px; background: var(--v); opacity: .1;"></div>
+<div class="g2 pad" style="position: relative; max-width: 1240px; margin: 0 auto 64px; padding: 0 32px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end;">
+<h2 class="h2 rv" style="margin: 0; font-size: 64px; line-height: 1; font-weight: 700; letter-spacing: -0.04em;">Des films,<br><span class="serif" style="color: var(--y);">pas des fiches.</span></h2>
+<p class="rv" style="margin: 0; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 460px;">Court métrage, clip, documentaire, pub, bande démo, extrait de scène. Chaque film est vérifié à la main avant sa mise en ligne. C'est ce qui donne de la valeur à ton profil.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 22px; position: relative;">
+<div class="mq-wrap">
+<div class="mq" style="gap: 22px; padding: 12px 0;">
+<sc-for list="{{rowA}}" as="c" hint-placeholder-count="12">
+<div class="card glass" style="width: 340px; border-radius: 24px; padding: 10px; flex-shrink: 0;">
+<div class="lbox {{c.tone}}" style="position: relative; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden;">
+<span style="position: absolute; left: 12px; top: calc(9% + 10px); z-index: 2; padding: 5px 11px; border-radius: 999px; background: rgba(0,0,0,.45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 12px; font-weight: 600;">{{c.cat}}</span>
+<span style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.14); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 8px 6px;">
+<span style="font-size: 15px; font-weight: 600;">[Titre du film]</span>
+<span style="display: flex;"><span style="width: 24px; height: 24px; border-radius: 50%; background: var(--v); filter: blur(1.5px);"></span><span style="width: 24px; height: 24px; border-radius: 50%; background: var(--y); margin-left: -7px; filter: blur(1.5px);"></span><span style="width: 24px; height: 24px; border-radius: 50%; background: #3B3550; margin-left: -7px; filter: blur(1.5px);"></span></span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div class="mq-wrap">
+<div class="mq rev" style="gap: 22px; padding: 12px 0;">
+<sc-for list="{{rowB}}" as="c" hint-placeholder-count="12">
+<div class="card glass" style="width: 340px; border-radius: 24px; padding: 10px; flex-shrink: 0;">
+<div class="lbox {{c.tone}}" style="position: relative; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden;">
+<span style="position: absolute; left: 12px; top: calc(9% + 10px); z-index: 2; padding: 5px 11px; border-radius: 999px; background: rgba(0,0,0,.45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 12px; font-weight: 600;">{{c.cat}}</span>
+<span style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.14); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 8px 6px;">
+<span style="font-size: 15px; font-weight: 600;">[Titre du film]</span>
+<span style="display: flex;"><span style="width: 24px; height: 24px; border-radius: 50%; background: var(--y); filter: blur(1.5px);"></span><span style="width: 24px; height: 24px; border-radius: 50%; background: var(--v); margin-left: -7px; filter: blur(1.5px);"></span><span style="width: 24px; height: 24px; border-radius: 50%; background: #3B3550; margin-left: -7px; filter: blur(1.5px);"></span></span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ETAPES (sticky stack) -->
+<section id="etapes" class="pad" style="max-width: 1240px; margin: 0 auto; padding: 60px 32px 120px; box-sizing: border-box;">
+<div style="text-align: center; margin-bottom: 80px; display: flex; flex-direction: column; align-items: center; gap: 22px;">
+<div class="rv" style="display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: #C4B0FF;"><span style="width: 32px; height: 1px; background: currentColor;"></span>Comment ça marche<span style="width: 32px; height: 1px; background: currentColor;"></span></div>
+<h2 class="h2 rv" style="margin: 0; font-size: 72px; line-height: 1; font-weight: 700; letter-spacing: -0.045em;">Trois étapes. <span class="serif" style="color: var(--y);">Zéro CV.</span></h2>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 40px;">
+<div class="step glass g2" style="position: sticky; top: 110px; border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; background: linear-gradient(145deg, rgba(26,26,26,.94), rgba(14,14,14,.96)); min-height: 440px; box-sizing: border-box;">
+<div style="display: flex; flex-direction: column; gap: 20px;">
+<span class="mono" style="font-size: 80px; line-height: 1; font-weight: 500; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--y) 70%, transparent);">01</span>
+<h3 style="margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -0.03em;">Publie ton film</h3>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 440px;">Colle ton lien Vimeo ou YouTube, choisis la catégorie, déclare ton rôle sur le film. On valide la qualité image et son avant la mise en ligne.</p>
+</div>
+<div class="glass" style="border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 16px;">
+<label for="u-link" style="font-size: 13px; color: var(--mut);">Lien de ton film</label>
+<div style="display: flex; gap: 10px; align-items: center; padding: 0 16px; min-height: 52px; border-radius: 14px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"></path><path d="M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"></path></svg><input id="u-link" value="vimeo.com/[ton-film]" readonly style="flex: 1; background: transparent; border: 0; color: #ffffff; font: 500 15px 'JetBrains Mono', monospace; outline: none; min-width: 0;"></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="padding: 8px 14px; border-radius: 999px; background: var(--y); color: #0A0A0A; font-size: 13px; font-weight: 600;">Court métrage</span><span style="padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 13px; color: var(--mut);">Clip</span><span style="padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 13px; color: var(--mut);">Documentaire</span><span style="padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 13px; color: var(--mut);">Publicité</span></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 14px; background: color-mix(in srgb, var(--v) 18%, transparent); font-size: 14px; color: #E2D9FF;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>En cours de validation par l'équipe Unkast</div>
+</div>
+</div>
+
+<div class="step glass g2" style="position: sticky; top: 138px; border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; background: linear-gradient(145deg, rgba(26,23,34,.95), rgba(14,14,16,.96)); min-height: 440px; box-sizing: border-box;">
+<div style="display: flex; flex-direction: column; gap: 20px;">
+<span class="mono" style="font-size: 80px; line-height: 1; font-weight: 500; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--y) 70%, transparent);">02</span>
+<h3 style="margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -0.03em;">Crédite ton équipe</h3>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 440px;">Chaque personne qui a bossé sur le film apparaît au générique. Pas encore inscrite ? Elle reçoit une invitation et récupère son crédit en arrivant.</p>
+</div>
+<div class="glass" style="border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.04);"><span style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--v), #4C1D95); display: grid; place-items: center; font-size: 13px; font-weight: 700;">C.M</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; font-weight: 600;">[Nom]</span><span style="font-size: 13px; color: var(--mut);">Cheffe opératrice</span></div><span style="font-size: 12px; font-weight: 600; color: var(--y);">Sur Unkast</span></div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.04);"><span style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--y), #E0A800); color: #0A0A0A; display: grid; place-items: center; font-size: 13px; font-weight: 700;">J.L</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; font-weight: 600;">[Nom]</span><span style="font-size: 13px; color: var(--mut);">Montage</span></div><span style="font-size: 12px; font-weight: 600; color: var(--y);">Sur Unkast</span></div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 14px; border: 1px dashed rgba(255,255,255,.22);"><span style="width: 40px; height: 40px; border-radius: 50%; border: 1px dashed rgba(255,255,255,.35); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16v12H4z"></path><path d="M4 7l8 6 8-6"></path></svg></span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; font-weight: 600;">[Nom]</span><span style="font-size: 13px; color: var(--mut);">Ingé son</span></div><span style="font-size: 12px; font-weight: 600; color: #C4B0FF;">Invitation envoyée</span></div>
+<button class="btn btn-g" style="margin-top: 6px; background: rgba(255,255,255,.06); min-height: 48px; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Ajouter un collaborateur</button>
+</div>
+</div>
+
+<div class="step glass g2" style="position: sticky; top: 166px; border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; background: linear-gradient(145deg, rgba(28,34,10,.95), rgba(14,15,11,.97)); min-height: 440px; box-sizing: border-box;">
+<div style="display: flex; flex-direction: column; gap: 20px;">
+<span class="mono" style="font-size: 80px; line-height: 1; font-weight: 500; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--y) 70%, transparent);">03</span>
+<h3 style="margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -0.03em;">Fais-toi repérer</h3>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 440px;">Producteurs, directeurs de casting, réalisateurs. Ils regardent, ils aiment, ils t'écrivent directement sur Unkast. Répondre est toujours gratuit.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<div class="glass" style="align-self: flex-start; max-width: 340px; border-radius: 22px 22px 22px 6px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; color: #C4B0FF; font-weight: 600; display: flex; align-items: center; gap: 6px;">[Productrice] <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--y)" aria-hidden="true"><path d="M12 2l2.6 2 3.3-.2.9 3.2 2.7 2-1 3.1 1 3.1-2.7 2-.9 3.2-3.3-.2L12 22l-2.6-2-3.3.2-.9-3.2-2.7-2 1-3.1-1-3.1 2.7-2 .9-3.2 3.3.2z"></path></svg></span><span style="font-size: 15px; line-height: 1.5;">J'ai vu ton court. Le travail sur la lumière est top. Tu serais dispo en mars ?</span></div>
+<div style="align-self: flex-end; max-width: 300px; border-radius: 22px 22px 6px 22px; padding: 16px 18px; background: var(--y); color: #0A0A0A; font-size: 15px; line-height: 1.5; font-weight: 500;">Avec plaisir, on s'appelle cette semaine ?</div>
+<div style="align-self: center; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--mut); margin-top: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>Premier contact protégé par Unkast</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- GÉNÉRIQUE / RÉSEAU -->
+<section style="position: relative; padding: 120px 0 160px; overflow: hidden;">
+<div aria-hidden="true" class="blob" style="width: 640px; height: 640px; right: -120px; top: 40px; background: var(--v); opacity: .13;"></div>
+<div class="g2 pad" style="position: relative; max-width: 1240px; margin: 0 auto; padding: 0 32px; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 60px; align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 26px;">
+<div class="rv" style="display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: #C4B0FF;"><span style="width: 32px; height: 1px; background: currentColor;"></span>Crédits croisés</div>
+<h2 class="h2 rv" style="margin: 0; font-size: 64px; line-height: 1; font-weight: 700; letter-spacing: -0.04em;">Un film.<br><span class="serif" style="color: var(--y);">Toute une équipe.</span></h2>
+<p class="rv" style="margin: 0; font-size: 18px; line-height: 1.65; color: var(--mut);">Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur la réalisatrice qui l'a dirigé, puis sur sa prochaine cheffe op. Chaque crédit est une porte d'entrée vers ton travail.</p>
+<a class="btn btn-y rv" href="#rejoindre" style="align-self: flex-start;">Récupérer mes crédits <svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></a>
+</div>
+<div class="zoom" style="position: relative; aspect-ratio: 560 / 520; width: 100%;">
+<svg viewBox="0 0 560 520" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;">
+<g fill="none" stroke-width="1.5">
+<path class="dash" d="M280 260 C 200 200, 140 120, 90 70" stroke="rgba(196,176,255,.6)"></path>
+<path class="dash" d="M280 260 C 360 200, 420 120, 470 70" stroke="rgba(255,210,63,.55)"></path>
+<path class="dash" d="M280 260 C 190 260, 110 260, 40 260" stroke="rgba(196,176,255,.6)"></path>
+<path class="dash" d="M280 260 C 370 260, 450 260, 520 260" stroke="rgba(255,210,63,.55)"></path>
+<path class="dash" d="M280 260 C 200 320, 140 400, 90 450" stroke="rgba(255,210,63,.55)"></path>
+<path class="dash" d="M280 260 C 360 320, 420 400, 470 450" stroke="rgba(196,176,255,.6)"></path>
+</g>
+<circle cx="280" cy="260" r="130" fill="none" stroke="rgba(255,255,255,.06)"></circle>
+<circle cx="280" cy="260" r="210" fill="none" stroke="rgba(255,255,255,.04)"></circle>
+</svg>
+<div class="glass" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 42%; border-radius: 22px; padding: 8px; z-index: 3;">
+<div class="lbox tone1" style="position: relative; aspect-ratio: 16 / 10; border-radius: 15px; overflow: hidden; display: grid; place-items: center;"><span style="position: relative; z-index: 2; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.16); display: grid; place-items: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span></div>
+<div style="padding: 10px 6px 4px; font-size: 13px; font-weight: 700;">[Titre du film]</div>
+</div>
+<div class="glass floaty" style="position: absolute; left: 16%; top: 13.5%; transform: translate(-50%, -50%); border-radius: 999px; padding: 6px 14px 6px 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 600; z-index: 3;"><span style="width: 28px; height: 28px; border-radius: 50%; background: var(--v); display: grid; place-items: center; font-size: 10px;">M.B</span>Réalisatrice</div>
+<div class="glass floaty" style="position: absolute; left: 84%; top: 13.5%; transform: translate(-50%, -50%); border-radius: 999px; padding: 6px 14px 6px 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 600; z-index: 3; animation-delay: -1.5s;"><span style="width: 28px; height: 28px; border-radius: 50%; background: var(--y); color: #0A0A0A; display: grid; place-items: center; font-size: 10px;">C.M</span>Cheffe op</div>
+<div class="glass floaty" style="position: absolute; left: 8%; top: 50%; transform: translate(-50%, -50%); border-radius: 999px; padding: 6px 14px 6px 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 600; z-index: 3; animation-delay: -3s;"><span style="width: 28px; height: 28px; border-radius: 50%; background: #6D28D9; display: grid; place-items: center; font-size: 10px;">A.D</span>Comédien</div>
+<div class="glass floaty" style="position: absolute; left: 92%; top: 50%; transform: translate(-50%, -50%); border-radius: 999px; padding: 6px 14px 6px 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 600; z-index: 3; animation-delay: -4.5s;"><span style="width: 28px; height: 28px; border-radius: 50%; background: var(--y); color: #0A0A0A; display: grid; place-items: center; font-size: 10px;">J.L</span>Monteur</div>
+<div class="glass floaty" style="position: absolute; left: 16%; top: 86.5%; transform: translate(-50%, -50%); border-radius: 999px; padding: 6px 14px 6px 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 600; z-index: 3; animation-delay: -2.2s;"><span style="width: 28px; height: 28px; border-radius: 50%; background: #3B3550; display: grid; place-items: center; font-size: 10px;">L.P</span>Compositrice</div>
+<div class="floaty" style="position: absolute; left: 84%; top: 86.5%; transform: translate(-50%, -50%); border-radius: 999px; padding: 6px 14px 6px 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; font-weight: 600; z-index: 3; border: 1px dashed rgba(255,255,255,.35); background: rgba(10,10,14,.6); animation-delay: -5s;"><span style="width: 28px; height: 28px; border-radius: 50%; border: 1px dashed rgba(255,255,255,.4); display: grid; place-items: center; font-size: 13px; color: var(--mut);">?</span>Ingé son · invité</div>
+</div>
+</div>
+</section>
+
+<!-- POUR QUI -->
+<section id="pourqui" class="pad" style="max-width: 1240px; margin: 0 auto; padding: 80px 32px 160px; box-sizing: border-box;">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; margin-bottom: 56px;">
+<h2 class="h2 rv" style="margin: 0; font-size: 72px; line-height: 1; font-weight: 700; letter-spacing: -0.045em;">Pensé pour <span class="serif" style="color: var(--y);">chaque métier.</span></h2>
+<div class="glass rv" role="group" aria-label="Choisir un profil" style="display: inline-flex; gap: 4px; padding: 5px; border-radius: 999px;">
+<button class="tab {{tT.cls}}" aria-pressed="{{tT.pressed}}" onClick="{{tT.pick}}">Talents</button>
+<button class="tab {{tC.cls}}" aria-pressed="{{tC.pressed}}" onClick="{{tC.pick}}">Créateurs</button>
+<button class="tab {{tR.cls}}" aria-pressed="{{tR.pressed}}" onClick="{{tR.pick}}">Recruteurs</button>
+</div>
+</div>
+
+<div class="glass rv" style="border-radius: 40px; padding: 56px; overflow: hidden;">
+<sc-if value="{{tT.on}}" hint-placeholder-val="{{ true }}">
+<div class="g2 swap" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 22px;">
+<span class="mono" style="font-size: 12px; color: var(--y);">COMÉDIENS · TECHNICIENS · CRÉATIFS</span>
+<h3 style="margin: 0; font-size: 44px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em;">Ton travail parle pour toi.</h3>
+<div style="display: flex; flex-direction: column; gap: 16px; font-size: 17px; color: #DADAE3;">
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Un profil avec tes métiers, ta bio et ton parcours</div>
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Tes films et tous les projets où tu es crédité</div>
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Tu réponds gratuitement à tous les messages reçus</div>
+</div>
+</div>
+<div class="glass" style="border-radius: 28px; padding: 28px; display: flex; flex-direction: column; gap: 20px; background: linear-gradient(160deg, color-mix(in srgb, var(--v) 11%, transparent), rgba(255,255,255,.03));">
+<div style="display: flex; align-items: center; gap: 16px;"><span style="width: 68px; height: 68px; border-radius: 50%; background: conic-gradient(from 200deg, var(--v), var(--y), var(--v)); padding: 3px; box-sizing: border-box;"><span style="display: block; width: 100%; height: 100%; border-radius: 50%; background: #16131F;"></span></span><div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 20px; font-weight: 700;">[Ton nom]</span><span style="font-size: 13px; color: var(--mut);">[Ta ville]</span></div><span style="margin-left: auto; padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--y) 18%, transparent); color: var(--y); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--y);"></span>Disponible</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,.08); font-size: 13px;">Comédienne</span><span style="padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,.08); font-size: 13px;">Voix off</span><span style="padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,.08); font-size: 13px;">Scénariste</span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;"><span class="tone1" style="aspect-ratio: 16 / 10; border-radius: 10px;"></span><span class="tone2" style="aspect-ratio: 16 / 10; border-radius: 10px;"></span><span class="tone4" style="aspect-ratio: 16 / 10; border-radius: 10px;"></span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{tC.on}}" hint-placeholder-val="{{ false }}">
+<div class="g2 swap" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 22px;">
+<span class="mono" style="font-size: 12px; color: var(--y);">RÉALISATEURS · PRODUCTEURS</span>
+<h3 style="margin: 0; font-size: 44px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em;">Mets ton film et ton équipe en lumière.</h3>
+<div style="display: flex; flex-direction: column; gap: 16px; font-size: 17px; color: #DADAE3;">
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Publie tes films dans un catalogue exigeant</div>
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Gère les crédits et invite tes collaborateurs</div>
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Repère tes futurs talents dans le générique des autres</div>
+</div>
+</div>
+<div class="glass" style="border-radius: 28px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+<div class="lbox tone2" style="position: relative; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden;"><span style="position: absolute; left: 14px; bottom: calc(9% + 12px); z-index: 2; font-size: 18px; font-weight: 700;">[Titre du film]</span><span style="position: absolute; right: 14px; top: calc(9% + 12px); z-index: 2; padding: 5px 11px; border-radius: 999px; background: rgba(0,0,0,.5); font-size: 12px; font-weight: 600; color: var(--y);">Responsable du film</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 8px; font-size: 14px;"><span style="color: var(--mut);">Générique</span><span style="display: flex; align-items: center; gap: 10px;"><span style="display: flex;"><span style="width: 28px; height: 28px; border-radius: 50%; background: var(--v); border: 2px solid #15131C;"></span><span style="width: 28px; height: 28px; border-radius: 50%; background: var(--y); border: 2px solid #15131C; margin-left: -8px;"></span><span style="width: 28px; height: 28px; border-radius: 50%; background: #3B3550; border: 2px solid #15131C; margin-left: -8px;"></span><span style="width: 28px; height: 28px; border-radius: 50%; background: #6D28D9; border: 2px solid #15131C; margin-left: -8px;"></span></span><span style="font-weight: 600;">[N] crédits</span></span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{tR.on}}" hint-placeholder-val="{{ false }}">
+<div class="g2 swap" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 22px;">
+<span class="mono" style="font-size: 12px; color: var(--y);">CASTING · PRODUCTION</span>
+<h3 style="margin: 0; font-size: 44px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em;">Trouve la bonne personne en regardant son travail.</h3>
+<div style="display: flex; flex-direction: column; gap: 16px; font-size: 17px; color: #DADAE3;">
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Recherche par métier, catégorie et localisation</div>
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Compte recruteur validé manuellement par Unkast</div>
+<div style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--y) 20%, transparent); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg></span>Badge Vérifié avec l'offre Pro, pour inspirer confiance</div>
+</div>
+</div>
+<div class="glass" style="border-radius: 28px; padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border-radius: 14px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span style="font-size: 15px;">Cheffe opératrice</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="padding: 7px 13px; border-radius: 999px; background: var(--y); color: #0A0A0A; font-size: 13px; font-weight: 600;">Court métrage</span><span style="padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,.08); font-size: 13px;">[Ville]</span><span style="padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,.08); font-size: 13px;">Disponible</span></div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.05);"><span class="tone1" style="width: 84px; aspect-ratio: 16 / 10; border-radius: 10px; flex-shrink: 0;"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 15px; font-weight: 600;">[Nom]</span><span style="font-size: 13px; color: var(--mut);">Cheffe opératrice · [Ville]</span></div><span style="padding: 7px 12px; border-radius: 999px; background: color-mix(in srgb, var(--v) 30%, transparent); font-size: 12px; font-weight: 600; color: #E2D9FF;">Écrire</span></div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.05);"><span class="tone4" style="width: 84px; aspect-ratio: 16 / 10; border-radius: 10px; flex-shrink: 0;"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 15px; font-weight: 600;">[Nom]</span><span style="font-size: 13px; color: var(--mut);">Cheffe opératrice · [Ville]</span></div><span style="padding: 7px 12px; border-radius: 999px; background: color-mix(in srgb, var(--v) 30%, transparent); font-size: 12px; font-weight: 600; color: #E2D9FF;">Écrire</span></div>
+</div>
+</div>
+</sc-if>
+</div>
+</section>
+
+<!-- CONFIANCE -->
+<section class="pad" style="max-width: 1240px; margin: 0 auto; padding: 40px 32px 170px; box-sizing: border-box;">
+<div class="g2" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; margin-bottom: 56px;">
+<h2 class="h2 rv" style="margin: 0; font-size: 64px; line-height: 1; font-weight: 700; letter-spacing: -0.04em;">Un réseau propre,<br><span class="serif" style="color: var(--y);">fait pour les pros.</span></h2>
+<p class="rv" style="margin: 0; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 460px;">Pas de spam, pas d'arnaques, pas de films bâclés. Unkast garde un niveau d'exigence qui protège ton image.</p>
+</div>
+<div class="g4" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+<div class="rv glass" style="border-radius: 26px; padding: 28px; display: flex; flex-direction: column; gap: 16px; min-height: 250px;">
+<span style="width: 48px; height: 48px; border-radius: 14px; background: color-mix(in srgb, var(--y) 16%, transparent); display: grid; place-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M10 9l5 3-5 3z"></path></svg></span>
+<span style="font-size: 19px; font-weight: 700;">Films validés un par un</span>
+<span style="font-size: 15px; line-height: 1.6; color: var(--mut);">Image et son vérifiés avant chaque mise en ligne.</span>
+</div>
+<div class="rv2 glass" style="border-radius: 26px; padding: 28px; display: flex; flex-direction: column; gap: 16px; min-height: 250px;">
+<span style="width: 48px; height: 48px; border-radius: 14px; background: color-mix(in srgb, var(--v) 25%, transparent); display: grid; place-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C4B0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+<span style="font-size: 19px; font-weight: 700;">Premier contact protégé</span>
+<span style="font-size: 15px; line-height: 1.6; color: var(--mut);">Le premier échange passe par Unkast. Ensuite, vous échangez librement.</span>
+</div>
+<div class="rv glass" style="border-radius: 26px; padding: 28px; display: flex; flex-direction: column; gap: 16px; min-height: 250px;">
+<span style="width: 48px; height: 48px; border-radius: 14px; background: color-mix(in srgb, var(--y) 16%, transparent); display: grid; place-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path><path d="M16 4l2 2 3-3"></path></svg></span>
+<span style="font-size: 19px; font-weight: 700;">Recruteurs vérifiés</span>
+<span style="font-size: 15px; line-height: 1.6; color: var(--mut);">Chaque compte recruteur est validé à la main.</span>
+</div>
+<div class="rv2 glass" style="border-radius: 26px; padding: 28px; display: flex; flex-direction: column; gap: 16px; min-height: 250px;">
+<span style="width: 48px; height: 48px; border-radius: 14px; background: color-mix(in srgb, var(--v) 25%, transparent); display: grid; place-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C4B0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8 9.5 8z"></path></svg></span>
+<span style="font-size: 19px; font-weight: 700;">Tes droits respectés</span>
+<span style="font-size: 15px; line-height: 1.6; color: var(--mut);">Un responsable par film et un bouton pour signaler ou revendiquer.</span>
+</div>
+</div>
+</section>
+
+<!-- TARIFS -->
+<section id="tarifs" style="position: relative; padding: 60px 0 170px;">
+<div aria-hidden="true" class="blob" style="width: 800px; height: 500px; left: 50%; top: 200px; margin-left: -400px; background: var(--y); opacity: .07;"></div>
+<div class="pad" style="position: relative; max-width: 1040px; margin: 0 auto; padding: 0 32px; box-sizing: border-box;">
+<div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; margin-bottom: 48px;">
+<h2 class="h2 rv" style="margin: 0; font-size: 72px; line-height: 1; font-weight: 700; letter-spacing: -0.045em;">Commence gratuit. <span class="serif" style="color: var(--y);">Passe Pro</span> quand tu veux.</h2>
+<div class="glass rv" role="group" aria-label="Période de facturation" style="display: inline-flex; gap: 4px; padding: 5px; border-radius: 999px;">
+<button class="tab {{bM.cls}}" aria-pressed="{{bM.pressed}}" onClick="{{bM.pick}}">Mensuel</button>
+<button class="tab {{bA.cls}}" aria-pressed="{{bA.pressed}}" onClick="{{bA.pick}}">Annuel</button>
+</div>
+</div>
+
+<div class="glass glass-v rv" style="border-radius: 24px; padding: 18px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; justify-content: space-between; margin-bottom: 20px;">
+<div style="display: flex; align-items: center; gap: 14px;"><span style="width: 42px; height: 42px; border-radius: 12px; background: var(--y); display: grid; place-items: center; flex-shrink: 0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12v9H4v-9"></path><path d="M2 7h20v5H2z"></path><path d="M12 21V7"></path><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"></path></svg></span><div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 16px; font-weight: 700;">Offre de lancement</span><span style="font-size: 14px; color: #DCD3F5;">Pro offert à tous les inscrits jusqu'au 1er février.</span></div></div>
+<span style="font-size: 14px; color: #DCD3F5;">Précommande du 1er au 31 janvier au <span style="color: var(--y); font-weight: 700;">prix fondateur de 4,99 € / mois</span>, bloqué à vie.</span>
+</div>
+
+<div class="g2" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px;">
+<div class="rv glass" style="border-radius: 32px; padding: 40px; display: flex; flex-direction: column; gap: 26px;">
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 15px; font-weight: 600; color: var(--mut);">Gratuit</span><span style="font-size: 60px; font-weight: 700; letter-spacing: -0.04em; line-height: 1;">0 €</span><span style="font-size: 14px; color: var(--mut);">Pour toujours</span></div>
+<div style="height: 1px; background: rgba(255,255,255,.08);"></div>
+<div style="display: flex; flex-direction: column; gap: 14px; font-size: 16px; color: #DADAE3;">
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Profil complet</span>
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Jusqu'à 3 films publiés</span>
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Équipes et profils visibles</span>
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Recevoir et répondre aux messages</span>
+</div>
+<a class="btn btn-g glass" href="#rejoindre" style="margin-top: auto;">Commencer gratuitement</a>
+</div>
+
+<div class="rv2" style="position: relative; border-radius: 32px; padding: 1.5px; background: linear-gradient(140deg, var(--y), color-mix(in srgb, var(--v) 80%, transparent) 55%, var(--y));">
+<div style="position: relative; border-radius: 31px; padding: 40px; display: flex; flex-direction: column; gap: 26px; height: 100%; box-sizing: border-box; background: radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--v) 20%, transparent), transparent 60%), #111111; overflow: hidden;">
+<span style="position: absolute; right: 24px; top: 24px; padding: 6px 12px; border-radius: 999px; background: var(--y); color: #0A0A0A; font-size: 12px; font-weight: 700;">Recommandé</span>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 15px; font-weight: 600; color: #C4B0FF;">Pro</span>
+<sc-if value="{{monthly}}" hint-placeholder-val="{{ true }}"><span class="swap" style="font-size: 60px; font-weight: 700; letter-spacing: -0.04em; line-height: 1;">9,99 €<span style="font-size: 18px; font-weight: 500; color: var(--mut); letter-spacing: 0;"> / mois</span></span></sc-if>
+<sc-if value="{{annual}}" hint-placeholder-val="{{ false }}"><span class="swap" style="font-size: 60px; font-weight: 700; letter-spacing: -0.04em; line-height: 1;">[PRIX] €<span style="font-size: 18px; font-weight: 500; color: var(--mut); letter-spacing: 0;"> / an</span></span></sc-if>
+<span style="font-size: 14px; color: var(--mut);">Sans engagement</span></div>
+<div style="height: 1px; background: rgba(255,255,255,.1);"></div>
+<div style="display: flex; flex-direction: column; gap: 14px; font-size: 16px;">
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Tout le gratuit, plus :</span>
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Films illimités</span>
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Tu lances les conversations, sans limite</span>
+<span style="display: flex; gap: 12px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>Badge Vérifié pour les recruteurs validés</span>
+</div>
+<a class="btn btn-y" href="#rejoindre" style="margin-top: auto;">Passer Pro <svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></a>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section class="pad" style="max-width: 900px; margin: 0 auto; padding: 20px 32px 160px; box-sizing: border-box;">
+<h2 class="h2 rv" style="margin: 0 0 40px; font-size: 56px; line-height: 1; font-weight: 700; letter-spacing: -0.04em; text-align: center;">Questions <span class="serif" style="color: var(--y);">fréquentes</span></h2>
+<div class="rv" style="border-top: 1px solid rgba(255,255,255,.1);">
+<div style="border-bottom: 1px solid rgba(255,255,255,.1);">
+<button class="faq-btn" aria-expanded="{{q0.exp}}" onClick="{{q0.toggle}}">Unkast, c'est pour qui ?<span style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); transition: transform .5s cubic-bezier(.2,.8,.2,1); transform: {{q0.rot}};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+<sc-if value="{{q0.open}}" hint-placeholder-val="{{ true }}"><p class="swap" style="margin: 0; padding: 0 60px 28px 0; font-size: 17px; line-height: 1.65; color: var(--mut);">Pour les jeunes talents du cinéma et de l'audiovisuel : comédiens, techniciens, réalisateurs, producteurs. Et pour ceux qui les cherchent : directeurs de casting, producteurs, réalisateurs.</p></sc-if>
+</div>
+<div style="border-bottom: 1px solid rgba(255,255,255,.1);">
+<button class="faq-btn" aria-expanded="{{q1.exp}}" onClick="{{q1.toggle}}">C'est vraiment gratuit ?<span style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); transition: transform .5s cubic-bezier(.2,.8,.2,1); transform: {{q1.rot}};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+<sc-if value="{{q1.open}}" hint-placeholder-val="{{ false }}"><p class="swap" style="margin: 0; padding: 0 60px 28px 0; font-size: 17px; line-height: 1.65; color: var(--mut);">Oui. Profil complet, jusqu'à 3 films, et tu réponds à tous les messages sans payer. Le Pro sert à publier sans limite et à lancer toi-même les conversations.</p></sc-if>
+</div>
+<div style="border-bottom: 1px solid rgba(255,255,255,.1);">
+<button class="faq-btn" aria-expanded="{{q2.exp}}" onClick="{{q2.toggle}}">Qui peut publier un film ?<span style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); transition: transform .5s cubic-bezier(.2,.8,.2,1); transform: {{q2.rot}};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+<sc-if value="{{q2.open}}" hint-placeholder-val="{{ false }}"><p class="swap" style="margin: 0; padding: 0 60px 28px 0; font-size: 17px; line-height: 1.65; color: var(--mut);">Tout membre qui a participé au film et déclare son rôle : réalisateur, producteur, ayant droit. Un seul responsable par film, qui peut ajouter des co-gestionnaires.</p></sc-if>
+</div>
+<div style="border-bottom: 1px solid rgba(255,255,255,.1);">
+<button class="faq-btn" aria-expanded="{{q3.exp}}" onClick="{{q3.toggle}}">Pourquoi les films sont validés ?<span style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); transition: transform .5s cubic-bezier(.2,.8,.2,1); transform: {{q3.rot}};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+<sc-if value="{{q3.open}}" hint-placeholder-val="{{ false }}"><p class="swap" style="margin: 0; padding: 0 60px 28px 0; font-size: 17px; line-height: 1.65; color: var(--mut);">Pour garder un catalogue de qualité. Chaque film est vérifié, image et son, avant d'être visible. C'est ce qui fait la valeur de ton profil.</p></sc-if>
+</div>
+<div style="border-bottom: 1px solid rgba(255,255,255,.1);">
+<button class="faq-btn" aria-expanded="{{q4.exp}}" onClick="{{q4.toggle}}">Mes coordonnées sont visibles ?<span style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); transition: transform .5s cubic-bezier(.2,.8,.2,1); transform: {{q4.rot}};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+<sc-if value="{{q4.open}}" hint-placeholder-val="{{ false }}"><p class="swap" style="margin: 0; padding: 0 60px 28px 0; font-size: 17px; line-height: 1.65; color: var(--mut);">Non. Le premier contact passe par la messagerie Unkast pour éviter les arnaques. Une fois la conversation lancée, vous échangez comme vous voulez.</p></sc-if>
+</div>
+</div>
+</section>
+
+<!-- CTA FINAL -->
+<section id="rejoindre" class="pad" style="padding: 0 32px 120px; box-sizing: border-box;">
+<div class="zoom" style="position: relative; max-width: 1240px; margin: 0 auto; border-radius: 48px; overflow: hidden; padding: 130px 40px; text-align: center; background: #0D0D0D; box-sizing: border-box;">
+<div aria-hidden="true" style="position: absolute; inset: 0; overflow: hidden;">
+<div class="orb" style="position: absolute; left: 50%; top: 50%; width: 1100px; height: 1100px; margin: -550px 0 0 -550px; border-radius: 50%; background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--v) 40%, transparent), transparent 35%, color-mix(in srgb, var(--y) 50%, transparent), transparent 70%); filter: blur(80px); opacity: .6;"></div>
+<div style="position: absolute; inset: 0; background: radial-gradient(60% 70% at 50% 50%, transparent, #0D0D0D 85%);"></div>
+</div>
+<div class="glass" aria-hidden="true" style="position: absolute; inset: 24px; border-radius: 32px; background: rgba(255,255,255,.02);"></div>
+<div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 30px;">
+<h2 class="ctaH" style="margin: 0; font-size: 96px; line-height: .98; font-weight: 700; letter-spacing: -0.05em; max-width: 960px;">Ton prochain projet <span class="serif sheen">commence par un film.</span></h2>
+<p style="margin: 0; font-size: 19px; color: #D6D1E6; max-width: 520px; line-height: 1.55;">Crée ton profil en quelques minutes. Pro offert jusqu'au 1er février.</p>
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;">
+<a class="btn btn-y" href="#rejoindre" style="min-height: 60px; padding: 0 34px; font-size: 17px;">Rejoindre Unkast <svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></a>
+<a class="btn btn-g glass" href="#top" style="min-height: 60px; padding: 0 30px; font-size: 17px;">Explorer les films</a>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer class="pad" style="max-width: 1240px; margin: 0 auto; padding: 0 32px 60px; box-sizing: border-box;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,.08);">
+<div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-weight: 800; font-size: 18px; letter-spacing: 0.16em;">UNKAST</span><span style="font-size: 14px; color: var(--mut);">Découvre l'œuvre. Trouve le talent.</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px;">
+<a class="nav-a" href="#cgu">CGU</a>
+<a class="nav-a" href="#mentions">Mentions légales</a>
+<a class="nav-a" href="#contact">Contact</a>
+<a class="nav-a" href="#instagram">Instagram @unkast</a>
+</div>
+<span style="font-size: 13px; color: var(--mut);">© 2026 JMB Vision FZCO</span>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"yellow":{"editor":"color","default":"#C8FF00","options":["#C8FF00","#D4FF1A","#B8F000"],"section":"Couleurs"},"violet":{"editor":"color","default":"#8B5CF6","options":["#8B5CF6","#7C3AED","#A78BFA","#6D28D9"],"section":"Couleurs"},"$preview":{"width":1440,"height":8600}}'>
+class Component extends DCLogic {
+  state = { tab: 'talents', annual: false, faq: 0, mx: 0, my: 0 };
+  _raf = null;
+  onMove = (e) => {
+    const el = e.currentTarget;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    if (this._raf) return;
+    this._raf = requestAnimationFrame(() => { this._raf = null; this.setState({ mx: x, my: y }); });
+  };
+  onLeave = () => { this.setState({ mx: 0, my: 0 }); };
+  componentWillUnmount() { if (this._raf) cancelAnimationFrame(this._raf); }
+  renderVals() {
+    const s = this.state || {};
+    const tab = s.tab || 'talents';
+    const annual = !!s.annual;
+    const faq = s.faq === undefined ? 0 : s.faq;
+    const mx = s.mx || 0, my = s.my || 0;
+    const mkTab = (id) => ({ on: tab === id, cls: tab === id ? 'on' : '', pressed: tab === id ? 'true' : 'false', pick: () => this.setState({ tab: id }) });
+    const mkBill = (a) => ({ cls: annual === a ? 'on' : '', pressed: annual === a ? 'true' : 'false', pick: () => this.setState({ annual: a }) });
+    const mkQ = (i) => ({ open: faq === i, exp: faq === i ? 'true' : 'false', rot: faq === i ? 'rotate(45deg)' : 'rotate(0deg)', toggle: () => this.setState({ faq: faq === i ? -1 : i }) });
+    const roleNames = ['Réalisatrice', 'Chef opérateur', 'Monteuse', 'Comédien', 'Ingé son', 'Scénariste', 'Productrice', 'Étalonneur', 'Compositrice', 'Directeur de casting'];
+    const roles = [...roleNames, ...roleNames].map((label, i) => ({ label, cls: i % 3 === 1 ? 'serif' : '' }));
+    const cats = ['Court métrage', 'Clip', 'Documentaire', 'Publicité', 'Bande démo', 'Extrait de scène'];
+    const a = cats.map((cat, i) => ({ cat, tone: 'tone' + ((i % 4) + 1) }));
+    const b = [...cats].reverse().map((cat, i) => ({ cat, tone: 'tone' + (((i + 2) % 4) + 1) }));
+    return {
+      yellow: this.props.yellow ?? '#C8FF00',
+      violet: this.props.violet ?? '#8B5CF6',
+      onMove: this.onMove,
+      onLeave: this.onLeave,
+      cardTf: 'perspective(1400px) rotateY(' + (mx * 10).toFixed(2) + 'deg) rotateX(' + (-my * 8).toFixed(2) + 'deg) translate3d(' + (mx * 18).toFixed(1) + 'px,' + (my * 18).toFixed(1) + 'px,0)',
+      blobTf: 'translate3d(' + (-mx * 70).toFixed(1) + 'px,' + (-my * 70).toFixed(1) + 'px,0)',
+      roles,
+      rowA: [...a, ...a],
+      rowB: [...b, ...b],
+      tT: mkTab('talents'), tC: mkTab('createurs'), tR: mkTab('recruteurs'),
+      bM: mkBill(false), bA: mkBill(true),
+      monthly: !annual, annual,
+      q0: mkQ(0), q1: mkQ(1), q2: mkQ(2), q3: mkQ(3), q4: mkQ(4)
+    };
+  }
+}
+</script>
+</body>
+</html>

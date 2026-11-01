@@ -246,6 +246,20 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `FilmMeta` (`episodes`) | [utilise par] | `feed/FilmRow`, `RechercheClient`, `ProfileClient`, `ProjetClient` |
 | `feed/page.tsx`, `/api/search`, `categories/[slug]/page.tsx`, `profil/[slug]/page.tsx` | [persiste dans] | `projects.episode_count` (lecture : migration `20261023` requise) |
 
+## Page de vente unkast.com (01/11/2026, ADR 0018)
+
+| Source | Type de relation | Destination |
+|---|---|---|
+| `next.config.ts` (`rewrites`, `redirects`, condition domaine `unkast.com`) | [declenche] | `/site` sur `/` ; le reste vers `https://app.unkast.com` |
+| `site/layout.tsx` | [utilise] | `next/font/google` (Inter Tight, Instrument Serif), `lib/site.ts` (`MARKETING_URL`) |
+| `site/page.tsx` | [utilise] | `lib/constants.ts` (`MAX_PROJECTS_FREE`), `lib/messaging.ts` (`FREE_CONTACT_LIMIT`, `DAILY_CONVERSATION_LIMIT`), `lib/pro-plan.ts` (`LAUNCH_PRO_UNTIL`, `isLaunchOfferOpen`), `lib/utils.ts` (`formatDateParis`) |
+| `site/films.ts` | [utilise] | `lib/film-team.ts` (`fetchVisitorCredits`), `lib/credits.ts` (`directorNames`), `lib/constants.ts` (`CATEGORY_LABELS`) |
+| `site/films.ts` | [persiste dans] | `projects` (lecture, cle publique sans session), RPC `public_project_credits` |
+| `site/sections.tsx` | [utilise] | `lib/legal.ts` (`LEGAL.company`, `LEGAL.contactEmail`) |
+| `site/ui.tsx` | [utilise] | `lib/site.ts` (`SITE_URL` : liens vers /rejoindre, /connexion, /feed, /projet, pages legales, /pro), `next/image` |
+| `site/*` | [depend de] | `site/site.module.css` (aucune classe de `globals.css`) |
+| Changement de `MAX_PROJECTS_FREE`, `FREE_CONTACT_LIMIT`, `DAILY_CONVERSATION_LIMIT`, `LAUNCH_PRO_UNTIL` | [impacte] | textes de la page de vente (tarifs, FAQ, bandeaux) |
+
 ## Connexion Google par jeton (lot 11, 10/10/2026)
 
 | Source | Type de relation | Destination |
