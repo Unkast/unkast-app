@@ -10,6 +10,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
 import Field from "@/components/ui/Field";
+import { FOLDER_NOTE_MAX } from "@/lib/constants";
 import { SectionLabel, ListSkeleton } from "./parts";
 
 /* ---------- types ---------- */
@@ -34,10 +35,23 @@ interface Folder {
   created_at: string;
   count: number;
 }
+// Talent range dans un dossier : poste facultatif (null = ajoute depuis son
+// profil, « Sans poste ») et remarque privee du recruteur.
+interface Placed {
+  talent_id: string;
+  role: string | null;
+  note: string | null;
+  full_name: string;
+  slug: string | null;
+  avatar_url: string | null;
+  location: string | null;
+}
 interface FolderDetail {
   folder: { id: string; name: string };
-  roles: { role: string; candidates: Candidate[] }[];
+  roles: { role: string | null; candidates: Placed[] }[];
 }
+
+const placedKey = (c: Placed) => `${c.talent_id}|${c.role ?? ""}`;
 
 interface Props {
   showToast: (msg: string) => void;
@@ -72,6 +86,11 @@ export default function RecruitmentSpace({ showToast }: Props) {
   const [renameValue, setRenameValue] = useState("");
 
   const [contactingId, setContactingId] = useState<string | null>(null);
+
+  // Remarque en cours d'edition (cle placedKey) et son texte.
+  const [noteKey, setNoteKey] = useState<string | null>(null);
+  const [noteValue, setNoteValue] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   // Undo de l'ecartement.
   const [undo, setUndo] = useState<Candidate | null>(null);
@@ -216,13 +235,48 @@ export default function RecruitmentSpace({ showToast }: Props) {
     if (res.ok) setOpenFolder(await res.json());
   }
 
-  async function removeFromFolder(folderId: string, c: Candidate) {
+  async function removeFromFolder(folderId: string, c: Placed) {
     await fetch("/api/recruitment/dispatch", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ folder_id: folderId, talent_id: c.talent_id, role: c.role }),
     });
     await Promise.all([openFolderDetail(folderId), fetchFolders(), fetchCandidates()]);
+  }
+
+  function startNote(c: Placed) {
+    setNoteKey(placedKey(c));
+    setNoteValue(c.note ?? "");
+  }
+
+  async function saveNote(folderId: string, c: Placed) {
+    setSavingNote(true);
+    try {
+      const res = await fetch("/api/recruitment/dispatch", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_id: folderId, talent_id: c.talent_id, role: c.role, note: noteValue }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || "Erreur");
+        return;
+      }
+      const note = (data.note as string | null) ?? null;
+      setOpenFolder((prev) =>
+        prev && {
+          ...prev,
+          roles: prev.roles.map((g) => ({
+            ...g,
+            candidates: g.candidates.map((x) => (placedKey(x) === placedKey(c) ? { ...x, note } : x)),
+          })),
+        }
+      );
+      setNoteKey(null);
+      showToast(note ? "Remarque enregistrée" : "Remarque effacée");
+    } finally {
+      setSavingNote(false);
+    }
   }
 
   /* ---------- contacter ---------- */
@@ -464,32 +518,75 @@ export default function RecruitmentSpace({ showToast }: Props) {
 
           {openFolder.roles.length === 0 ? (
             <EnterItem className="px-1 lg:col-span-2">
-              <p className="text-[13px] text-text-secondary">Aucun candidat rangé dans ce dossier. Va dans « Candidatures » pour en ajouter.</p>
+              <p className="text-[13px] text-text-secondary">Personne dans ce dossier. Ajoute des talents depuis « Candidatures » ou avec « Ajouter à une liste » sur leur profil.</p>
             </EnterItem>
           ) : (
             openFolder.roles.map((g) => (
-              <div key={g.role}>
-                <p className="mb-2 px-1 text-[13px] font-semibold text-text-primary">{g.role}</p>
+              <div key={g.role ?? ""}>
+                <p className="mb-2 px-1 text-[13px] font-semibold text-text-primary">{g.role ?? "Sans poste"}</p>
                 <div className="flex flex-col gap-2">
-                  {g.candidates.map((c) => (
-                    <EnterItem key={`${c.talent_id}|${c.role}`} className="glass flex items-center gap-3 rounded-card p-3">
-                      <Avatar url={c.avatar_url} name={c.full_name} size={36} style={recruitAvatarStyle} />
-                      <div className="min-w-0 flex-1">
-                        {c.slug ? (
-                          <Link href={`/profil/${c.slug}`} className={nameCls}>{c.full_name}</Link>
+                  {g.candidates.map((c) => {
+                    const key = placedKey(c);
+                    const editing = noteKey === key;
+                    return (
+                      <EnterItem key={key} className="glass rounded-card p-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar url={c.avatar_url} name={c.full_name} size={36} style={recruitAvatarStyle} />
+                          <div className="min-w-0 flex-1">
+                            {c.slug ? (
+                              <Link href={`/profil/${c.slug}`} className={nameCls}>{c.full_name}</Link>
+                            ) : (
+                              <span className={nameCls}>{c.full_name}</span>
+                            )}
+                            {c.location && <p className={metaCls}>{c.location}</p>}
+                          </div>
+                          <Button size="sm" onClick={() => contact(c.talent_id)} disabled={contactingId === c.talent_id} className="shrink-0 px-3!">
+                            {contactingId === c.talent_id ? "…" : "Contacter"}
+                          </Button>
+                          <Button variant="icon" size="sm" aria-label="Retirer du dossier" title="Retirer du dossier" onClick={() => removeFromFolder(openFolder.folder.id, c)} className="shrink-0 text-text-secondary!">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                          </Button>
+                        </div>
+
+                        {/* Remarque privee : jamais visible du talent */}
+                        {editing ? (
+                          <div className="mt-3 flex flex-col gap-2">
+                            <Field
+                              multiline
+                              autoFocus
+                              rows={3}
+                              aria-label={`Remarque sur ${c.full_name}`}
+                              aria-describedby={`note-help-${key}`}
+                              value={noteValue}
+                              maxLength={FOLDER_NOTE_MAX}
+                              onChange={(e) => setNoteValue(e.target.value)}
+                              placeholder="Ex. vu dans son court, à revoir pour le rôle du frère"
+                            />
+                            <p id={`note-help-${key}`} className="px-1 text-[11px] leading-snug text-text-tertiary">
+                              Remarque privée, courte ({noteValue.length}/{FOLDER_NOTE_MAX}). Pas d&apos;information sur la santé, l&apos;origine, la religion, les opinions ou la vie privée. La personne peut demander à la lire.
+                            </p>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => saveNote(openFolder.folder.id, c)} disabled={savingNote}>
+                                {savingNote ? "…" : "Enregistrer"}
+                              </Button>
+                              <Button variant="glass" size="sm" onClick={() => setNoteKey(null)}>Annuler</Button>
+                            </div>
+                          </div>
                         ) : (
-                          <span className={nameCls}>{c.full_name}</span>
+                          <button
+                            type="button"
+                            onClick={() => startNote(c)}
+                            className="mt-2 flex min-h-9 w-full items-start gap-2 rounded-media px-1 py-1.5 text-left hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-lime"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-text-tertiary" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                            <span className={`min-w-0 text-xs leading-snug [overflow-wrap:anywhere] ${c.note ? "text-text-secondary" : "text-text-tertiary"}`}>
+                              {c.note ?? "Ajouter une remarque"}
+                            </span>
+                          </button>
                         )}
-                        {c.location && <p className={metaCls}>{c.location}</p>}
-                      </div>
-                      <Button size="sm" onClick={() => contact(c.talent_id)} disabled={contactingId === c.talent_id} className="shrink-0 px-3!">
-                        {contactingId === c.talent_id ? "…" : "Contacter"}
-                      </Button>
-                      <Button variant="icon" size="sm" aria-label="Retirer du dossier" title="Retirer du dossier" onClick={() => removeFromFolder(openFolder.folder.id, c)} className="shrink-0 text-text-secondary!">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                      </Button>
-                    </EnterItem>
-                  ))}
+                      </EnterItem>
+                    );
+                  })}
                 </div>
               </div>
             ))

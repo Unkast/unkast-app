@@ -118,11 +118,13 @@
 | `MoiClient`, `profil/[slug]/page.tsx` | [utilise] | `isFoundingMember`, `launchProDaysLeft` (`lib/pro-plan.ts`) ; `Badge` variante `founder` ; `formatDateParis` (`lib/utils.ts`, aussi `pro/page.tsx`, `ProfileClient`, `AdminClient`, `lib/email.ts`) |
 | `MotDePasseOublieClient` → `api/auth/password-reset` ; `NouveauMotDePasseClient` → `api/auth/update-password` | [appelle] | `lib/email.ts` (`sendPasswordResetEmail`) ; `lib/password.ts` (aussi lu par `api/signup`) |
 | `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/Select`, `ui/Toast`, `ui/Toggle` |
-| `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field` |
+| `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field`, `FOLDER_NOTE_MAX` (`lib/constants.ts`) ; remarque privée via `PATCH /api/recruitment/dispatch` |
+| `ProfileClient` → `profil/[slug]/AddToList.tsx` | [appelle] | `GET /api/recruitment/folders?talent_id=`, `POST /api/recruitment/folders`, `POST`/`DELETE /api/recruitment/dispatch` (rangement sans poste) ; affiché pour un visiteur Pro créateur ou recruteur (`useUserStatus` + `account_type`) |
+| `FOLDER_NOTE_MAX` (`lib/constants.ts`) | [impacte] | `api/recruitment/dispatch` (PATCH), `RecruitmentSpace` ; doit rester égal au CHECK `folder_candidates_note_length` |
 | `MoiClient` (onglet Compte) | [appelle] | `POST /api/account/delete` → `lib/stripe.ts` (résiliation), RPC `solo_projects_of`, `auth.admin.deleteUser` (triggers `keep_credit_name_on_profile_delete`, `transfer_projects_on_profile_delete`), Storage `avatars` `posters` `claims`, `lib/email.ts` (`sendAccountDeletedEmail`) ; `ConfirmDialog` (`children`, `confirmDisabled`) ; puis `WelcomeClient` (`/?compte=supprime`, `ui/Toast`) |
 | `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
-| `messages/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard`, `Avatar` |
-| `messages/[id]/page.tsx` | [utilise] | `ui/Button` |
+| `messages/page.tsx` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Field`, `ui/GlassCard`, `Avatar`, `DAILY_CONVERSATION_LIMIT` (`lib/messaging.ts`) |
+| `messages/[id]/page.tsx` | [utilise] | `ui/Button`, `DAILY_CONVERSATION_LIMIT` (`lib/messaging.ts`) |
 | `messages/[id]/page.tsx` | [depend de] | `globals.css` (`.lite`, `--accent-gradient`) |
 | `pro/page.tsx` | [utilise] | `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Field`, `ui/GlassCard` |
 | `pro/success`, `pro/cancel` | [utilise] | `motion.tsx`, `ui/Button`, `ui/GlassCard` |

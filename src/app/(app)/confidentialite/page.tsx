@@ -47,6 +47,12 @@ export default function ConfidentialitePage() {
             <strong>Tes échanges</strong> : messages envoyés et reçus, invitations, demandes de crédit.
           </li>
           <li>
+            <strong>Les listes des recruteurs</strong> : un membre Pro qui recrute peut ranger des profils
+            dans des listes privées et y écrire une remarque courte sur chaque personne (280 caractères au
+            plus). Il lui est demandé de n&apos;y mettre aucune information sensible (santé, origine,
+            religion, opinions, vie privée).
+          </li>
+          <li>
             <strong>La modération</strong> : signalements, revendications et leurs justificatifs, décisions
             prises sur ton compte ou tes films.
           </li>
@@ -88,6 +94,11 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Jamais affichées publiquement</strong> : ton adresse email de connexion, tes coordonnées,
             tes messages.
+          </li>
+          <li>
+            <strong>Visibles du seul recruteur qui les a créées</strong> : ses listes et les remarques
+            qu&apos;il y écrit. Tu n&apos;es pas prévenu quand quelqu&apos;un t&apos;ajoute à une liste, et
+            aucun autre membre ne peut les voir. Tu peux en demander l&apos;accès (voir « Tes droits »).
           </li>
           <li>
             <strong>Notre équipe</strong> peut consulter les contenus signalés et les informations
@@ -198,6 +209,10 @@ export default function ConfidentialitePage() {
             la loi nous oblige à conserver ; les journaux techniques (voir ci-dessous).
           </li>
           <li>
+            <strong>Listes et remarques des recruteurs</strong> : tant que le recruteur les garde. Elles sont
+            supprimées si lui ou la personne concernée supprime son compte.
+          </li>
+          <li>
             <strong>Justificatifs de revendication</strong> : 1 an après la décision, ou supprimés avec ton
             compte s&apos;il est supprimé avant.
           </li>
@@ -219,7 +234,10 @@ export default function ConfidentialitePage() {
       <Section title="7. Tes droits">
         <p>Où que tu vives, tu peux à tout moment :</p>
         <ul>
-          <li>accéder à tes données et en recevoir une copie ;</li>
+          <li>
+            accéder à tes données et en recevoir une copie, y compris les remarques qu&apos;un recruteur
+            a écrites sur toi dans ses listes ;
+          </li>
           <li>les corriger (la plupart se modifient directement dans ton espace) ;</li>
           <li>
             les faire supprimer, avec ton compte : tu peux supprimer ton compte toi-même dans{" "}

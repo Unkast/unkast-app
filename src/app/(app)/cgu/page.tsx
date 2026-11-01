@@ -110,7 +110,29 @@ export default function CguPage() {
         </ul>
       </Section>
 
-      <Section title="6. Ce qui est interdit">
+      <Section title="6. Classement des résultats">
+        <ul>
+          <li>
+            Dans la recherche, les profils sont classés par ordre alphabétique du nom affiché, et les films
+            du plus récent au plus ancien. Les nouveautés de la semaine suivent la date de publication sur
+            Unkast. La liste des membres qui recrutent montre d&apos;abord les profils mis à jour le plus
+            récemment.
+          </li>
+          <li>
+            Les filtres (métier, ville, âge de jeu, type de rôles, langue) ne retiennent que ce que chaque
+            membre a lui-même déclaré. Rien n&apos;est deviné. Les profils qui n&apos;ont pas renseigné un
+            critère demandé apparaissent dans une seconde liste.
+          </li>
+          <li>
+            <strong>Le Pro ne sert qu&apos;à départager.</strong> À rang égal, un profil Pro passe avant un
+            profil gratuit. Payer ne fait jamais passer devant un profil mieux classé, et aucune place dans
+            les résultats n&apos;est vendue.
+          </li>
+          <li>Les comptes suspendus et les films non validés n&apos;apparaissent pas.</li>
+        </ul>
+      </Section>
+
+      <Section title="7. Ce qui est interdit">
         <ul>
           <li>Publier le film de quelqu&apos;un d&apos;autre sans son accord, ou se faire passer pour un autre.</li>
           <li>Les contenus illégaux, haineux, violents ou à caractère sexuel explicite.</li>
@@ -119,7 +141,7 @@ export default function CguPage() {
         </ul>
       </Section>
 
-      <Section title="7. Signaler un problème">
+      <Section title="8. Signaler un problème">
         <p>
           Chaque profil, film et message peut être signalé depuis l&apos;app. Si un film a été publié sans ton
           accord, utilise « Signaler » sur sa page, puis « Je détiens les droits de ce film », avec un
@@ -127,7 +149,7 @@ export default function CguPage() {
         </p>
       </Section>
 
-      <Section title="8. Suspension">
+      <Section title="9. Suspension">
         <p>
           Si ces règles ne sont pas respectées, nous pouvons refuser ou retirer un contenu, et suspendre ou
           supprimer un compte, selon la gravité. Dans les cas graves (vol d&apos;œuvre, arnaque, harcèlement),
@@ -135,7 +157,7 @@ export default function CguPage() {
         </p>
       </Section>
 
-      <Section title="9. Unkast Pro pendant la bêta">
+      <Section title="10. Unkast Pro pendant la bêta">
         <ul>
           <li>
             L&apos;offre Pro est <strong>offerte jusqu&apos;au 1er février 2027</strong> aux membres qui en
@@ -153,7 +175,7 @@ export default function CguPage() {
         </ul>
       </Section>
 
-      <Section title="10. Responsabilité">
+      <Section title="11. Responsabilité">
         <p>
           Chaque membre est responsable de ce qu&apos;il publie et de ce qu&apos;il écrit. Unkast met des
           personnes en relation mais n&apos;est partie à aucun contrat, engagement ou paiement entre membres :
@@ -162,7 +184,7 @@ export default function CguPage() {
         <p>Rien dans ces conditions ne limite les droits que la loi te reconnaît.</p>
       </Section>
 
-      <Section title="11. Évolution de ces conditions">
+      <Section title="12. Évolution de ces conditions">
         <p>
           Ces conditions peuvent changer. En cas de changement important, nous te demanderons de les accepter
           à nouveau lors de ta prochaine connexion. La version que tu as acceptée et sa date sont
@@ -170,7 +192,7 @@ export default function CguPage() {
         </p>
       </Section>
 
-      <Section title="12. Droit applicable">
+      <Section title="13. Droit applicable">
         <p>
           <Info value={LEGAL.governingLaw} />
         </p>

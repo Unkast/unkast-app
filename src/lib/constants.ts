@@ -33,6 +33,11 @@ export const episodesLabel = (count: number) => `${count} épisode${count > 1 ? 
 // la limite l'interpolent depuis ces constantes : ne jamais reecrire le nombre
 // en dur, il a deja diverge une fois.
 export const MAX_PROJECTS_FREE = 3;
+
+// Remarque privee d'un recruteur sur un talent range dans une liste
+// (folder_candidates.note). Meme plafond que le CHECK en base
+// (20261101_folder_candidates_note.sql) : les changer ensemble.
+export const FOLDER_NOTE_MAX = 280;
 // Pro : illimite (pas de constante). Le plafond gratuit compte les films dont on
 // est Responsable, en ligne ou en attente de validation (project_slots_used).
 

@@ -24,6 +24,7 @@ import { formatDateParis } from "@/lib/utils";
 import { CAREER_KINDS, baseRole, creditRoles, roleFamily } from "@/lib/constants";
 import CastingSummary from "@/components/CastingSummary";
 import ShareButton from "@/components/ShareButton";
+import AddToList from "./AddToList";
 
 type CreditWithProfile = ProjectCredit & {
   profile: Pick<Profile, "full_name" | "slug" | "avatar_url"> | null;
@@ -75,6 +76,7 @@ export default function ProfileClient({
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [viewerIsCreator, setViewerIsCreator] = useState(false);
+  const [viewerIsRecruiter, setViewerIsRecruiter] = useState(false);
   // Recrutement — signaux "Disponible" du visiteur vers ce recruteur (chantier 2).
   const [availSignals, setAvailSignals] = useState<{ role: string; expires_at: string }[]>([]);
   const [availBusy, setAvailBusy] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export default function ProfileClient({
         if (user) {
           const { data: viewerProfile } = await sb.from("profiles").select("account_type").eq("id", user.id).single();
           if (viewerProfile?.account_type === "creator") setViewerIsCreator(true);
+          if (viewerProfile?.account_type === "recruiter") setViewerIsRecruiter(true);
         }
       } catch {}
     }
@@ -468,6 +471,8 @@ export default function ProfileClient({
                   Inviter dans un projet
                 </Button>
               )}
+              {/* Listes privées : Pro créateur ou recruteur (même règle que l'onglet Recrutement de /moi) */}
+              {(viewerIsCreator || viewerIsRecruiter) && userStatus === "pro" && <AddToList talentId={profile.id} />}
             </div>
             )}
             {isOwnProfile && (

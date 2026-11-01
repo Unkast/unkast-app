@@ -30,31 +30,35 @@ export async function GET(
 
   const { data: rows, error } = await supabase
     .from("folder_candidates")
-    .select(`talent_id, role, added_at, talent:profiles!talent_id(${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location)`)
+    .select(`talent_id, role, note, added_at, talent:profiles!talent_id(${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location)`)
     .eq("folder_id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const groups = new Map<string, unknown[]>();
+  // Cle de groupe : le poste, ou null pour les talents ajoutes sans poste
+  // (depuis leur profil). Le groupe sans poste sort en dernier.
+  const groups = new Map<string | null, unknown[]>();
   for (const r of (rows ?? []) as Record<string, unknown>[]) {
     const talent = Array.isArray(r.talent) ? r.talent[0] : r.talent;
+    const role = (r.role as string | null) ?? null;
     const candidate = {
       talent_id: r.talent_id,
-      role: r.role,
+      role,
+      note: (r.note as string | null) ?? null,
       added_at: r.added_at,
       full_name: displayNameOf(talent as DisplayNameRow | null) ?? "Talent",
       slug: (talent as Record<string, unknown>)?.slug ?? null,
       avatar_url: (talent as Record<string, unknown>)?.avatar_url ?? null,
       location: (talent as Record<string, unknown>)?.location ?? null,
     };
-    groups.set(r.role as string, [...(groups.get(r.role as string) ?? []), candidate]);
+    groups.set(role, [...(groups.get(role) ?? []), candidate]);
   }
 
   const roles = Array.from(groups.entries())
     .map(([role, candidates]) => ({ role, candidates }))
-    .sort((a, b) => a.role.localeCompare(b.role));
+    .sort((a, b) => (a.role === null ? 1 : b.role === null ? -1 : a.role.localeCompare(b.role)));
 
   return NextResponse.json({ folder, roles });
 }

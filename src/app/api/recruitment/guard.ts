@@ -3,10 +3,12 @@ import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 // Garde-fou commun aux routes de l'espace pré-casting : utilisateur authentifie,
-// NON suspendu (via getActiveUser, chantier 3) ET Pro. L'espace de recrutement
-// n'a de sens que pour un compte Pro (creator ou recruteur) ; le badge
-// "Je recrute" (is_recruiting) controle la visibilite cote talent, PAS l'acces.
-// La RLS reste le backstop reel.
+// NON suspendu (via getActiveUser, chantier 3), Pro ET createur ou recruteur
+// (depuis le 2 novembre 2026 : meme regle que l'ecran, `canRecruit` de MoiClient
+// et le bouton « Ajouter à une liste » du profil ; avant, un talent Pro passait).
+// Le badge "Je recrute" (is_recruiting) controle la visibilite cote talent, PAS
+// l'acces. La RLS reste le backstop reel.
+const RECRUITER_TYPES = ["creator", "recruiter"];
 
 type Server = Awaited<ReturnType<typeof createClient>>;
 // 503 vient de getActiveUser (verification de suspension impossible) et transite
@@ -15,7 +17,7 @@ type GuardResult =
   | { user: { id: string }; error: null; status: 200 }
   | { user: null; error: string; status: 401 | 403 | 429 | 503 };
 
-// LECTURES : authentifie + non suspendu + Pro.
+// LECTURES : authentifie + non suspendu + Pro + createur ou recruteur.
 export async function getProUser(supabase: Server): Promise<GuardResult> {
   const guard = await getActiveUser(supabase);
   if (!guard.user) {
@@ -23,6 +25,9 @@ export async function getProUser(supabase: Server): Promise<GuardResult> {
   }
   if (guard.profile.plan !== "pro") {
     return { user: null, error: "Espace reserve aux comptes Pro.", status: 403 };
+  }
+  if (!RECRUITER_TYPES.includes(guard.profile.account_type ?? "")) {
+    return { user: null, error: "Espace réservé aux créateurs et recruteurs Pro.", status: 403 };
   }
   return { user: guard.user, error: null, status: 200 };
 }

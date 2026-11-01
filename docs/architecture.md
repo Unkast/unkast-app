@@ -118,7 +118,7 @@ CORE  Supabase Browser Client (src/lib/supabase/client.ts)  — navigateur
 CORE  Supabase Admin Client (src/lib/supabase/admin.ts)     — service role (bypass RLS, usage admin)
 
 CORE  Constants (src/lib/constants.ts)
-  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 3), MAX_PROJECTS_PRO (= 30),
+  CATEGORY_COLORS, CATEGORY_LABELS, MAX_PROJECTS_FREE (= 3) (Pro : illimité, pas de constante),
   ACCOUNT_TYPES, ROLES_BY_CATEGORY, ALL_ROLES, ROLE_CATEGORIES, POPULAR_ROLES
 
 CORE  Types (src/types/database.ts) — SOURCE DE VERITE du schema (introspecte 13/06/2026)
@@ -236,7 +236,10 @@ FEATURE  Profil public — /profil/[slug] (src/app/(app)/profil/[slug]/) [Server
   Fetch profil approuve + roles + projets + credits. Bouton contact + partage.
   Badge « Membre fondateur » (30/10/2026) : page.tsx derive `show_founder_badge` de
   `isFoundingMember(created_at)` (compte cree jusqu'a la fin du 1er fevrier 2027), sans colonne.
-  [utilise] ProfileClient, VideoEmbed, ContactModal, ReportModal
+  [utilise] ProfileClient, VideoEmbed, ContactModal, ReportModal, AddToList
+  AddToList (01/11/2026) : « Ajouter à une liste », pour un visiteur Pro createur ou recruteur.
+  Range le talent SANS POSTE (role null) dans ses dossiers prives via /api/recruitment/*.
+  Le talent n'en sait rien. La remarque se saisit dans /moi, onglet Recrutement.
   Verre liquide (chantier 4) : colonne gauche en panneau .glass (toujours lg:sticky), avatar
   112 px avec halo citron, Badge Disponible / Recruteur verifie (pas de badge Pro : `plan` n'est
   pas expose au client par page.tsx), metiers en Chip.
@@ -347,6 +350,9 @@ FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient + RecruitmentSpace 
   ListSkeleton) ; Select, Toggle, Toast et les statuts sont des briques ui/ depuis le chantier 7. RecruitmentSpace : barre « ecarte / Annuler »
   portee dans <body> et calee au-dessus de la navigation mobile (68 px + safe area, 100 px si
   app-installed, 24 px en desktop).
+  RecruitmentSpace, detail d'un dossier (01/11/2026) : groupe « Sans poste » en dernier, remarque
+  privee par talent (280 caracteres, FOLDER_NOTE_MAX, aide « pas d'information sensible »),
+  enregistree par PATCH /api/recruitment/dispatch.
   [utilise] RoleSelector, AvatarUpload, Avatar, ui/*, motion.tsx
   Suppression du compte (31/10/2026) : onglet Compte, lien rouge discret sous « Se deconnecter »
   (absent pour le compte admin), ConfirmDialog rouge avec liste de ce qui part et reste et champ
@@ -440,7 +446,7 @@ Modèle et règles : [database.md](database.md), [ADR 0014](adr/0014-responsable
 | `src/app/(app)/rejoindre/finaliser` | FEATURE | fin de l'inscription par Google (type de compte, nom, nom de scène, métiers, ville) ; enregistre par `PATCH /api/dashboard/profile`, ne crée jamais de compte |
 | `src/lib/legal.ts` | UTILITY | `TERMS_VERSION`, informations de la société à remplir (`LEGAL`), liens des pages légales |
 | `src/components/LegalPage.tsx` | UTILITY | mise en page des trois pages légales ; `Info` surligne toute information de société non remplie |
-| `src/app/(app)/cgu`, `confidentialite`, `mentions-legales`, `supprimer-mon-compte` | FEATURE | pages légales de la bêta, publiques. `supprimer-mon-compte` (31/10/2026) : comment supprimer son compte, ce qui part et ce qui reste, délais, alternative par email ; adresse donnée à Google Play. Liée via `LEGAL_LINKS` (`lib/legal.ts`) : pied de page, barre des pages légales, liste de /moi, exemptions des CGU et de la finalisation Google |
+| `src/app/(app)/cgu`, `confidentialite`, `mentions-legales`, `supprimer-mon-compte` | FEATURE | pages légales de la bêta, publiques. `supprimer-mon-compte` (31/10/2026) : comment supprimer son compte, ce qui part et ce qui reste, délais, alternative par email ; adresse donnée à Google Play. `cgu` (01/11/2026) : section 6 « Classement des résultats » (tri, filtres déclaratifs, Pro = départage à rang égal seulement), sans changer `TERMS_VERSION`. `confidentialite` (01/11/2026) : listes et remarques privées des recruteurs, conservation, droit d'accès du talent Liée via `LEGAL_LINKS` (`lib/legal.ts`) : pied de page, barre des pages légales, liste de /moi, exemptions des CGU et de la finalisation Google |
 | `src/components/LegalLinks.tsx` | UTILITY | liens vers les pages légales (accueil, connexion, inscription, /moi) |
 | `src/lib/oembed.ts` | UTILITY | titre, chaîne et vignette d'une vidéo (YouTube : meilleure définition disponible), refus d'une vidéo privée. Série : `fetchPlaylistMeta` (API YouTube Data v3, `YOUTUBE_API_KEY`) et `playlistRefusal` (messages de refus) |
 | `src/app/(app)/moi/PosterUpload.tsx` | SUB | image du film : consignes de format avant le choix du fichier, recadrage 16:9 avec aperçu en direct (petite carte, à la une, page du film), avertissement sous 1280 × 720 px (envoi permis) et pour une image verticale, compression dans le navigateur (sortie 1920 × 1080 au plus), retour à l'image de la vidéo |

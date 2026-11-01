@@ -204,7 +204,7 @@ Signal « Disponible » : un talent (ou creator non-recruteur) se signale pour *
 Dossiers-films **prives** du recruteur (« Film A »…), invisibles des talents. `id`, `recruiter_id` (→ profiles, cascade), `name` (TEXT), `created_at`.
 
 ### 18. folder_candidates *(recrutement — chantier 2)*
-Rangement d'un candidat dans un dossier (dispatch). `id`, `folder_id` (→ recruiter_folders, cascade), `talent_id` (→ profiles, cascade), `role` (TEXT — poste retenu **dans ce film**), `signal_id` (→ availability_signals, nullable, `ON DELETE SET NULL` — provenance ; le rangement survit a l'expiration du signal), `added_at`. `UNIQUE (folder_id, talent_id, role)`.
+Rangement d'un candidat dans un dossier (dispatch). `id`, `folder_id` (→ recruiter_folders, cascade), `talent_id` (→ profiles, cascade), `role` (TEXT, **nullable depuis `20261101_folder_candidates_note.sql`** — poste retenu **dans ce film** ; `NULL` = « Sans poste », talent ajouté depuis son profil avec « Ajouter à une liste »), `note` (TEXT, nullable, **même migration** — remarque **privée** du recruteur, 1 à 280 caractères, ✅ `folder_candidates_note_length` ; constante `FOLDER_NOTE_MAX` dans `lib/constants.ts`, à garder alignée ; jamais lisible par le talent, qui peut en demander l'accès au titre du droit d'accès RGPD, voir `/confidentialite`), `signal_id` (→ availability_signals, nullable, `ON DELETE SET NULL` — provenance ; le rangement survit a l'expiration du signal), `added_at`. `UNIQUE NULLS NOT DISTINCT (folder_id, talent_id, role)` (un seul rangement « sans poste » par talent et par dossier). ⚠️ Migration à exécuter à la main ; retour arrière `20261101_folder_candidates_note_rollback.sql` (supprime les remarques et les rangements sans poste).
 
 ### 19. recruiter_dismissals *(recrutement — chantier 2)*
 Ecartement **silencieux** d'un candidat, **par poste**. `id`, `recruiter_id` (→ profiles, cascade), `talent_id` (→ profiles, cascade), `role` (TEXT), `created_at`. `UNIQUE (recruiter_id, talent_id, role)`. Table **separee** exprès (jamais lisible par le talent) → l'ecartement est **structurellement invisible** cote talent. « Liste a traiter d'un poste » = `availability_signals` (non expires) **MINUS** `recruiter_dismissals`.
@@ -572,9 +572,9 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 | Limite | Valeur | Source |
 |---|---|---|
 | Films / compte (free) | **3** | `lib/constants.ts` (`MAX_PROJECTS_FREE`) — 2 → 3 le 10/08/2026. Tous les textes qui annoncent la limite l'**interpolent** depuis cette constante (`/pro`, `/rejoindre`, dashboard, `/moi`, email d'expiration) : ne jamais réécrire le nombre en dur |
-| Films / compte (pro) | **30** | `lib/constants.ts` (`MAX_PROJECTS_PRO`) — plafond plan-aware (`api/dashboard/projects` POST) |
+| Films / compte (pro) | **illimité** | Pas de constante : `api/dashboard/projects` POST et `api/projects/[id]/transfer` passent `p_limit = null` à `publish_project` / `transfer_project` pour un Pro. Le trigger de remise en ligne d'un film dépublié ne contrôle que les comptes non Pro (le 3 y est écrit en dur, migration `20261009_film_limit_and_edit_watch.sql`) |
 | **Personnes contactées (free, à vie)** | **2** | `lib/constants` non concerné — `lib/messaging.ts` (`FREE_CONTACT_LIMIT`, 10/08/2026). Compte les conversations **initiées** dans lesquelles on a **envoyé au moins un message**. Garde serveur au **premier message** (`api/messages` POST), pré-vérification au clic (`api/messages/conversation` POST). Fail-closed (503 `count_unavailable`). Le Pro est illimité |
-| Nouvelles conversations / jour | 5 | `lib/messaging.ts` (`DAILY_CONVERSATION_LIMIT`) — tous plans ; inatteignable en free (2 à vie < 5 par jour) |
+| Nouvelles conversations / jour | 20 | `lib/messaging.ts` (`DAILY_CONVERSATION_LIMIT`) — tous plans ; inatteignable en free (2 à vie < 20 par jour) |
 | Blocage coordonnees (1ers messages) | < 3 messages | `api/messages/route.ts`, RÈGLE 5 *(numéro de ligne non fixé — la restructuration du 10/08/2026 l'a déjà déplacé une fois)* |
 | Relance si non-reponse | 48 h | `api/messages/route.ts`, RÈGLE 4 |
 | Rate limit signup | 5 / IP / heure | `api/signup/route.ts:10` |

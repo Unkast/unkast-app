@@ -6,7 +6,9 @@ import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 // Dossiers-films prives du recruteur. RLS : recruiter_id = auth.uid() uniquement.
 
 // GET : liste des dossiers + nombre de candidats distincts par dossier.
-export async function GET() {
+// ?talent_id= : ajoute `talent_folders`, les dossiers ou ce talent est range sans
+// poste (bouton « Ajouter à une liste » de sa page profil).
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const guard = await getProUser(supabase);
   if (!guard.user) {
@@ -26,15 +28,20 @@ export async function GET() {
   // Compte de candidats distincts (talent) par dossier.
   const { data: placements } = await supabase
     .from("folder_candidates")
-    .select("folder_id, talent_id");
+    .select("folder_id, talent_id, role");
   const counts = new Map<string, Set<string>>();
   for (const p of placements ?? []) {
     if (!counts.has(p.folder_id)) counts.set(p.folder_id, new Set());
     counts.get(p.folder_id)!.add(p.talent_id);
   }
 
+  const talentId = request.nextUrl.searchParams.get("talent_id");
+
   return NextResponse.json({
     folders: (folders ?? []).map((f) => ({ ...f, count: counts.get(f.id)?.size ?? 0 })),
+    ...(talentId && {
+      talent_folders: (placements ?? []).filter((p) => p.talent_id === talentId && p.role === null).map((p) => p.folder_id),
+    }),
   });
 }
 
