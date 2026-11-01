@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { isGrantValid } from "@/lib/pro-plan";
+import { isGrantValid, isLaunchOfferOpen, LAUNCH_PRO_UNTIL } from "@/lib/pro-plan";
+import { DAILY_CONVERSATION_LIMIT, FREE_CONTACT_LIMIT } from "@/lib/messaging";
 import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { formatDateParis } from "@/lib/utils";
 import { EnterItem, EnterList } from "@/components/motion";
@@ -12,26 +13,26 @@ import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 
+// Regles reelles : MAX_PROJECTS_FREE, FREE_CONTACT_LIMIT, DAILY_CONVERSATION_LIMIT
+// (memes sources que la page de vente, src/app/site/page.tsx).
 const FREE_FEATURES = [
   { label: "Profil public", included: true },
   { label: `${MAX_PROJECTS_FREE} films en ligne max`, included: true },
-  { label: "Apparaitre dans les credits", included: true },
+  { label: "Apparaître dans les crédits", included: true },
+  { label: `Contacter ${FREE_CONTACT_LIMIT} personnes`, included: true },
+  { label: "Recevoir et répondre aux messages", included: true },
   { label: "Films illimités", included: false },
-  { label: "Messagerie directe", included: false },
-  { label: "Contact talents", included: false },
-  { label: "Badge Pro verifie", included: false },
-  { label: "Priorite dans les resultats", included: false },
+  { label: "Contacts illimités", included: false },
+  { label: "Badge Recruteur vérifié", included: false },
 ];
 
 const PRO_FEATURES = [
   { label: "Profil public", included: true },
   { label: `Films illimités (au lieu de ${MAX_PROJECTS_FREE})`, included: true },
-  { label: "Apparaitre dans les credits", included: true },
-  { label: "Messagerie directe", included: true },
-  { label: "Contact talents", included: true },
-  { label: "Badge Pro verifie", included: true },
-  { label: "Priorite dans les resultats", included: true },
-  { label: "Support prioritaire", included: true },
+  { label: "Apparaître dans les crédits", included: true },
+  { label: "Recevoir et répondre aux messages", included: true },
+  { label: `Contacts illimités (${DAILY_CONVERSATION_LIMIT} nouvelles conversations par jour)`, included: true },
+  { label: "Badge Recruteur vérifié, pour un recruteur validé par Unkast", included: true },
 ];
 
 // Interrupteur public : tant que false, le public voit la liste d'attente.
@@ -166,8 +167,11 @@ export default function ProPage() {
           Unkast Pro
         </h1>
         <p className="mx-auto max-w-[400px] text-[15px] leading-relaxed text-text-secondary">
-          Deverrouille tout le potentiel d&apos;Unkast. Messagerie directe, films illimites, visibilite maximale.
+          Films illimités et contacts illimités. Le badge Recruteur vérifié est réservé aux recruteurs validés par Unkast.
         </p>
+        {isLaunchOfferOpen() && (
+          <p className="mt-3 text-[13px] text-lime">Pro offert jusqu&apos;au {formatDateParis(LAUNCH_PRO_UNTIL, "long")}</p>
+        )}
       </EnterItem>
 
       {/* Bandeau mode test (visible uniquement quand les boutons d'achat sont montrés en test) */}
@@ -223,7 +227,7 @@ export default function ProPage() {
         <EnterItem className="mx-auto w-full max-w-xl">
           <GlassCard className="border-lime/20 bg-lime/[0.04] px-4 py-3">
             <p className="text-[13px] leading-normal text-lime">
-              Tu bénéficies déjà d&apos;un Pro offert{grantExpiryLabel ? ` — jusqu'au ${grantExpiryLabel}` : " — sans échéance"}.
+              Tu bénéficies déjà d&apos;un Pro offert{grantExpiryLabel ? ` jusqu'au ${grantExpiryLabel}` : " sans échéance"}.
             </p>
           </GlassCard>
         </EnterItem>
