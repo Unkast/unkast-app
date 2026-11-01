@@ -73,7 +73,10 @@ export function Audience({ film }: { film: SiteFilm | null }) {
             <div className={s.glass} style={{ borderRadius: "28px", padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
               <div className={cx(s.lbox, s.tone2)} style={{ position: "relative", aspectRatio: "16 / 9", borderRadius: "18px", overflow: "hidden" }}>
                 {film && <Poster film={film} sizes="(max-width: 960px) 100vw, 520px" />}
-                {film && <span style={{ position: "absolute", left: "14px", right: "14px", bottom: "calc(9% + 12px)", zIndex: "2", fontSize: "18px", fontWeight: "700", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 12px rgba(0,0,0,.6)" }}>{film.title}</span>}
+                {film && <>
+                  <div style={{ position: "absolute", left: "0", right: "0", bottom: "9%", height: "50%", background: "linear-gradient(180deg, transparent, rgba(0,0,0,.75))" }}></div>
+                  <span style={{ position: "absolute", left: "14px", right: "14px", bottom: "calc(9% + 12px)", zIndex: "2", fontSize: "18px", fontWeight: "700", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{film.title}</span>
+                </>}
                 <span style={{ position: "absolute", right: "14px", top: "calc(9% + 12px)", zIndex: "2", padding: "5px 11px", borderRadius: "999px", background: "rgba(0,0,0,.5)", fontSize: "12px", fontWeight: "600", color: "var(--y)" }}>Responsable du film</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px 8px", fontSize: "14px" }}><span style={{ color: "var(--mut)" }}>Générique</span><span style={{ display: "flex" }}>{["var(--v)", "var(--y)", "#3B3550", "#6D28D9"].map((c, i) => <span key={c} style={{ width: "28px", height: "28px", borderRadius: "50%", background: c, border: "2px solid #15131C", marginLeft: i ? "-8px" : undefined }}></span>)}</span></div>

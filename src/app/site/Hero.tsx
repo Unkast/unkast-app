@@ -75,8 +75,9 @@ export default function Hero({ film, offerUntil }: { film: SiteFilm | null; offe
             <div className={s.floaty} style={vars({ "--r": "-1.5deg" })}>
               <div className={s.glass} style={{ borderRadius: "30px", padding: "14px" }}>
                 <div className={cx(s.lbox, s.tone3)} style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "20px", overflow: "hidden" }}>
-                  {film && <Poster film={film} sizes="(max-width: 960px) 100vw, 560px" />}
-                  <div style={{ position: "absolute", inset: "0", background: "radial-gradient(40% 55% at 72% 46%, color-mix(in srgb, var(--y) 38%, transparent), transparent 70%)" }}></div>
+                  {film?.poster ? <Poster film={film} sizes="(max-width: 960px) 100vw, 560px" /> : (
+                    <div style={{ position: "absolute", inset: "0", background: "radial-gradient(40% 55% at 72% 46%, color-mix(in srgb, var(--y) 38%, transparent), transparent 70%)" }}></div>
+                  )}
                   <div style={{ position: "absolute", left: "0", right: "0", bottom: "9%", height: "42%", background: "linear-gradient(180deg, transparent, rgba(0,0,0,.75))" }}></div>
                   <div className={s.mono} aria-hidden="true" style={{ position: "absolute", right: "14px", top: "calc(9% + 12px)", zIndex: "2", fontSize: "11px", color: "rgba(255,255,255,.7)" }}>REC ● 00:04:12:08</div>
                   {film ? (

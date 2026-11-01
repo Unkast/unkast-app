@@ -109,8 +109,9 @@ export const CATALOGUE_MIN_FILMS = 6;
 
 export function Catalogue({ films }: { films: SiteFilm[] }) {
   if (films.length < CATALOGUE_MIN_FILMS) return null;
-  const half = Math.ceil(films.length / 2);
-  const rows = [films.slice(0, half), films.slice(half).concat(films.slice(0, half)).slice(0, half)];
+  // Chaque rangee porte tous les films (la seconde a l'envers) : au moins 6 cartes
+  // par rangee, sinon la boucle laisse un vide sur un grand ecran.
+  const rows = [films, [...films].reverse()];
   return (
     <section style={{ padding: "60px 0 170px", position: "relative" }}>
       <div aria-hidden="true" className={s.blob} style={{ width: "700px", height: "400px", left: "30%", top: "120px", background: "var(--v)", opacity: ".1" }}></div>
