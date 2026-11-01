@@ -1,31 +1,10 @@
 // Sections sans etat de la page de vente (composants serveur).
-import type { CSSProperties, ReactNode } from "react";
+import { createElement, type CSSProperties, type ReactNode } from "react";
 import { LEGAL } from "@/lib/legal";
 import s from "./site.module.css";
-import { APP, Arrow, Eyebrow, LIME_DEEP, Play, Poster, TONES, cx, type SiteFilm } from "./ui";
+import { APP, Arrow, Eyebrow, ExampleChip, LIME_DEEP, Play, Poster, TONES, cx, type SiteFilm } from "./ui";
 
-export function Nav() {
-  return (
-    <div style={{ position: "sticky", top: "16px", zIndex: "50", display: "flex", justifyContent: "center", padding: "0 16px" }}>
-      <nav className={cx(s.glass, s.in)} style={{ width: "100%", maxWidth: "1180px", borderRadius: "999px", padding: "10px 10px 10px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", boxSizing: "border-box" }}>
-        <a href="#top" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", color: "#ffffff" }}>
-          <span style={{ width: "26px", height: "26px", borderRadius: "8px", background: "var(--y)", display: "grid", placeItems: "center", boxShadow: "0 0 24px color-mix(in srgb, var(--y) 60%, transparent)" }}><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9L10.5 6z" fill="#0A0A0A"></path></svg></span>
-          <span style={{ fontWeight: "800", fontSize: "19px", letterSpacing: "0.16em" }}>UNKAST</span>
-        </a>
-        <div className={s["hide-m"]} style={{ display: "flex", gap: "2px" }}>
-          <a className={s["nav-a"]} href="#concept">Le concept</a>
-          <a className={s["nav-a"]} href="#etapes">Comment ça marche</a>
-          <a className={s["nav-a"]} href="#pourqui">Pour qui</a>
-          <a className={s["nav-a"]} href="#tarifs">Tarifs</a>
-        </div>
-        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-          <a className={cx(s["nav-a"], s["hide-m"])} href={APP.login}>Se connecter</a>
-          <a className={cx(s.btn, s["btn-y"])} href={APP.join} style={{ minHeight: "44px", padding: "0 20px", fontSize: "14px" }}>Rejoindre</a>
-        </div>
-      </nav>
-    </div>
-  );
-}
+// Nav : Nav.tsx (composant client, menu mobile).
 
 const ROLE_NAMES = ["Réalisateur", "Chef opérateur", "Monteur", "Comédien", "Ingé son", "Scénariste", "Producteur", "Étalonneur", "Compositeur", "Directeur de casting"];
 
@@ -33,9 +12,9 @@ export function RolesMarquee() {
   // Liste doublee : la boucle defile de -50 % sans saut.
   const roles = [...ROLE_NAMES, ...ROLE_NAMES];
   return (
-    <section aria-label="Métiers présents sur Unkast" style={{ padding: "10px 0 40px", borderTop: "1px solid rgba(255,255,255,.06)", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+    <section aria-label="Métiers présents sur Unkast" className={s.mqSec} style={{ padding: "10px 0 40px", borderTop: "1px solid rgba(255,255,255,.06)", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
       <div className={s["mq-wrap"]} style={{ padding: "26px 0" }}>
-        <div className={s.mq} style={{ gap: "48px", alignItems: "center", fontSize: "30px", fontWeight: "600", letterSpacing: "-0.02em", color: "rgba(255,255,255,.82)" }}>
+        <div className={cx(s.mq, s.mqText)} style={{ gap: "48px", alignItems: "center", fontSize: "30px", fontWeight: "600", letterSpacing: "-0.02em", color: "rgba(255,255,255,.82)" }}>
           {roles.map((label, i) => (
             <span key={i} aria-hidden={i >= ROLE_NAMES.length || undefined} style={{ display: "flex", alignItems: "center", gap: "48px", whiteSpace: "nowrap" }}><span className={i % 3 === 1 ? s.serif : undefined}>{label}</span><span style={{ color: "var(--y)", fontSize: "18px" }}>✦</span></span>
           ))}
@@ -56,24 +35,24 @@ export function Manifesto() {
   const title = { fontSize: "22px", fontWeight: "700", letterSpacing: "-0.02em" };
   const body = { fontSize: "16px", lineHeight: "1.6", color: "var(--mut)" };
   return (
-    <section id="concept" className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "170px 32px 150px", boxSizing: "border-box" }}>
-      <Eyebrow style={{ marginBottom: "40px" }}>Le concept</Eyebrow>
+    <section id="concept" className={cx(s.pad, s.manifSec)} style={{ maxWidth: "1240px", margin: "0 auto", padding: "170px 32px 150px", boxSizing: "border-box" }}>
+      <Eyebrow className={s.manifEye} style={{ marginBottom: "40px" }}>Le concept</Eyebrow>
       <p className={s.mani} style={{ margin: "0", fontSize: "74px", lineHeight: "1.06", fontWeight: "600", letterSpacing: "-0.04em", maxWidth: "1150px" }}>
         {W("Un CV dit ce que tu as fait.")}{" "}
         {W("Un film montre ce que tu sais faire.", s.serif, { color: "var(--y)" })}
       </p>
-      <div className={s.g3} style={{ marginTop: "90px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "20px" }}>
-        <div className={cx(s.rv, s.glass)} style={card}>
+      <div className={cx(s.g3, s.manifGrid)} style={{ marginTop: "90px", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "20px" }}>
+        <div className={cx(s.rv, s.glass, s.manifCard)} style={card}>
           <span className={s.mono} style={tag}>01 · ON REGARDE</span>
           <span style={title}>Le travail d&apos;abord</span>
           <span style={body}>Chaque profil se juge sur des films réels, visibles en entier. Pas sur des lignes de CV.</span>
         </div>
-        <div className={cx(s.rv2, s.glass)} style={card}>
+        <div className={cx(s.rv2, s.glass, s.manifCard)} style={card}>
           <span className={s.mono} style={tag}>02 · ON DÉCOUVRE</span>
           <span style={title}>Toute l&apos;équipe derrière</span>
           <span style={body}>Un film te plaît ? Tu remontes le générique et tu tombes sur chaque personne qui l&apos;a fait.</span>
         </div>
-        <div className={cx(s.rv, s.glass, s["glass-v"])} style={card}>
+        <div className={cx(s.rv, s.glass, s["glass-v"], s.manifCard)} style={card}>
           <span className={s.mono} style={tag}>03 · ON SE PARLE</span>
           <span style={title}>Le bon contact, direct</span>
           <span style={{ ...body, color: "#D9D2EE" }}>Tu écris à la bonne personne en un clic, via une messagerie pensée pour les pros.</span>
@@ -87,39 +66,58 @@ export function Manifesto() {
 const DOTS = [["var(--v)", "var(--y)", "#3B3550"], ["var(--y)", "var(--v)", "#3B3550"]];
 
 function FilmCard({ film, tone, dots, copy }: { film: SiteFilm; tone: string; dots: string[]; copy?: boolean }) {
-  return (
-    <a href={APP.film(film.slug)} aria-hidden={copy || undefined} tabIndex={copy ? -1 : undefined} className={cx(s.card, s.glass)} style={{ width: "340px", borderRadius: "24px", padding: "10px", flexShrink: "0", color: "inherit", textDecoration: "none" }}>
-      <div className={cx(s.lbox, tone)} style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "16px", overflow: "hidden" }}>
+  // Vrai film : lien vers sa page dans l'app. Exemple : simple carte, ces films n'existent pas.
+  const props = {
+    className: cx(s.card, s.glass, s.filmCard),
+    "aria-hidden": copy || undefined,
+    style: { width: "340px", borderRadius: "24px", padding: "10px", flexShrink: "0", color: "inherit", textDecoration: "none", ...(film.example && { cursor: "default" }) } as CSSProperties,
+    ...(film.example ? {} : { href: APP.film(film.slug), tabIndex: copy ? -1 : undefined }),
+  };
+  return createElement(
+    film.example ? "div" : "a",
+    props,
+    <>
+      {/* Une affiche s'affiche en entier : ni bandes noires, ni puce par-dessus (elles masquaient les titres). */}
+      <div className={cx(s.lbox, tone, film.poster && s.bare)} style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "16px", overflow: "hidden" }}>
         <Poster film={film} sizes="340px" />
-        <span style={{ position: "absolute", left: "12px", top: "calc(9% + 10px)", zIndex: "2", padding: "5px 11px", borderRadius: "999px", background: "rgba(0,0,0,.45)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", fontSize: "12px", fontWeight: "600" }}>{film.category}</span>
+        {!film.poster && <span style={{ position: "absolute", left: "12px", top: "calc(9% + 10px)", zIndex: "2", padding: "5px 11px", borderRadius: "999px", background: "rgba(0,0,0,.45)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", fontSize: "12px", fontWeight: "600" }}>{film.category}</span>}
         <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "46px", height: "46px", borderRadius: "50%", background: "rgba(255,255,255,.14)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", display: "grid", placeItems: "center" }}><Play /></span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "14px 8px 6px" }}>
-        <span style={{ fontSize: "15px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{film.title}</span>
-        <span aria-hidden="true" style={{ display: "flex", flexShrink: "0" }}>
-          {dots.map((c, i) => <span key={i} style={{ width: "24px", height: "24px", borderRadius: "50%", background: c, marginLeft: i ? "-7px" : undefined, filter: "blur(1.5px)" }}></span>)}
+        <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: "0" }}>
+          <span className={s.filmT} style={{ fontSize: "15px", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{film.title}</span>
+          {film.poster && <span style={{ fontSize: "12px", color: "var(--mut)" }}>{film.category}</span>}
         </span>
+        {film.example ? <ExampleChip inline /> : (
+          <span aria-hidden="true" style={{ display: "flex", flexShrink: "0" }}>
+            {dots.map((c, i) => <span key={i} style={{ width: "24px", height: "24px", borderRadius: "50%", background: c, marginLeft: i ? "-7px" : undefined, filter: "blur(1.5px)" }}></span>)}
+          </span>
+        )}
       </div>
-    </a>
+    </>,
   );
 }
 
-// Nombre minimal de films pour afficher le catalogue (deux rangees qui defilent).
+// Nombre minimal de VRAIS films pour afficher le catalogue (deux rangees qui defilent).
+// Les films d'exemple (exemples.ts) s'affichent sans minimum : ils ne sont servis que
+// sous ce seuil.
 export const CATALOGUE_MIN_FILMS = 6;
 
 export function Catalogue({ films }: { films: SiteFilm[] }) {
-  if (films.length < CATALOGUE_MIN_FILMS) return null;
+  const examples = films[0]?.example === true;
+  if (films.length === 0 || (!examples && films.length < CATALOGUE_MIN_FILMS)) return null;
   // Chaque rangee porte tous les films (la seconde a l'envers) : au moins 6 cartes
   // par rangee, sinon la boucle laisse un vide sur un grand ecran.
   const rows = [films, [...films].reverse()];
   return (
-    <section style={{ padding: "60px 0 170px", position: "relative" }}>
+    <section className={s.catSec} style={{ padding: "60px 0 170px", position: "relative" }}>
       <div aria-hidden="true" className={s.blob} style={{ width: "700px", height: "400px", left: "30%", top: "120px", background: "var(--v)", opacity: ".1" }}></div>
-      <div className={cx(s.g2, s.pad)} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto 64px", padding: "0 32px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "40px", alignItems: "end" }}>
+      <div className={cx(s.g2, s.pad, s.secHead)} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto 64px", padding: "0 32px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "40px", alignItems: "end" }}>
         <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "64px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.04em" }}>Des films,<br /><span className={s.serif} style={{ color: "var(--y)" }}>pas des fiches.</span></h2>
-        <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.6", color: "var(--mut)", maxWidth: "460px" }}>Court métrage, clip, documentaire, pub, bande démo, extrait de scène. Chaque film est validé à la main avant sa mise en ligne. C&apos;est ce qui donne de la valeur à ton profil.</p>
+        <p className={cx(s.rv, s.bodyP)} style={{ margin: "0", fontSize: "18px", lineHeight: "1.6", color: "var(--mut)", maxWidth: "460px" }}>Court métrage, clip, documentaire, pub, bande démo, extrait de scène. Chaque film est validé à la main avant sa mise en ligne. C&apos;est ce qui donne de la valeur à ton profil.</p>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "22px", position: "relative" }}>
+        {examples && <div className={cx(s.mono, s.pad)} style={{ width: "100%", maxWidth: "1240px", margin: "0 auto", padding: "0 32px", boxSizing: "border-box", fontSize: "12px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--vl)" }}>Exemples de films</div>}
         {rows.map((row, r) => (
           <div key={r} className={s["mq-wrap"]}>
             <div className={cx(s.mq, r === 1 && s.rev)} style={{ gap: "22px", padding: "12px 0" }}>
@@ -130,6 +128,7 @@ export function Catalogue({ films }: { films: SiteFilm[] }) {
             </div>
           </div>
         ))}
+        {examples && <p className={s.pad} style={{ width: "100%", maxWidth: "1240px", margin: "10px auto 0", padding: "0 32px", boxSizing: "border-box", fontSize: "13px", lineHeight: "1.5", color: "var(--mut)" }}>Exemples illustrés, images générées par IA. Les films publiés par les membres les remplaceront.</p>}
       </div>
     </section>
   );
@@ -157,21 +156,21 @@ function CreditRow({ role, avatar, status, invited }: { role: string; avatar?: C
 
 export function Steps() {
   return (
-    <section id="etapes" className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "60px 32px 120px", boxSizing: "border-box" }}>
-      <div style={{ textAlign: "center", marginBottom: "80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "22px" }}>
+    <section id="etapes" className={cx(s.pad, s.stepsSec)} style={{ maxWidth: "1240px", margin: "0 auto", padding: "60px 32px 120px", boxSizing: "border-box" }}>
+      <div className={s.stepsHead} style={{ textAlign: "center", marginBottom: "80px", display: "flex", flexDirection: "column", alignItems: "center", gap: "22px" }}>
         <Eyebrow both>Comment ça marche</Eyebrow>
         <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "72px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.045em" }}>Trois étapes. <span className={s.serif} style={{ color: "var(--y)" }}>Zéro CV.</span></h2>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+      <div className={s.stepsList} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
         <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "110px", background: "linear-gradient(145deg, rgb(25,25,25), rgb(14,14,14))" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <span className={s.mono} style={stepNum}>01</span>
-            <h3 style={stepH3}>Publie ton film</h3>
-            <p style={stepP}>Colle ton lien Vimeo ou YouTube, choisis la catégorie, déclare ton rôle sur le film. L&apos;équipe Unkast valide chaque film à la main avant sa mise en ligne.</p>
+            <span className={cx(s.mono, s.stepNum)} style={stepNum}>01</span>
+            <h3 className={s.stepH3} style={stepH3}>Publie ton film</h3>
+            <p className={s.stepP} style={stepP}>Colle ton lien Vimeo ou YouTube, choisis la catégorie, déclare ton rôle sur le film. L&apos;équipe Unkast valide chaque film à la main avant sa mise en ligne.</p>
           </div>
           {/* Illustration de l'interface, pas un vrai formulaire. */}
-          <div className={s.glass} aria-hidden="true" style={{ borderRadius: "24px", padding: "26px", display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className={cx(s.glass, s.stepUi)} aria-hidden="true" style={{ borderRadius: "24px", padding: "26px", display: "flex", flexDirection: "column", gap: "16px" }}>
             <span style={{ fontSize: "13px", color: "var(--mut)" }}>Lien de ton film</span>
             <div style={{ display: "flex", gap: "10px", alignItems: "center", padding: "0 16px", minHeight: "52px", borderRadius: "14px", background: "rgba(0,0,0,.35)", border: "1px solid rgba(255,255,255,.1)" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"></path><path d="M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"></path></svg><span className={s.mono} style={{ flex: "1", color: "#ffffff", fontSize: "15px", fontWeight: "500", minWidth: "0" }}>vimeo.com/ton-film</span></div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}><span style={{ ...chip, background: "var(--y)", color: "#0A0A0A", fontWeight: "600" }}>Court métrage</span><span style={chip}>Clip</span><span style={chip}>Documentaire</span><span style={chip}>Publicité</span></div>
@@ -181,9 +180,9 @@ export function Steps() {
 
         <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "138px", background: "linear-gradient(145deg, rgb(25,23,33), rgb(14,14,16))" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <span className={s.mono} style={stepNum}>02</span>
-            <h3 style={stepH3}>Crédite ton équipe</h3>
-            <p style={stepP}>Chaque collaborateur qui a bossé sur le film apparaît au générique. Pas encore inscrit ? Il reçoit une invitation et récupère son crédit en arrivant.</p>
+            <span className={cx(s.mono, s.stepNum)} style={stepNum}>02</span>
+            <h3 className={s.stepH3} style={stepH3}>Crédite ton équipe</h3>
+            <p className={s.stepP} style={stepP}>Chaque collaborateur qui a bossé sur le film apparaît au générique. Pas encore inscrit ? Il reçoit une invitation et récupère son crédit en arrivant.</p>
           </div>
           <div className={s.glass} aria-hidden="true" style={{ borderRadius: "24px", padding: "14px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <CreditRow role="Chef opérateur" status="Sur Unkast" avatar={{ background: "linear-gradient(135deg, var(--v), #4C1D95)" }} />
@@ -195,9 +194,9 @@ export function Steps() {
 
         <div className={cx(s.step, s.glass, s.g2)} style={{ ...stepBox, top: "166px", background: "linear-gradient(145deg, rgb(27,33,10), rgb(14,15,11))" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <span className={s.mono} style={stepNum}>03</span>
-            <h3 style={stepH3}>Fais-toi repérer</h3>
-            <p style={stepP}>Producteurs, directeurs de casting, réalisateurs. Ils regardent, ils aiment, ils t&apos;écrivent directement sur Unkast. Répondre est toujours gratuit.</p>
+            <span className={cx(s.mono, s.stepNum)} style={stepNum}>03</span>
+            <h3 className={s.stepH3} style={stepH3}>Fais-toi repérer</h3>
+            <p className={s.stepP} style={stepP}>Producteurs, directeurs de casting, réalisateurs. Ils regardent, ils aiment, ils t&apos;écrivent directement sur Unkast. Répondre est toujours gratuit.</p>
           </div>
           <div aria-hidden="true" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div className={s.glass} style={{ alignSelf: "flex-start", maxWidth: "340px", borderRadius: "22px 22px 22px 6px", padding: "16px 18px", display: "flex", flexDirection: "column", gap: "6px" }}><span style={{ fontSize: "12px", color: "var(--vl)", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>Producteur<svg width="13" height="13" viewBox="0 0 24 24" fill="var(--y)" aria-hidden="true"><path d="M12 2l2.6 2 3.3-.2.9 3.2 2.7 2-1 3.1 1 3.1-2.7 2-.9 3.2-3.3-.2L12 22l-2.6-2-3.3.2-.9-3.2-2.7-2 1-3.1-1-3.1 2.7-2 .9-3.2 3.3.2z"></path></svg></span><span style={{ fontSize: "15px", lineHeight: "1.5" }}>J&apos;ai vu ton court. Le travail sur la lumière est top. Tu serais dispo en mars ?</span></div>
@@ -224,13 +223,13 @@ const LIME_LINE = "rgba(200,255,0,.55)";
 
 export function Network({ film }: { film: SiteFilm | null }) {
   return (
-    <section style={{ position: "relative", padding: "120px 0 160px", overflow: "hidden" }}>
+    <section className={s.netSec} style={{ position: "relative", padding: "120px 0 160px", overflow: "hidden" }}>
       <div aria-hidden="true" className={s.blob} style={{ width: "640px", height: "640px", right: "-120px", top: "40px", background: "var(--v)", opacity: ".13" }}></div>
-      <div className={cx(s.g2, s.pad)} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", padding: "0 32px", display: "grid", gridTemplateColumns: "minmax(0, 0.85fr) minmax(0, 1.15fr)", gap: "60px", alignItems: "center" }}>
+      <div className={cx(s.g2, s.pad, s.netGrid)} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", padding: "0 32px", display: "grid", gridTemplateColumns: "minmax(0, 0.85fr) minmax(0, 1.15fr)", gap: "60px", alignItems: "center" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "26px" }}>
           <Eyebrow>Crédits croisés</Eyebrow>
           <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "64px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.04em" }}>Un film.<br /><span className={s.serif} style={{ color: "var(--y)" }}>Toute une équipe.</span></h2>
-          <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.65", color: "var(--mut)" }}>Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur le réalisateur qui l&apos;a dirigé, puis sur son prochain chef op. Chaque crédit est une porte d&apos;entrée vers ton travail.</p>
+          <p className={cx(s.rv, s.bodyP)} style={{ margin: "0", fontSize: "18px", lineHeight: "1.65", color: "var(--mut)" }}>Sur Unkast, le générique devient un réseau. Tu découvres un monteur sur un clip, tu tombes sur le réalisateur qui l&apos;a dirigé, puis sur son prochain chef op. Chaque crédit est une porte d&apos;entrée vers ton travail.</p>
           <a className={cx(s.btn, s["btn-y"], s.rv)} href={APP.join} style={{ alignSelf: "flex-start" }}>Récupérer mes crédits <Arrow /></a>
         </div>
         <div className={cx(s.zoom, s.net)} aria-hidden="true" style={{ position: "relative", aspectRatio: "560 / 520", width: "100%" }}>
@@ -246,17 +245,18 @@ export function Network({ film }: { film: SiteFilm | null }) {
             <circle cx="280" cy="260" r="130" fill="none" stroke="rgba(255,255,255,.06)"></circle>
             <circle cx="280" cy="260" r="210" fill="none" stroke="rgba(255,255,255,.04)"></circle>
           </svg>
-          <div className={s.glass} style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "42%", borderRadius: "22px", padding: "8px", zIndex: "3" }}>
-            <div className={cx(s.lbox, s.tone1)} style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "15px", overflow: "hidden", display: "grid", placeItems: "center" }}>
+          <div className={cx(s.glass, s.netCard)} style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "42%", borderRadius: "22px", padding: "8px", zIndex: "3" }}>
+            <div className={cx(s.lbox, s.tone1, film?.poster && s.bare)} style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: "15px", overflow: "hidden", display: "grid", placeItems: "center" }}>
               {film && <Poster film={film} sizes="240px" />}
-              <span style={{ position: "relative", zIndex: "2", width: "42px", height: "42px", borderRadius: "50%", background: "rgba(255,255,255,.16)", display: "grid", placeItems: "center" }}><Play size={15} /></span>
+              {film?.example && <ExampleChip />}
+              <span className={s.netPlay} style={{ position: "relative", zIndex: "2", width: "42px", height: "42px", borderRadius: "50%", background: "rgba(255,255,255,.16)", display: "grid", placeItems: "center" }}><Play size={15} /></span>
             </div>
             {film && <div style={{ padding: "10px 6px 4px", fontSize: "13px", fontWeight: "700", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{film.title}</div>}
           </div>
           {NODES.map((n) => (
             // `translate` et non `transform` : l'animation .floaty ecrase transform, la
             // pastille se placait par son bord gauche au lieu de son centre (maquette).
-            <div key={n.role} className={cx(s.floaty, !n.invited && s.glass)} style={{ position: "absolute", left: n.left, top: n.top, translate: "-50% -50%", borderRadius: "999px", padding: "6px 14px 6px 6px", display: "flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap", fontSize: "13px", fontWeight: "600", zIndex: "3", animationDelay: n.delay, ...(n.invited && { border: "1px dashed rgba(255,255,255,.35)", background: "rgba(10,10,14,.6)" }) }}>
+            <div key={n.role} className={cx(s.floaty, s.node, !n.invited && s.glass)} style={{ position: "absolute", left: n.left, top: n.top, translate: "-50% -50%", borderRadius: "999px", padding: "6px 14px 6px 6px", display: "flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap", fontSize: "13px", fontWeight: "600", zIndex: "3", animationDelay: n.delay, ...(n.invited && { border: "1px dashed rgba(255,255,255,.35)", background: "rgba(10,10,14,.6)" }) }}>
               {n.invited
                 ? <span style={{ width: "28px", height: "28px", borderRadius: "50%", border: "1px dashed rgba(255,255,255,.4)", display: "grid", placeItems: "center", fontSize: "13px", color: "var(--mut)" }}>?</span>
                 : <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: n.bg }}></span>}
@@ -278,14 +278,14 @@ const TRUST: { title: string; text: string; violet?: boolean; icon: ReactNode }[
 
 export function Trust() {
   return (
-    <section className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "40px 32px 170px", boxSizing: "border-box" }}>
-      <div className={s.g2} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "40px", alignItems: "end", marginBottom: "56px" }}>
+    <section className={cx(s.pad, s.trustSec)} style={{ maxWidth: "1240px", margin: "0 auto", padding: "40px 32px 170px", boxSizing: "border-box" }}>
+      <div className={cx(s.g2, s.secHead)} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "40px", alignItems: "end", marginBottom: "56px" }}>
         <h2 className={cx(s.h2, s.rv)} style={{ margin: "0", fontSize: "64px", lineHeight: "1", fontWeight: "700", letterSpacing: "-0.04em" }}>Un réseau propre,<br /><span className={s.serif} style={{ color: "var(--y)" }}>fait pour les pros.</span></h2>
-        <p className={s.rv} style={{ margin: "0", fontSize: "18px", lineHeight: "1.6", color: "var(--mut)", maxWidth: "460px" }}>Films validés, recruteurs vérifiés, coordonnées protégées. Unkast garde un niveau d&apos;exigence qui protège ton image.</p>
+        <p className={cx(s.rv, s.bodyP)} style={{ margin: "0", fontSize: "18px", lineHeight: "1.6", color: "var(--mut)", maxWidth: "460px" }}>Films validés, recruteurs vérifiés, coordonnées protégées. Unkast garde un niveau d&apos;exigence qui protège ton image.</p>
       </div>
       <div className={s.g4} style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "16px" }}>
         {TRUST.map((c, i) => (
-          <div key={c.title} className={cx(i % 2 ? s.rv2 : s.rv, s.glass)} style={{ borderRadius: "26px", padding: "28px", display: "flex", flexDirection: "column", gap: "16px", minHeight: "250px" }}>
+          <div key={c.title} className={cx(i % 2 ? s.rv2 : s.rv, s.glass, s.trustCard)} style={{ borderRadius: "26px", padding: "28px", display: "flex", flexDirection: "column", gap: "16px", minHeight: "250px" }}>
             <span style={{ width: "48px", height: "48px", borderRadius: "14px", background: c.violet ? "color-mix(in srgb, var(--v) 25%, transparent)" : "color-mix(in srgb, var(--y) 16%, transparent)", display: "grid", placeItems: "center" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.violet ? "var(--vl)" : "var(--y)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{c.icon}</svg></span>
             <span style={{ fontSize: "19px", fontWeight: "700" }}>{c.title}</span>
             <span style={{ fontSize: "15px", lineHeight: "1.6", color: "var(--mut)" }}>{c.text}</span>
@@ -298,17 +298,17 @@ export function Trust() {
 
 export function FinalCta({ offerUntil }: { offerUntil: string | null }) {
   return (
-    <section id="rejoindre" className={s.pad} style={{ padding: "0 32px 120px", boxSizing: "border-box" }}>
-      <div className={s.zoom} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", borderRadius: "48px", overflow: "hidden", padding: "130px 40px", textAlign: "center", background: "#0D0D0D", boxSizing: "border-box" }}>
+    <section id="rejoindre" className={cx(s.pad, s.ctaSec)} style={{ padding: "0 32px 120px", boxSizing: "border-box" }}>
+      <div className={cx(s.zoom, s.ctaBox)} style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", borderRadius: "48px", overflow: "hidden", padding: "130px 40px", textAlign: "center", background: "#0D0D0D", boxSizing: "border-box" }}>
         <div aria-hidden="true" style={{ position: "absolute", inset: "0", overflow: "hidden" }}>
           <div className={s.orb} style={{ position: "absolute", left: "50%", top: "50%", width: "1100px", height: "1100px", margin: "-550px 0 0 -550px", borderRadius: "50%", background: "conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--v) 40%, transparent), transparent 35%, color-mix(in srgb, var(--y) 50%, transparent), transparent 70%)", filter: "blur(80px)", opacity: ".6" }}></div>
           <div style={{ position: "absolute", inset: "0", background: "radial-gradient(60% 70% at 50% 50%, transparent, #0D0D0D 85%)" }}></div>
         </div>
-        <div className={s.glass} aria-hidden="true" style={{ position: "absolute", inset: "24px", borderRadius: "32px", background: "rgba(255,255,255,.02)" }}></div>
+        <div className={cx(s.glass, s.ctaInset)} aria-hidden="true" style={{ position: "absolute", inset: "24px", borderRadius: "32px", background: "rgba(255,255,255,.02)" }}></div>
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "30px" }}>
           <h2 className={s.ctaH} style={{ margin: "0", fontSize: "96px", lineHeight: ".98", fontWeight: "700", letterSpacing: "-0.05em", maxWidth: "960px" }}>Ton prochain projet <span className={cx(s.serif, s.sheen)}>commence par un film.</span></h2>
-          <p style={{ margin: "0", fontSize: "19px", color: "#D6D1E6", maxWidth: "520px", lineHeight: "1.55" }}>Crée ton profil en quelques minutes.{offerUntil && <> Pro offert jusqu&apos;au {offerUntil}.</>}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
+          <p className={s.ctaP} style={{ margin: "0", fontSize: "19px", color: "#D6D1E6", maxWidth: "520px", lineHeight: "1.55" }}>Crée ton profil en quelques minutes.{offerUntil && <> Pro offert jusqu&apos;au {offerUntil}.</>}</p>
+          <div className={s.ctaRow} style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
             <a className={cx(s.btn, s["btn-y"])} href={APP.join} style={{ minHeight: "60px", padding: "0 34px", fontSize: "17px" }}>Rejoindre Unkast <Arrow /></a>
             <a className={cx(s.btn, s["btn-g"], s.glass)} href={APP.feed} style={{ minHeight: "60px", padding: "0 30px", fontSize: "17px" }}>Explorer les films</a>
           </div>
@@ -328,7 +328,7 @@ const FOOTER_LINKS = [
 
 export function Footer() {
   return (
-    <footer className={s.pad} style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 32px 60px", boxSizing: "border-box" }}>
+    <footer className={cx(s.pad, s.footer)} style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 32px 60px", boxSizing: "border-box" }}>
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "24px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,.08)" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><span style={{ fontWeight: "800", fontSize: "18px", letterSpacing: "0.16em" }}>UNKAST</span><span style={{ fontSize: "14px", color: "var(--mut)" }}>Découvre l&apos;œuvre. Trouve le talent.</span></div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>

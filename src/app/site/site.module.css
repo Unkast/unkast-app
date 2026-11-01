@@ -53,6 +53,7 @@
 .tone4{background:radial-gradient(60% 50% at 70% 60%,color-mix(in srgb,var(--y) 32%,transparent),transparent 70%),radial-gradient(90% 80% at 0% 0%,color-mix(in srgb,var(--v) 26%,transparent),transparent 65%),#0E0E0E}
 .lbox::before,.lbox::after{content:"";position:absolute;left:0;right:0;height:9%;background:#000;z-index:1}
 .lbox::before{top:0}.lbox::after{bottom:0}
+.bare::before,.bare::after{display:none}
 .dash{stroke-dasharray:4 7;animation:dash 1.6s linear infinite}
 @keyframes dash{to{stroke-dashoffset:-22}}
 .tab{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:transparent;color:var(--mut);font:600 15px var(--font-inter-tight),sans-serif;cursor:pointer;transition:background .4s,color .4s}
@@ -99,6 +100,13 @@
      ils restent affiches mais figes ; le rendu desktop ne change pas. */
 @media (max-width:600px){
 .net{width:78% !important;margin:0 auto}
+/* Panneau Pour qui : le padding de 56 px de la maquette ecrase l'affiche sur telephone. */
+.audPanel{padding:16px !important;border-radius:28px !important}
+/* Resultats de recherche (onglet Recruteurs) : sinon nom et metier sont tronques a 375 px. */
+.res{gap:10px !important;padding:10px !important}
+.resAv{width:38px !important;height:38px !important;font-size:13px !important}
+.resPo{width:48px !important}
+.resSub{white-space:normal !important}
 }
 @media (max-width:960px){
 .grain,.blob{animation:none;will-change:auto}
@@ -130,8 +138,109 @@
      derriere est uni (#0D0D0D) : le flou n'y change rien, retire. */
 .step,.step .glass,.aud .glass{-webkit-backdrop-filter:none;backdrop-filter:none}
 .step{will-change:transform}
+.root [id="faq"]{scroll-margin-top:100px}
+/* Menu mobile (Nav.tsx) : bouton visible des que les ancres de la barre sont masquees
+   (<= 960 px), panneau en verre sous la nav. Fond plus opaque que .glass : le texte
+   de la page defile dessous. */
+.burger{display:none;width:44px;height:44px;flex-shrink:0;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:var(--txt);cursor:pointer;place-items:center}
+.burger:hover{background:rgba(255,255,255,.14)}
+.menu{position:absolute;top:calc(100% + 10px);left:16px;right:16px;border-radius:28px;padding:10px;display:flex;flex-direction:column;gap:2px;background:linear-gradient(145deg,rgba(38,38,46,.94),rgba(17,17,21,.96));animation:menuIn .22s cubic-bezier(.2,.8,.2,1) both;transform-origin:top right}
+@keyframes menuIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+.menuA{display:flex;align-items:center;min-height:48px;padding:0 16px;border-radius:16px;color:var(--txt);text-decoration:none;font-size:17px;font-weight:600}
+.menuA:hover{background:rgba(255,255,255,.06);color:#ffffff}
+@media (max-width:960px){
+.burger{display:grid}
+}
+@media (min-width:961px){
+.menu{display:none}
+}
+/* Telephone (<= 600 px) : tailles, marges et lisibilite, section par section. Les
+   styles de la maquette sont en ligne, d'ou les !important. Le desktop ne change pas. */
+@media (max-width:600px){
+.navBar{padding:8px 8px 8px 16px !important;gap:8px !important}
+.logo{min-height:44px}
+/* Titres */
+.h1{font-size:44px !important}
+.h2{font-size:34px !important}
+.mani{font-size:31px !important}
+.ctaH{font-size:40px !important}
+.bodyP{font-size:16px !important}
+.secHead{margin-bottom:28px !important;gap:16px !important}
+.ctaRow{width:100%}
+.ctaRow>a{flex:1 1 100%}
+.exChip{font-size:11px !important}
+/* Hero */
+.hero{padding:116px 0 64px !important}
+.heroCol{gap:22px !important}
+.heroP{font-size:17px !important}
+.heroChecks{gap:10px 18px !important}
+.heroCard{padding:10px !important;border-radius:24px !important}
+.rec{display:none}
+/* Metiers */
+.mqSec{padding:0 0 12px !important}
+.mqSec .mq-wrap{padding:16px 0 !important}
+.mqText{font-size:22px !important}
+.mqText,.mqText>span{gap:28px !important}
+/* Concept */
+.manifSec{padding-top:88px !important;padding-bottom:64px !important}
+.manifEye{margin-bottom:22px !important}
+.manifGrid{margin-top:36px !important;gap:12px !important}
+.manifCard{padding:22px !important;gap:10px !important}
+/* Catalogue : une carte et le debut de la suivante */
+.catSec{padding:24px 0 72px !important}
+.filmCard{width:264px !important}
+.filmT{white-space:normal !important;line-height:1.25}
+/* Etapes */
+.stepsSec{padding-top:40px !important;padding-bottom:64px !important}
+.stepsHead{margin-bottom:32px !important;gap:16px !important}
+.stepsList{gap:16px !important}
+.step{padding:22px !important;gap:24px !important;min-height:0 !important;border-radius:28px !important}
+.stepNum{font-size:48px !important}
+.stepH3{font-size:28px !important}
+.stepP{font-size:16px !important}
+.stepUi{padding:16px !important}
+/* Credits croises */
+.netSec{padding:56px 0 64px !important}
+.netGrid{gap:36px !important}
+.netCard{width:48% !important}
+.netPlay{display:none !important}
+.node{font-size:12px !important;padding:4px 10px 4px 4px !important;gap:6px !important}
+.node>span:first-child{width:22px !important;height:22px !important}
+/* Pour qui */
+.audSec{padding-top:48px !important;padding-bottom:72px !important}
+.audHead{margin-bottom:28px !important;gap:20px !important}
+.panelGrid{gap:28px !important}
+.panelH3{font-size:30px !important}
+/* Confiance */
+.trustSec{padding-top:24px !important;padding-bottom:72px !important}
+.trustCard{min-height:0 !important;padding:22px !important;gap:12px !important}
+/* Tarifs */
+.priceSec{padding:40px 0 72px !important}
+.priceHead{margin-bottom:28px !important}
+.priceCard{padding:26px !important;gap:20px !important}
+.price{font-size:48px !important}
+/* FAQ */
+.faqSec{padding-top:8px !important;padding-bottom:64px !important}
+.faqH{margin-bottom:24px !important}
+.faq-btn{font-size:17px;padding:20px 0;gap:16px}
+.faqA{padding:0 0 22px !important;font-size:16px !important}
+/* Appel final et pied de page */
+.ctaSec{padding-bottom:56px !important}
+.ctaBox{padding:72px 22px !important;border-radius:32px !important}
+.ctaInset{inset:10px !important;border-radius:24px !important}
+.ctaP{font-size:17px !important}
+.footer{padding-bottom:40px !important}
+.footer .nav-a{display:inline-flex;align-items:center;min-height:44px}
+/* Ancres : meme regle que plus haut (120 px moins le padding haut de la section). */
+.root [id="concept"]{scroll-margin-top:32px}
+.root [id="etapes"]{scroll-margin-top:80px}
+.root [id="pourqui"]{scroll-margin-top:72px}
+.root [id="tarifs"]{scroll-margin-top:80px}
+.root [id="faq"]{scroll-margin-top:112px}
+}
 @media (prefers-reduced-motion:reduce){
 :global(html):has(.root){scroll-behavior:auto}
+.menu{animation:none}
 .blob,.floaty,.mq,.sheen,.grain,.dash,.orb,.pulse{animation:none !important}
 .rv,.rv2,.w,.zoom,.parx,.line>span,.in{animation:none !important;opacity:1 !important;transform:none !important;filter:none !important}
 }

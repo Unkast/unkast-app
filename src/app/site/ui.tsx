@@ -25,6 +25,8 @@ export type SiteFilm = {
   director: string | null;
   team: string[];
   teamCount: number;
+  /** Film fictif (exemples.ts) : jamais de lien vers l'app, mention « Exemple ». */
+  example?: boolean;
 };
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -69,5 +71,14 @@ export function Eyebrow({ children, both, className, style }: { children: ReactN
 // Affiche d'un film dans un cadre de la maquette (bandes noires .lbox par-dessus).
 export function Poster({ film, sizes }: { film: SiteFilm; sizes: string }) {
   if (!film.poster) return null;
-  return <Image src={film.poster} alt="" fill sizes={sizes} style={{ objectFit: "cover" }} />;
+  const alt = film.example ? `Exemple d'affiche, film fictif : ${film.title}` : "";
+  return <Image src={film.poster} alt={alt} fill sizes={sizes} style={{ objectFit: "cover" }} />;
+}
+
+// Puce « Exemple » discrete : en coin d'une affiche, ou `inline` dans une legende.
+export function ExampleChip({ inline }: { inline?: boolean }) {
+  const place: CSSProperties = inline ? { flexShrink: "0" } : { position: "absolute", left: "10px", top: "10px", zIndex: "2" };
+  return (
+    <span className={cx(s.mono, s.exChip)} style={{ ...place, padding: "3px 9px", borderRadius: "999px", background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.18)", fontSize: "10px", letterSpacing: ".12em", textTransform: "uppercase", color: "rgba(255,255,255,.78)" }}>Exemple</span>
+  );
 }

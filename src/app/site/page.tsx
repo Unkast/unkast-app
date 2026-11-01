@@ -2,10 +2,12 @@ import { MAX_PROJECTS_FREE } from "@/lib/constants";
 import { DAILY_CONVERSATION_LIMIT, FREE_CONTACT_LIMIT } from "@/lib/messaging";
 import { LAUNCH_PRO_UNTIL, isLaunchOfferOpen } from "@/lib/pro-plan";
 import { formatDateParis } from "@/lib/utils";
+import { EXAMPLES_BELOW, EXAMPLE_FILMS } from "./exemples";
 import { loadSiteFilms } from "./films";
 import Hero from "./Hero";
 import { Audience, Faq, Pricing } from "./interactive";
-import { Catalogue, FinalCta, Footer, Manifesto, Nav, Network, RolesMarquee, Steps, Trust } from "./sections";
+import Nav from "./Nav";
+import { Catalogue, FinalCta, Footer, Manifesto, Network, RolesMarquee, Steps, Trust } from "./sections";
 import s from "./site.module.css";
 
 // Limites du plan gratuit, lues dans le code de l'app (jamais recopiees en dur).
@@ -16,7 +18,10 @@ export const revalidate = 3600;
 
 export default async function SitePage() {
   const offerUntil = isLaunchOfferOpen() ? formatDateParis(LAUNCH_PRO_UNTIL, "long") : null;
-  const films = await loadSiteFilms();
+  // Moins de EXAMPLES_BELOW vrais films : des exemples fictifs les remplacent tous
+  // (jamais de melange). Des qu'il y en a assez, les vrais films prennent la place.
+  const real = await loadSiteFilms();
+  const films = real.length >= EXAMPLES_BELOW ? real : EXAMPLE_FILMS;
   // Film a la une : le plus recent avec une image (aucun : blocs titre masques).
   const featured = films.find((f) => f.poster) ?? null;
 
