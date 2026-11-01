@@ -1,0 +1,97 @@
+/* Page de vente unkast.com. Styles repris de la maquette validee
+   (docs/page-de-vente/maquette-page-de-vente.dc.html, bloc <helmet><style>).
+   CSS Module : globals.css definit deja .glass, .glass-violet et .lite .glass, les
+   noms de classes sont donc isoles ici. Ecarts volontaires avec la maquette :
+   - polices par variables next/font (layout.tsx) ;
+   - #C4B0FF remplace par #A78BFA (--vl, contraste valide) ;
+   - :where(.root) a et .root h1/h2/h3 neutralisent les regles globales de l'app
+     (body line-height 1.65, h1-h3 letter-spacing) sans changer les priorites ;
+   - bloc mobile en fin de fichier (allegement des flous, voir commentaire). */
+
+.root{--ink:#0D0D0D;--txt:#F4F4F6;--mut:#A9A9B8;--y:#C8FF00;--v:#8B5CF6;--vl:#A78BFA;font-family:var(--font-inter-tight),system-ui,sans-serif;line-height:normal;color:var(--txt);background:var(--ink);overflow-x:clip;position:relative;-webkit-font-smoothing:antialiased}
+.root h1,.root h2,.root h3{line-height:normal;letter-spacing:normal}
+:where(.root) a{color:#C8FF00}:where(.root) a:hover{color:#ffffff}
+.serif{font-family:var(--font-instrument-serif),Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-0.01em}
+.mono{font-family:var(--font-jetbrains-mono),ui-monospace,monospace}
+.glass{position:relative;isolation:isolate;background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035) 42%,rgba(255,255,255,.02));-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05),inset 0 0 30px rgba(255,255,255,.025),0 30px 80px -24px rgba(0,0,0,.75)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,rgba(255,255,255,.5),rgba(255,255,255,.06) 32%,color-mix(in srgb,var(--v) 28%,transparent) 70%,color-mix(in srgb,var(--y) 45%,transparent));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:2}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 70% at 18% 0%,rgba(255,255,255,.13),transparent 55%);pointer-events:none;z-index:-1}
+.glass-v{background:linear-gradient(145deg,color-mix(in srgb,var(--v) 15%,transparent),color-mix(in srgb,var(--v) 4%,transparent) 55%,rgba(255,255,255,.03))}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 26px;border-radius:999px;font:600 16px/1 var(--font-inter-tight),sans-serif;text-decoration:none;cursor:pointer;border:0;transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s,background .45s,color .3s;white-space:nowrap}
+.btn-y{background:var(--y);color:#0A0A0A;box-shadow:0 12px 40px -12px color-mix(in srgb,var(--y) 75%,transparent),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -2px 0 rgba(0,0,0,.12)}
+.btn-y:hover{color:#0A0A0A;transform:translateY(-2px) scale(1.03);box-shadow:0 22px 60px -14px color-mix(in srgb,var(--y) 90%,transparent),inset 0 1px 0 rgba(255,255,255,.7)}
+.btn-g{color:var(--txt)}
+.btn-g:hover{color:#ffffff;transform:translateY(-2px)}
+.btn-y .arr,.btn-g .arr{transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.btn:hover .arr{transform:translateX(4px)}
+.nav-a{color:var(--mut);text-decoration:none;font-size:14px;font-weight:500;padding:10px 14px;border-radius:999px;transition:color .3s,background .3s}
+.nav-a:hover{color:#ffffff;background:rgba(255,255,255,.07)}
+.blob{position:absolute;border-radius:50%;filter:blur(100px);animation:drift 20s ease-in-out infinite alternate;will-change:transform}
+@keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(70px,-50px,0) scale(1.18)}100%{transform:translate3d(-50px,40px,0) scale(.92)}}
+.floaty{animation:floaty 7s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-14px) rotate(var(--r,0deg))}}
+.line{display:block;overflow:hidden;padding-bottom:.08em;margin-bottom:-.08em}
+.line>span{display:inline-block;animation:lineUp 1.3s cubic-bezier(.16,1,.3,1) both}
+@keyframes lineUp{from{transform:translateY(110%) rotate(3deg);opacity:0}to{transform:none;opacity:1}}
+.in{animation:inUp 1.2s cubic-bezier(.16,1,.3,1) both}
+@keyframes inUp{from{opacity:0;transform:translateY(30px);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+.sheen{background:linear-gradient(100deg,var(--y) 0%,var(--y) 38%,#F1FFC4 50%,var(--y) 62%,var(--y) 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheen 7s ease-in-out infinite;padding-right:.12em}
+@keyframes sheen{0%,20%{background-position:100% 0}60%,100%{background-position:0% 0}}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--y) 70%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+.mq-wrap{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.mq{display:flex;width:max-content;animation:mq 55s linear infinite}
+.mq.fast{animation-duration:38s}
+.mq.rev{animation-direction:reverse}
+.mq-wrap:hover .mq{animation-play-state:paused}
+@keyframes mq{to{transform:translateX(-50%)}}
+.card{transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.card:hover{transform:translateY(-8px) scale(1.02)}
+.tone1{background:radial-gradient(90% 80% at 80% 10%,color-mix(in srgb,var(--v) 38%,transparent),transparent 60%),radial-gradient(70% 60% at 10% 100%,color-mix(in srgb,var(--y) 28%,transparent),transparent 60%),#111111}
+.tone2{background:radial-gradient(80% 70% at 15% 20%,color-mix(in srgb,var(--y) 40%,transparent),transparent 60%),radial-gradient(80% 80% at 100% 100%,color-mix(in srgb,var(--v) 20%,transparent),transparent 60%),#0F100C}
+.tone3{background:radial-gradient(100% 60% at 50% 0%,color-mix(in srgb,var(--v) 28%,#1a1a1a),transparent 70%),linear-gradient(180deg,#111111,#080808)}
+.tone4{background:radial-gradient(60% 50% at 70% 60%,color-mix(in srgb,var(--y) 32%,transparent),transparent 70%),radial-gradient(90% 80% at 0% 0%,color-mix(in srgb,var(--v) 26%,transparent),transparent 65%),#0E0E0E}
+.lbox::before,.lbox::after{content:"";position:absolute;left:0;right:0;height:9%;background:#000;z-index:1}
+.lbox::before{top:0}.lbox::after{bottom:0}
+.dash{stroke-dasharray:4 7;animation:dash 1.6s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-22}}
+.tab{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:transparent;color:var(--mut);font:600 15px var(--font-inter-tight),sans-serif;cursor:pointer;transition:background .4s,color .4s}
+.tab:hover{color:#ffffff}
+.tab.on{background:var(--y);color:#0A0A0A;box-shadow:0 8px 30px -10px color-mix(in srgb,var(--y) 80%,transparent)}
+.faq-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:24px;background:transparent;border:0;color:var(--txt);font:600 20px/1.3 var(--font-inter-tight),sans-serif;text-align:left;padding:26px 0;cursor:pointer}
+.faq-btn:hover{color:var(--y)}
+.swap{animation:inUp .7s cubic-bezier(.16,1,.3,1) both}
+.grain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:60;opacity:.07;mix-blend-mode:overlay;animation:grain 1s steps(4) infinite}
+@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-2%,1%)}50%{transform:translate(1%,-2%)}75%{transform:translate(2%,2%)}100%{transform:translate(0,0)}}
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:70;background:linear-gradient(90deg,var(--v),var(--y));transform-origin:left;transform:scaleX(0)}
+.tilt{transition:transform .8s cubic-bezier(.16,1,.3,1)}
+.orb{animation:spin 30s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@supports (animation-timeline: view()){
+.rv{animation:rvUp linear both;animation-timeline:view();animation-range:entry 0% entry 70%}
+.rv2{animation:rvUp linear both;animation-timeline:view();animation-range:entry 10% entry 90%}
+.w{animation:wl linear both;animation-timeline:view();animation-range:cover 18% cover 42%}
+.zoom{animation:zoomIn linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+.progress{animation:grow linear both;animation-timeline:scroll(root)}
+.parx{animation:parx linear both;animation-timeline:view();animation-range:cover 0% cover 100%}
+}
+@keyframes rvUp{from{opacity:0;transform:translateY(70px) scale(.96);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+@keyframes wl{from{opacity:.13;filter:blur(2px)}to{opacity:1;filter:none}}
+@keyframes zoomIn{from{transform:scale(.86);opacity:.25;border-radius:60px}to{transform:scale(1);opacity:1}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes parx{from{transform:translateY(80px)}to{transform:translateY(-80px)}}
+@media (max-width:960px){
+.g2{grid-template-columns:minmax(0,1fr) !important}
+.g3,.g4{grid-template-columns:minmax(0,1fr) !important}
+.hide-m{display:none !important}
+.h1{font-size:56px !important}
+.h2{font-size:42px !important}
+.mani{font-size:40px !important}
+.pad{padding-left:20px !important;padding-right:20px !important}
+.step{position:relative !important;top:auto !important}
+.ctaH{font-size:52px !important}
+}
+@media (prefers-reduced-motion:reduce){
+.blob,.floaty,.mq,.sheen,.grain,.dash,.orb,.pulse{animation:none !important}
+.rv,.rv2,.w,.zoom,.parx,.line>span,.in{animation:none !important;opacity:1 !important;transform:none !important;filter:none !important}
+}

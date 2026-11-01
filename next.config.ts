@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+// unkast.com et www.unkast.com (page de vente).
+const MARKETING_HOST = { type: "host", value: "(?:www\\.)?unkast\\.com" } as const;
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.1.241"],
   devIndicators: false,
@@ -50,8 +53,26 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Page de vente sur unkast.com (src/app/site). app.unkast.com garde son accueil
+  // (WelcomeClient) : l'app Android s'ouvre sur sa racine (capacitor.config.ts).
+  // Fait ici et non dans src/proxy.ts : le proxy ignore les prechargements, une
+  // reecriture de next.config s'applique a toutes les requetes.
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: "/", has: [MARKETING_HOST], destination: "/site" }],
+    };
+  },
   async redirects() {
     return [
+      // Le reste de unkast.com renvoie vers l'app (pas de second domaine pour l'app).
+      // Exclus : /site, les fichiers internes de Next et tout chemin avec une
+      // extension (images, robots.txt, sitemap.xml).
+      {
+        source: "/:path((?!_next/|site(?:/|$))[^.]+)",
+        has: [MARKETING_HOST],
+        destination: "https://app.unkast.com/:path",
+        permanent: false,
+      },
       { source: "/dashboard", destination: "/moi", permanent: true },
       { source: "/dashboard/projets", destination: "/moi", permanent: true },
       { source: "/dashboard/contacts", destination: "/moi", permanent: true },
