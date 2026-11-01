@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUserStatus } from "@/hooks/useUserStatus";
+import { DAILY_CONVERSATION_LIMIT } from "@/lib/messaging";
 import Avatar from "@/components/Avatar";
 import { EnterItem, EnterList } from "@/components/motion";
 import Button from "@/components/ui/Button";
@@ -158,7 +159,7 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
 
   // Même emplacement, quota différent : nouveaux contacts du jour (Pro) ou
   // personnes contactées à vie (gratuit).
-  const quotaReached = userPlan === "pro" ? dailyCount >= 5 : contactsUsed !== null && contactsUsed >= contactsLimit;
+  const quotaReached = userPlan === "pro" ? dailyCount >= DAILY_CONVERSATION_LIMIT : contactsUsed !== null && contactsUsed >= contactsLimit;
 
   return (
     <div className={PAGE}>
@@ -169,7 +170,7 @@ function ProConversationsList({ userPlan }: { userPlan: "free" | "pro" }) {
         {(userPlan === "pro" || contactsUsed !== null) && (
           <p className={`pb-1.5 font-mono text-[10px] ${quotaReached ? "text-orange-400" : "text-text-secondary"}`}>
             {userPlan === "pro" ? (
-              <>{dailyCount} / 5 nouveaux contacts aujourd&apos;hui</>
+              <>{dailyCount} / {DAILY_CONVERSATION_LIMIT} nouveaux contacts aujourd&apos;hui</>
             ) : (
               <>{contactsUsed} / {contactsLimit} contacts gratuits</>
             )}

@@ -7,6 +7,7 @@ import { use } from "react";
 import ReportModal from "@/components/ReportModal";
 import Avatar from "@/components/Avatar";
 import Button from "@/components/ui/Button";
+import { DAILY_CONVERSATION_LIMIT } from "@/lib/messaging";
 
 interface Message {
   id: string;
@@ -481,7 +482,7 @@ export default function ConversationPage({
       {error === "daily_limit" && (
         <div style={{ padding: "8px 16px" }}>
           <p style={{ fontSize: 13, color: "#f97316" }}>
-            Limite de 5 nouveaux contacts atteinte aujourd&apos;hui. Réessaie demain.
+            Limite de {DAILY_CONVERSATION_LIMIT} nouveaux contacts atteinte aujourd&apos;hui. Réessaie demain.
           </p>
         </div>
       )}

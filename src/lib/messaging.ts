@@ -21,10 +21,10 @@ const COUNT_FAILED = { message: "Comptage indisponible." };
 // ---------------------------------------------------------------------------
 // S'applique a TOUS les plans (inchange). Pour un compte gratuit il est en
 // pratique inatteignable : le quota A VIE ci-dessous (2) est plus bas que ce
-// plafond journalier (5), donc il mord toujours en premier. Aucun cas
+// plafond journalier (20), donc il mord toujours en premier. Aucun cas
 // particulier a ecrire — mais si le quota gratuit passait un jour au-dessus de
-// 5, ce plafond journalier commencerait a s'appliquer aussi aux comptes free.
-export const DAILY_CONVERSATION_LIMIT = 5;
+// 20, ce plafond journalier commencerait a s'appliquer aussi aux comptes free.
+export const DAILY_CONVERSATION_LIMIT = 20;
 
 export const DAILY_LIMIT_MESSAGE = `Tu as atteint ta limite de ${DAILY_CONVERSATION_LIMIT} nouveaux contacts par jour. Réessaie demain.`;
 

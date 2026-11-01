@@ -25,7 +25,7 @@ import { flagContactInfo } from "@/lib/contact-flag";
 //           est illimité. Voir FREE_CONTACT_LIMIT. Remplace, le 2026-08-10,
 //           l'ancien blocage binaire « seuls les Pro peuvent initier ».
 // RÈGLE 2 : Tout le monde peut répondre (gratuit inclus), sans quota
-// RÈGLE 3 : Max 5 nouvelles conversations/jour (tous plans)
+// RÈGLE 3 : Max DAILY_CONVERSATION_LIMIT nouvelles conversations/jour (tous plans)
 // RÈGLE 4 : Délai 48h si pas de réponse avant relance
 // RÈGLE 5 : Coordonnées bloquées dans les 3 premiers messages
 // RÈGLE 6 : Badge non lus visible pour tous (free et pro)
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── RÈGLE 3 : Max 5 nouvelles conversations/jour (helper partagé avec
+  // ── RÈGLE 3 : Max DAILY_CONVERSATION_LIMIT nouvelles conversations/jour (helper partagé avec
   // api/messages/conversation POST — aucune des deux routes ne peut diverger) ──
   if (isNewConversation) {
     const { count: dailyConvs, error: dailyError } = await countConversationsInitiatedToday(admin, user.id);

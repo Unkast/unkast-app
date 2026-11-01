@@ -7,7 +7,7 @@ Statut : accepté
 
 La page de vente doit vivre sur unkast.com ; l'app est sur app.unkast.com. L'app Android est une coque Capacitor qui ouvre `https://app.unkast.com/` au lancement (`capacitor.config.ts`) : la racine de app.unkast.com (WelcomeClient) ne peut pas changer.
 
-La page affiche des chiffres qui existent déjà dans le code : 3 films gratuits (`MAX_PROJECTS_FREE`), 2 personnes contactées (`FREE_CONTACT_LIMIT`), 5 nouvelles conversations par jour (`DAILY_CONVERSATION_LIMIT`), date du Pro offert (`LAUNCH_PRO_UNTIL`), libellés des catégories.
+La page affiche des chiffres qui existent déjà dans le code : 3 films gratuits (`MAX_PROJECTS_FREE`), 2 personnes contactées (`FREE_CONTACT_LIMIT`), 20 nouvelles conversations par jour (`DAILY_CONVERSATION_LIMIT`), date du Pro offert (`LAUNCH_PRO_UNTIL`), libellés des catégories.
 
 ## Décision
 
