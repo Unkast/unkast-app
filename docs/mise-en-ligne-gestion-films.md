@@ -181,7 +181,8 @@ A tester, sur telephone :
 Avant de deployer :
 - [ ] Executer `20261012_terms_acceptance.sql`, puis ses verifications 1 et 2.
 - [x] **Informations de la societe** remplies dans `src/lib/legal.ts` le 09/10/2026 (JMB Vision
-      FZCO). Plus aucun champ entre crochets sur les trois pages.
+      FZCO). Plus aucun champ entre crochets sur les trois pages. Telephone de l'editeur
+      (`LEGAL.contactPhone`) ajoute le 01/11/2026, affiche dans /mentions-legales sous l'email de contact.
 - [x] Textes relus : Pro offert jusqu'au 1er fevrier 2027 confirme ; adresse de Vercel verifiee
       sur vercel.com le 09/10/2026. Les pages s'adressent a des membres du monde entier.
 - [ ] Deux regles ajoutees par proposition restent a valider : contenus sexuels explicites

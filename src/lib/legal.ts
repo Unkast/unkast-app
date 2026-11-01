@@ -22,6 +22,7 @@ export const LEGAL = {
   registration: "Licence n° 50784, délivrée par l'IFZA (International Free Zone Authority), Dubaï",
   publisher: "Maxime Benak, General Director",
   contactEmail: "contact@unkast.com",
+  contactPhone: "+971 50 320 9553",
   // Region d'hebergement de la base Supabase : decide du paragraphe sur les
   // transferts hors Union europeenne.
   hostingRegion: "Union européenne (Paris, France)",

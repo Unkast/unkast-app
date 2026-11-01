@@ -34,6 +34,9 @@ export default function MentionsLegalesPage() {
           <li>
             Contact : <Info value={LEGAL.contactEmail} />
           </li>
+          <li>
+            Téléphone : <Info value={LEGAL.contactPhone} />
+          </li>
         </ul>
       </Section>
 
