@@ -6,6 +6,8 @@ import { isGrantValid, validateGrantExpiry, type ProGrantType } from "@/lib/pro-
 import { CATEGORY_LABELS, DECLARED_ROLES, REFUSAL_REASONS, episodesLabel } from "@/lib/constants";
 import { episodeUrl, formatDateParis } from "@/lib/utils";
 import VideoFacade from "@/components/VideoFacade";
+import VideoEmbed from "@/components/VideoEmbed";
+import FilmPoster from "@/components/FilmPoster";
 
 type Tab = "recruiters" | "reports" | "users" | "films" | "claims";
 // Onglets ouvrables par lien direct (/admin?tab=films).
@@ -128,6 +130,7 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
   const [reasons, setReasons] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
+  const [playing, setPlaying] = useState(false);
 
   const other = reasons.includes("autre");
   const canConfirm = reasons.length > 0 && (!other || note.trim() !== "") && !busy;
@@ -144,52 +147,8 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
   const missing = { color: "#868686" } as const;
   const bigBtn = { flex: 1, minHeight: 52, borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
 
-  return (
-    <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, marginBottom: 16, maxWidth: 560, overflow: "hidden" }}>
-      {/* Le lecteur ne se monte qu'au clic (VideoFacade). */}
-      {/* Serie : la facade lit le premier episode, les autres s'ouvrent sur YouTube. */}
-      <VideoFacade url={f.episodes?.[0] ? episodeUrl(f.episodes[0].id) : f.video_url} title={f.title} poster={f.poster_url || f.preview_url} />
-
-      <div style={{ padding: 16 }}>
-        <p style={{ fontSize: 17, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.3, overflowWrap: "anywhere" }}>{f.title}</p>
-
-        {/* Titre et chaine lus chez YouTube / Vimeo a la soumission : a
-            comparer au titre saisi et au deposant (vol d'oeuvre). */}
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 12, marginTop: 10, fontSize: 13, color: "#aaa", lineHeight: 1.7, overflowWrap: "anywhere" }}>
-          <p style={{ margin: 0 }}><span style={label}>Titre d&apos;origine :</span> {f.source_title || <span style={missing}>non relevé</span>}</p>
-          <p style={{ margin: 0 }}><span style={label}>Chaîne d&apos;origine :</span> {f.source_author || <span style={missing}>non relevée</span>}</p>
-          <p style={{ margin: 0 }}><span style={label}>Rôle déclaré :</span> {declaredRole || <span style={missing}>aucune déclaration</span>}</p>
-          <p style={{ margin: 0 }}><span style={label}>Catégorie :</span> {category}{f.episode_count ? ` · ${episodesLabel(f.episode_count)}` : ""}</p>
-          {f.episodes && f.episodes.length > 0 && (
-            <ol style={{ margin: "4px 0 4px 20px", padding: 0 }}>
-              {f.episodes.map((ep, i) => (
-                <li key={`${ep.id}-${i}`}>
-                  <a href={episodeUrl(ep.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00", textDecoration: "none" }}>{ep.title || ep.id}</a>
-                </li>
-              ))}
-            </ol>
-          )}
-          <p style={{ margin: 0 }}><span style={label}>Année :</span> {f.year}</p>
-          {f.source_duration != null && <p style={{ margin: 0 }}><span style={label}>Durée :</span> {formatDuration(f.source_duration)}</p>}
-          <p style={{ margin: 0 }}>
-            <span style={label}>Publié par :</span>{" "}
-            {f.owner_slug
-              ? <Link href={`/profil/${f.owner_slug}`} target="_blank" style={{ color: "#C8FF00", textDecoration: "none" }}>{f.owner_name || f.owner_slug}</Link>
-              : <span style={{ color: "#f97316" }}>sans Responsable</span>}
-          </p>
-        </div>
-
-        <p style={{ fontSize: 11, color: "#868686", marginTop: 8 }}>
-          Proposé le {formatDateParis(f.created_at, "short")} ·{" "}
-          <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#A8A8B0" }}>Lien vidéo</a>
-        </p>
-
-        {!refusing ? (
-          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <button onClick={onApprove} disabled={busy} style={{ ...bigBtn, background: "#22c55e", border: "none", color: "#0d0d0d", opacity: busy ? 0.5 : 1 }}>Approuver</button>
-            <button onClick={() => setRefusing(true)} disabled={busy} style={{ ...bigBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.35)", color: "#ef4444", opacity: busy ? 0.5 : 1 }}>Refuser</button>
-          </div>
-        ) : (
+  const rowBtn = { minHeight: 40, padding: "0 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" } as const;
+  const refusePanel = (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <p style={{ fontSize: 13, color: "#A8A8B0", marginBottom: 10 }}>Motif du refus (un ou plusieurs)</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -234,7 +193,107 @@ function PendingFilmCard({ film: f, busy, onApprove, onRefuse }: {
               <button onClick={() => setRefusing(false)} disabled={busy} style={{ ...bigBtn, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#A8A8B0" }}>Annuler</button>
             </div>
           </div>
+  );
+
+  return (
+    <div className="max-w-[560px] md:max-w-none" style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, marginBottom: 12, overflow: "hidden" }}>
+      {/* Mobile : carte en colonne (inchangee). Le lecteur ne se monte qu'au clic (VideoFacade). */}
+      <div className="md:hidden">
+        {/* Serie : la facade lit le premier episode, les autres s'ouvrent sur YouTube. */}
+        <VideoFacade url={f.episodes?.[0] ? episodeUrl(f.episodes[0].id) : f.video_url} title={f.title} poster={f.poster_url || f.preview_url} />
+
+        <div style={{ padding: 16 }}>
+        <p style={{ fontSize: 17, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.3, overflowWrap: "anywhere" }}>{f.title}</p>
+
+        {/* Titre et chaine lus chez YouTube / Vimeo a la soumission : a
+            comparer au titre saisi et au deposant (vol d'oeuvre). */}
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: 12, marginTop: 10, fontSize: 13, color: "#aaa", lineHeight: 1.7, overflowWrap: "anywhere" }}>
+          <p style={{ margin: 0 }}><span style={label}>Titre d&apos;origine :</span> {f.source_title || <span style={missing}>non relevé</span>}</p>
+          <p style={{ margin: 0 }}><span style={label}>Chaîne d&apos;origine :</span> {f.source_author || <span style={missing}>non relevée</span>}</p>
+          <p style={{ margin: 0 }}><span style={label}>Rôle déclaré :</span> {declaredRole || <span style={missing}>aucune déclaration</span>}</p>
+          <p style={{ margin: 0 }}><span style={label}>Catégorie :</span> {category}{f.episode_count ? ` · ${episodesLabel(f.episode_count)}` : ""}</p>
+          {f.episodes && f.episodes.length > 0 && (
+            <ol style={{ margin: "4px 0 4px 20px", padding: 0 }}>
+              {f.episodes.map((ep, i) => (
+                <li key={`${ep.id}-${i}`}>
+                  <a href={episodeUrl(ep.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00", textDecoration: "none" }}>{ep.title || ep.id}</a>
+                </li>
+              ))}
+            </ol>
+          )}
+          <p style={{ margin: 0 }}><span style={label}>Année :</span> {f.year}</p>
+          {f.source_duration != null && <p style={{ margin: 0 }}><span style={label}>Durée :</span> {formatDuration(f.source_duration)}</p>}
+          <p style={{ margin: 0 }}>
+            <span style={label}>Publié par :</span>{" "}
+            {f.owner_slug
+              ? <Link href={`/profil/${f.owner_slug}`} target="_blank" style={{ color: "#C8FF00", textDecoration: "none" }}>{f.owner_name || f.owner_slug}</Link>
+              : <span style={{ color: "#f97316" }}>sans Responsable</span>}
+          </p>
+        </div>
+
+        <p style={{ fontSize: 11, color: "#868686", marginTop: 8 }}>
+          Proposé le {formatDateParis(f.created_at, "short")} ·{" "}
+          <a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#A8A8B0" }}>Lien vidéo</a>
+        </p>
+
+        {!refusing ? (
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <button onClick={onApprove} disabled={busy} style={{ ...bigBtn, background: "#22c55e", border: "none", color: "#0d0d0d", opacity: busy ? 0.5 : 1 }}>Approuver</button>
+            <button onClick={() => setRefusing(true)} disabled={busy} style={{ ...bigBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.35)", color: "#ef4444", opacity: busy ? 0.5 : 1 }}>Refuser</button>
+          </div>
+        ) : refusePanel}
+        </div>
+      </div>
+      {/* Bureau : une ligne compacte (affiche, infos, boutons) ; la video se lance au clic, sous la ligne. */}
+      <div className="hidden md:block">
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 12 }}>
+          <button type="button" onClick={() => setPlaying((v) => !v)} aria-label={`Lire la vidéo : ${f.title}`} aria-expanded={playing} style={{ position: "relative", flexShrink: 0, width: 128, padding: 0, border: "none", background: "none", cursor: "pointer", borderRadius: 8, overflow: "hidden" }}>
+            <FilmPoster src={f.poster_url || f.preview_url} alt="" sizes="128px" framed>
+              <span className="absolute inset-0 bg-black/25" />
+              <span className="glass-strong absolute left-1/2 top-1/2 flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill text-lime">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={playing ? "M6 6h12v12H6z" : "M8 5v14l11-7z"} /></svg>
+              </span>
+            </FilmPoster>
+          </button>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#aaa", lineHeight: 1.6, overflowWrap: "anywhere" }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.3 }}>{f.title}</p>
+            <p style={{ margin: 0 }}>
+              <span style={label}>Chaîne :</span> {f.source_author || <span style={missing}>non relevée</span>}
+              {" · "}<span style={label}>Rôle :</span> {declaredRole || <span style={missing}>aucune déclaration</span>}
+              {" · "}{category}{f.episode_count ? ` · ${episodesLabel(f.episode_count)}` : ""}
+              {" · "}{f.year}{f.source_duration != null ? ` · ${formatDuration(f.source_duration)}` : ""}
+            </p>
+            <p style={{ margin: 0 }}><span style={label}>Titre d&apos;origine :</span> {f.source_title || <span style={missing}>non relevé</span>}</p>
+            {f.episodes && f.episodes.length > 0 && (
+              <p style={{ margin: 0 }}>
+                <span style={label}>Épisodes :</span>{" "}
+                {f.episodes.map((ep, i) => (
+                  <span key={`${ep.id}-${i}`}>{i > 0 ? " · " : ""}<a href={episodeUrl(ep.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#C8FF00", textDecoration: "none" }}>{ep.title || ep.id}</a></span>
+                ))}
+              </p>
+            )}
+            <p style={{ margin: 0 }}>
+              <span style={label}>Publié par :</span>{" "}
+              {f.owner_slug
+                ? <Link href={`/profil/${f.owner_slug}`} target="_blank" style={{ color: "#C8FF00", textDecoration: "none" }}>{f.owner_name || f.owner_slug}</Link>
+                : <span style={{ color: "#f97316" }}>sans Responsable</span>}
+              {" · "}{formatDateParis(f.created_at, "short")}
+              {" · "}<a href={f.video_url} target="_blank" rel="noopener noreferrer" style={{ color: "#A8A8B0" }}>Lien vidéo</a>
+            </p>
+          </div>
+          {!refusing && (
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button onClick={onApprove} disabled={busy} style={{ ...rowBtn, background: "#22c55e", border: "none", color: "#0d0d0d", opacity: busy ? 0.5 : 1 }}>Approuver</button>
+              <button onClick={() => setRefusing(true)} disabled={busy} style={{ ...rowBtn, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.35)", color: "#ef4444", opacity: busy ? 0.5 : 1 }}>Refuser</button>
+            </div>
+          )}
+        </div>
+        {playing && (
+          <div style={{ padding: "0 12px 12px", maxWidth: 760 }}>
+            <VideoEmbed url={f.episodes?.[0] ? episodeUrl(f.episodes[0].id) : f.video_url} title={f.title} autoplay />
+          </div>
         )}
+        {refusing && <div style={{ padding: "0 16px 16px" }}>{refusePanel}</div>}
       </div>
     </div>
   );
@@ -475,7 +534,7 @@ export default function AdminClient({ initialTab }: { initialTab?: string }) {
   const pill = { fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "#A8A8B0", textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace", whiteSpace: "nowrap" } as const;
 
   return (
-    <div style={{ padding: "20px 16px 120px", maxWidth: 900, margin: "0 auto" }}>
+    <div style={{ padding: "20px 16px 120px", maxWidth: 1100, margin: "0 auto" }}>
       {/* Toast */}
       {toast && (
         <div style={{ position: "fixed", top: "calc(16px + env(safe-area-inset-top, 0px))", right: 16, zIndex: 150, maxWidth: "calc(100vw - 32px)", padding: "10px 16px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, color: "#f0f0f0" }}>
