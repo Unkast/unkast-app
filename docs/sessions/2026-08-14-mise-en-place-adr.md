@@ -43,7 +43,7 @@ Le projet avait une documentation technique fournie (`docs/`, 8 fichiers) mais a
 
 ## Contraintes découvertes
 
-- `MAX_PROJECTS_FREE = 3` et `MAX_PROJECTS_PRO = 30` depuis le 2026-08-10 (nouveau modèle économique, valeur passée de 2 à 3). Les 9 usages produits interpolent la constante depuis `src/lib/constants.ts`, aucun nombre n'est écrit en dur dans l'interface. Le commentaire du fichier signale que la valeur a déjà divergé une fois : ne jamais réintroduire de valeur littérale.
+- `MAX_PROJECTS_FREE = 3` depuis le 2026-08-10 (nouveau modèle économique, valeur passée de 2 à 3) ; le Pro est illimité, il n'existe pas de `MAX_PROJECTS_PRO` (correction du 1er novembre 2026). Les 9 usages produits interpolent la constante depuis `src/lib/constants.ts`, aucun nombre n'est écrit en dur dans l'interface. Le commentaire du fichier signale que la valeur a déjà divergé une fois : ne jamais réintroduire de valeur littérale.
 
 - `AGENTS.md` n'est pas un fichier rédigé à la main. Son contenu est encadré par `<!-- BEGIN:nextjs-agent-rules -->` / `<!-- END:nextjs-agent-rules -->`, marqueurs d'un bloc généré et géré par l'outillage Next.js. Toute modification manuelle à l'intérieur de ces marqueurs risque d'être écrasée.
 
