@@ -125,6 +125,7 @@ const CATEGORY_IMG_VERSION = "2";
 // dans des caches navigateur/SW -> fichier renommé publicite-bg.webp).
 const CATEGORY_IMG_FILE: Record<string, string> = {
   publicite: "publicite-bg",
+  serie: "serie-bg",
 };
 
 // Fond image d'une carte de catégorie : public/categories/<id>.webp.

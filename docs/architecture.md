@@ -587,7 +587,7 @@ Une série (web-série, série courte) est un film de catégorie `serie` dont la
 - **Épisodes** : figés à la publication dans `projects.episodes` (`{id, title}`), relus par « Actualiser les épisodes » (`moi/FilmCard.tsx` → `POST /api/projects/[id]/episodes`). La catégorie d'une série est verrouillée dans « Modifier ».
 - **Page du film** (`ProjetClient.tsx`) : le même lecteur (`VideoEmbed`, toujours après un clic) lit l'épisode courant ; ligne « Épisode N sur M » et bouton « Épisode suivant » sous le lecteur (en haut à gauche dans la modale mobile), liste « Épisodes » avant l'équipe, passage automatique à l'épisode suivant en fin de vidéo (`onEnded` de `VideoEmbed`). Les vignettes des épisodes passent par `next/image` (aucun appel du navigateur à YouTube avant le clic). L'équipe est celle du film : générique commun à la série.
 - **Cartes** : `FilmMeta` reçoit `episodes` et écrit « N épisodes » dans la ligne d'infos, sous l'affiche (feed, recherche, fiche profil, films liés) ; la page catégorie l'écrit dans sa propre ligne. Rien sur l'affiche.
-- **Feed** : rangée « Séries » après « Court-métrage ». Recherche : tuile « Série » (dégradé seul tant que `public/categories/serie.webp` n'existe pas).
+- **Feed** : rangée « Séries » après « Court-métrage ». Recherche : tuile « Série » (dégradé seul tant que `public/categories/serie-bg.webp` n'existe pas ; nom neuf, via `CATEGORY_IMG_FILE`, pour contourner une 404 mise en cache avant l'ajout de l'image).
 - **Admin** : la fiche d'un film en attente montre le nombre d'épisodes et la liste (liens YouTube) ; la façade lit le premier épisode.
 - **Constantes** : `SERIES_CATEGORY`, `episodesLabel` (`src/lib/constants.ts`).
 
