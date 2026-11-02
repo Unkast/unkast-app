@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAdminId } from "@/lib/adminGuard";
 import ViewAs from "./ViewAs";
+import SignOutButton from "./SignOutButton";
 
 // Espace admin hors du groupe (app) : pas d'AppShell (ni sidebar, ni tab bar).
 // Double garde : le proxy redirige deja /admin (non connecte -> /admin/connexion,
@@ -20,7 +21,7 @@ export default async function AdminLayout({
     <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
       {/* Mobile : titre puis « Voir le site comme » sur une ligne en dessous ; bureau : une seule ligne. */}
       <header
-        className="flex items-center justify-between max-md:flex-col max-md:items-start max-md:gap-1.5 max-md:pb-2.5 max-md:pt-1"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-md:pb-2.5 max-md:pt-1"
         style={{
           position: "sticky",
           top: 0,
@@ -35,11 +36,14 @@ export default async function AdminLayout({
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0" }}>
+        <span className="order-1" style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0" }}>
           Unkast<span style={{ color: "#C8FF00" }}>.</span>{" "}
           <span style={{ fontWeight: 400, color: "#868686" }}>Admin</span>
         </span>
-        <ViewAs />
+        <SignOutButton className="order-2 max-md:ml-auto md:order-3" />
+        <div className="order-3 max-md:w-full md:order-2 md:ml-auto">
+          <ViewAs />
+        </div>
       </header>
       {children}
     </div>
