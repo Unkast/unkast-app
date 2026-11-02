@@ -45,6 +45,7 @@ export default function Nav() {
           {LINKS.map((l) => <a key={l.href} className={s["nav-a"]} href={l.href}>{l.label}</a>)}
         </div>
         <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+          <a className={cx(s["nav-a"], s["hide-m"])} href={APP.feed}>Explorer</a>
           <a className={cx(s["nav-a"], s["hide-m"])} href={APP.login}>Se connecter</a>
           <a className={cx(s.btn, s["btn-y"])} href={APP.join} style={{ minHeight: "44px", padding: "0 20px", fontSize: "14px" }}>Rejoindre</a>
           <button ref={button} type="button" className={s.burger} aria-label={open ? "Fermer le menu" : "Ouvrir le menu"} aria-expanded={open} aria-controls="menu-mobile" onClick={() => setOpen(!open)}>
@@ -71,6 +72,7 @@ export default function Nav() {
             {[...LINKS, { href: "#faq", label: "FAQ" }].map((l) => (
               <a key={l.href} className={s.menuA} href={l.href} onClick={close}>{l.label}</a>
             ))}
+            <a className={s.menuA} href={APP.feed} onClick={close}>Explorer</a>
             <div style={{ height: "1px", background: "rgba(255,255,255,.1)", margin: "8px 4px" }}></div>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "8px" }}>
               <a className={cx(s.btn, s["btn-g"], s.glass)} href={APP.login} onClick={close} style={{ minHeight: "48px", padding: "0 12px", fontSize: "15px" }}>Se connecter</a>

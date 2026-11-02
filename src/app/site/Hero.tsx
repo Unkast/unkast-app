@@ -60,7 +60,7 @@ export default function Hero({ film, offerUntil }: { film: SiteFilm | null; offe
           <p className={cx(s.in, s.heroP)} style={{ margin: "0", maxWidth: "520px", fontSize: "20px", lineHeight: "1.55", color: "var(--mut)", animationDelay: ".55s" }}>La plateforme où les jeunes talents du cinéma et de l&apos;audiovisuel se font repérer par leurs films. <span style={{ color: "#ffffff" }}>Pas par leur CV.</span></p>
           <div className={cx(s.in, s.ctaRow)} style={{ display: "flex", flexWrap: "wrap", gap: "12px", animationDelay: ".7s" }}>
             <a className={cx(s.btn, s["btn-y"])} href={APP.join}>Créer mon profil gratuit <Arrow /></a>
-            <a className={cx(s.btn, s["btn-g"], s.glass)} href="#etapes"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15L19.5 12z"></path></svg> Voir comment ça marche</a>
+            <a className={cx(s.btn, s["btn-g"], s.glass)} href={APP.feed}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15L19.5 12z"></path></svg> Explorer les films</a>
           </div>
           <div className={cx(s.in, s.heroChecks)} style={{ display: "flex", flexWrap: "wrap", gap: "22px", fontSize: "13px", color: "var(--mut)", animationDelay: ".85s" }}>
             {["Gratuit pour commencer", "Films validés un par un", "Contact protégé"].map((t) => (
