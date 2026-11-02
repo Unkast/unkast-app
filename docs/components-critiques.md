@@ -82,6 +82,7 @@ Composants / modules utilises par 3+ features.
 - **Consommateurs** : `RejoindreClient`, `MoiClient`, `ProfileClient` et `ProjetClient` (singleSelect, dans une `ModalBackdrop`)
 - **Risque si modifie** : **ELEVE** — 4 features
 - **singleSelect** (chantier 7) : un clic sur un autre metier remplace le precedent
+- **Roles d'un credit (02/11/2026)** : nouvelle prop `showPrimary` (defaut oui) pour masquer « Titre principal » ; enveloppe `CreditRolesField` (`allowCustom={false}`, multi, 6 au plus) pour les roles d'une personne sur un film. Consommateurs ajoutes (via `CreditRolesField`) : `ProjetClient` (le sélecteur direct n'y est plus utilisé), `RejoindreClient` (étape film, en plus du sélecteur des métiers), `FilmCard`, `TeamList`, `DuplicateFilm`, `PublishForm`. Prop additive : aucun consommateur existant ne change
 - **Formes feminines (09/10/2026)** : `selectedRoles` peut contenir une forme feminine (« Monteuse »). Le clic sur le libelle d'une pastille bascule la forme a la meme place, la croix retire. Nouvelle prop `allowForms` (defaut oui). Ne jamais comparer un metier a la liste officielle sans `baseRole()` (`constants.ts`)
 
 ## ContactModal

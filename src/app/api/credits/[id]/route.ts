@@ -5,6 +5,8 @@ import { markProjectEdited } from "@/lib/project-edit";
 import { sendPushToUser } from "@/lib/push";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { addCreditRole } from "@/lib/project-invitations";
+import { parseCreditRoles } from "@/lib/credits";
 
 // PATCH: accept or refuse a credit request (gestionnaires du film)
 export async function PATCH(
@@ -51,6 +53,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Non autorise." }, { status: 403 });
   }
 
+  // Le credit n'accepte que des metiers de la liste. Une ancienne demande au role saisi
+  // a la main ne s'accepte pas : le gestionnaire la refuse, la personne en refait une.
+  if (status === "accepted" && !parseCreditRoles(creditReq.role)) {
+    return NextResponse.json(
+      { error: "Le rôle demandé n'est pas dans la liste des métiers. Refuse la demande : la personne pourra en refaire une avec un métier de la liste." },
+      { status: 409 }
+    );
+  }
+
   // La decision est posee AVANT le credit, filtree sur le statut : deux appels
   // simultanes ne passent pas tous les deux.
   const { data: decided, error: updateError } = await supabase
@@ -72,14 +83,11 @@ export async function PATCH(
     // l'ecrit en service role, APRES avoir verifie ci-dessus que l'appelant gere le
     // film et que la demande vient bien de la personne creditee.
     const admin = createAdminClient();
-    const { error: creditError } = await admin.from("project_credits").insert({
-      project_id: creditReq.project_id,
-      profile_id: creditReq.requester_id,
-      role_on_project: creditReq.role,
-    });
-    // 23505 : la personne a deja ce role sur ce film (unicite en base), rien a faire.
-    if (creditError && creditError.code !== "23505") {
-      console.error("[credits] insertion du credit impossible :", creditError);
+    // Une ligne par personne et par film : si la personne est deja creditee (par un
+    // gestionnaire, depuis sa demande), le role rejoint sa ligne.
+    const credited = await addCreditRole(admin, creditReq.project_id, creditReq.requester_id, creditReq.role);
+    if (!credited) {
+      console.error("[credits] insertion du credit impossible");
       // La demande repasse en attente : le gestionnaire peut reessayer.
       await admin.from("credit_requests").update({ status: "pending" }).eq("id", id);
       return NextResponse.json({ error: "Crédit impossible à enregistrer, réessaie." }, { status: 500 });

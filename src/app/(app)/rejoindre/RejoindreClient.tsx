@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants";
 import type { ProjectCategory, AccountType, DeclaredRole } from "@/types/database";
 import RoleSelector from "@/components/RoleSelector";
+import CreditRolesField from "@/components/CreditRolesField";
 import { EnterItem, EnterList } from "@/components/motion";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -149,7 +150,7 @@ export default function RejoindreClient() {
   const [claimProjectId, setClaimProjectId] = useState<string | null>(null);
   const [claimProjectTitle, setClaimProjectTitle] = useState("");
   const [claimProjectOwner, setClaimProjectOwner] = useState("");
-  const [claimRole, setClaimRole] = useState("");
+  const [claimRoles, setClaimRoles] = useState<string[]>([]);
 
   // Step 4C (recruiter)
   const [recruiterCompany, setRecruiterCompany] = useState("");
@@ -306,10 +307,10 @@ export default function RejoindreClient() {
       }
 
       // Talent: include credit request if filled
-      if (accountType === "talent" && claimProjectId && claimRole) {
+      if (accountType === "talent" && claimProjectId && claimRoles.length > 0) {
         payload.credit_request = {
           project_id: claimProjectId,
-          role: claimRole,
+          role: claimRoles.join(" / "),
         };
       }
 
@@ -750,7 +751,7 @@ export default function RejoindreClient() {
                       <Button
                         variant="glass"
                         size="sm"
-                        onClick={() => { setClaimProjectId(null); setClaimProjectTitle(""); setClaimProjectOwner(""); setClaimRole(""); }}
+                        onClick={() => { setClaimProjectId(null); setClaimProjectTitle(""); setClaimProjectOwner(""); setClaimRoles([]); }}
                       >
                         Changer
                       </Button>
@@ -758,13 +759,7 @@ export default function RejoindreClient() {
 
                     <div>
                       <p className={`${LABEL} mb-2`}>Ton rôle dans ce projet</p>
-                      <RoleSelector
-                        selectedRoles={claimRole ? [claimRole] : []}
-                        onChange={(roles) => setClaimRole(roles[0] || "")}
-                        maxSelection={1}
-                        singleSelect
-                        placeholder="Ton rôle dans ce projet..."
-                      />
+                      <CreditRolesField value={claimRoles} onChange={setClaimRoles} placeholder="Tes rôles dans ce projet..." />
                     </div>
                   </div>
                 )}

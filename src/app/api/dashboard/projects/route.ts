@@ -15,6 +15,7 @@ import {
 import { extractPlaylistId, extractVideoKey, playlistUrl, slugify } from "@/lib/utils";
 import { getActiveUser } from "@/lib/auth-guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { buildFilmCredits } from "@/lib/credits";
 import { detectContactIn } from "@/lib/contact-detector";
 import { flagContactInfo } from "@/lib/contact-flag";
 import { fetchPlaylistMeta, fetchVideoMeta, playlistRefusal } from "@/lib/oembed";
@@ -45,22 +46,12 @@ const isCategory = (v: unknown) => typeof v === "string" && Object.hasOwn(CATEGO
 const needsClientAuthorization = (category: unknown) =>
   (CLIENT_AUTHORIZATION_CATEGORIES as string[]).includes(category as string);
 
-// p_credits de publish_project : credit automatique du role declare, owner_role
-// s'il en differe, puis credits fantomes. (Meme construction dans api/signup.)
+// p_credits de publish_project : UNE ligne par personne (role declare et owner_role
+// ensemble, puis credits fantomes), roles de la liste seulement (lib/credits.ts,
+// meme construction dans api/signup).
 function buildCredits(userId: string, declaredRole: unknown, ownerRole: unknown, credits: unknown) {
   const auto = DECLARED_ROLES.find((r) => r.value === declaredRole)?.credit ?? null;
-  const own = typeof ownerRole === "string" ? ownerRole.trim() : "";
-  const out: { profile_id: string | null; ghost_name: string | null; role: string }[] = [];
-  if (auto) out.push({ profile_id: userId, ghost_name: null, role: auto });
-  if (own && own.toLowerCase() !== auto?.toLowerCase()) {
-    out.push({ profile_id: userId, ghost_name: null, role: own });
-  }
-  if (Array.isArray(credits)) {
-    for (const c of credits) {
-      if (c?.name && c?.role) out.push({ profile_id: null, ghost_name: c.name, role: c.role });
-    }
-  }
-  return out;
+  return buildFilmCredits(userId, auto, ownerRole, credits);
 }
 
 // Ce qu'un gestionnaire lit d'un refus : les phrases des motifs, puis la note.
@@ -254,6 +245,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Titre, categorie et URL video requis." }, { status: 400 });
   }
 
+  // Roles au generique : des metiers de la liste, jamais du texte libre.
+  const built = buildCredits(user.id, declared_role, owner_role, credits);
+  if (built.invalid) {
+    return NextResponse.json({ error: "Choisis les rôles au générique dans la liste des métiers (6 au plus par personne)." }, { status: 400 });
+  }
+
   const admin = createAdminClient();
   const { data: result, error } = await admin.rpc("publish_project", {
     p_profile_id: user.id,
@@ -270,7 +267,7 @@ export async function POST(request: NextRequest) {
     p_limit: projectLimit,
     p_source_title: meta.title,
     p_source_author: meta.author,
-    p_credits: buildCredits(user.id, declared_role, owner_role, credits),
+    p_credits: built.credits,
   });
 
   if (error || !result) {

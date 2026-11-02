@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Chip from "@/components/ui/Chip";
 import Field from "@/components/ui/Field";
+import CreditRolesField from "@/components/CreditRolesField";
 import { Note } from "./parts";
 import { callApi, type DuplicateProject } from "./api";
 
@@ -16,7 +17,7 @@ const CLAIM_MAX_MESSAGE = 2000;
 
 export default function DuplicateFilm({ project, onBack }: { project: DuplicateProject | null; onBack: () => void }) {
   const [choice, setChoice] = useState<Choice | null>(null);
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -105,10 +106,10 @@ export default function DuplicateFilm({ project, onBack }: { project: DuplicateP
           </p>
           {!sent.includes("credit") && (
             <>
-              <Field aria-label="Ton rôle sur le film" type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Ton rôle sur le film" />
+              <CreditRolesField value={role} onChange={setRole} placeholder="Tes rôles sur le film" />
               <Button
-                disabled={!role.trim() || busy}
-                onClick={() => send("credit", "Demande de crédit envoyée.", () => callApi("/api/credits/request", "POST", { project_id: project.id, role: role.trim() }))}
+                disabled={role.length === 0 || busy}
+                onClick={() => send("credit", "Demande de crédit envoyée.", () => callApi("/api/credits/request", "POST", { project_id: project.id, role: role.join(" / ") }))}
                 className="self-start"
               >
                 Demander à être crédité

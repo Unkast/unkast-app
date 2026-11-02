@@ -15,7 +15,8 @@ import Avatar from "@/components/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import Field from "@/components/ui/Field";
+import CreditRolesField from "@/components/CreditRolesField";
+import { splitRoles } from "@/lib/credits";
 import { callApi, type ShowToast } from "./api";
 
 type EmailInvite = { id: string; inviter_id: string | null; state: "pending" | "expired"; resend_count: number };
@@ -85,7 +86,7 @@ export default function TeamList({ projectId, showToast }: { projectId: string; 
   const [error, setError] = useState("");
   const [version, setVersion] = useState(0);
   const [editing, setEditing] = useState<string | null>(null);
-  const [editRole, setEditRole] = useState("");
+  const [editRoles, setEditRoles] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   // Action en attente de confirmation (fenetre ConfirmDialog).
   const [confirming, setConfirming] = useState<{
@@ -160,12 +161,14 @@ export default function TeamList({ projectId, showToast }: { projectId: string; 
 
                         {editing === key && isCredit ? (
                           <div className="flex flex-col gap-2 sm:flex-row">
-                            <Field aria-label="Nouveau rôle" type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)} placeholder="Rôle" className="sm:flex-1" />
+                            <div className="sm:flex-1">
+                              <CreditRolesField value={editRoles} onChange={setEditRoles} placeholder="Rôles" />
+                            </div>
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
-                                disabled={busy || !editRole.trim()}
-                                onClick={() => act(callApi(`/api/projects/${projectId}/credits/${row.credit_id}`, "PATCH", { role: editRole }), "Rôle modifié")}
+                                disabled={busy || editRoles.length === 0}
+                                onClick={() => act(callApi(`/api/projects/${projectId}/credits/${row.credit_id}`, "PATCH", { roles: editRoles }), "Rôle modifié")}
                               >
                                 Enregistrer
                               </Button>
@@ -177,7 +180,7 @@ export default function TeamList({ projectId, showToast }: { projectId: string; 
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {isCredit && (
-                              <Button variant="glass" size="sm" disabled={busy} onClick={() => { setEditing(key); setEditRole(row.role); }}>
+                              <Button variant="glass" size="sm" disabled={busy} onClick={() => { setEditing(key); setEditRoles(splitRoles(row.role)); }}>
                                 Modifier le rôle
                               </Button>
                             )}

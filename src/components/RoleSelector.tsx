@@ -23,6 +23,9 @@ interface Props {
   /** Proposer la bascule masculin / féminin sur un métier choisi (défaut : oui).
    *  Désactivé pour les postes recherchés par un recruteur, qui désignent un métier. */
   allowForms?: boolean;
+  /** Afficher « Titre principal » sur le premier metier d'une selection multiple (defaut :
+   *  oui). Desactive pour les roles d'une personne sur un film, ou aucun ne prime. */
+  showPrimary?: boolean;
 }
 
 function normalize(str: string): string {
@@ -82,6 +85,7 @@ export default function RoleSelector({
   singleSelect = false,
   allowCustom = true,
   allowForms = true,
+  showPrimary = true,
 }: Props) {
   const reduced = useReducedMotion();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -179,7 +183,7 @@ export default function RoleSelector({
       {selectedRoles.length > 0 && (!singleSelect || hasForms) && (
         <div className="mb-2.5 flex flex-wrap gap-2">
           {selectedRoles.map((role, i) => (
-            <SelectedChip key={role} role={role} primary={!singleSelect && i === 0} onRemove={() => removeRole(role)} onToggleForm={allowForms ? () => toggleForm(role) : undefined} />
+            <SelectedChip key={role} role={role} primary={showPrimary && !singleSelect && i === 0} onRemove={() => removeRole(role)} onToggleForm={allowForms ? () => toggleForm(role) : undefined} />
           ))}
         </div>
       )}
@@ -254,7 +258,7 @@ export default function RoleSelector({
                           <SelectedChip
                             key={role}
                             role={role}
-                            primary={!singleSelect && i === 0}
+                            primary={showPrimary && !singleSelect && i === 0}
                             onRemove={() => removeRole(role)}
                             onToggleForm={allowForms ? () => toggleForm(role) : undefined}
                           />

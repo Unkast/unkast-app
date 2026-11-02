@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { inviteMember, type InviteMemberResult } from "@/lib/project-invitations";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
-import { readJsonBody, invalidBodyResponse, isText, MAX_NOTE_LENGTH, MAX_ROLE_LENGTH } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText, MAX_NOTE_LENGTH } from "@/lib/api";
+import { parseCreditRoles } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST: create a project invitation (gestionnaires du film)
@@ -26,12 +27,11 @@ export async function POST(request: NextRequest) {
   if (!project_id || !invited_profile_id || !role) {
     return NextResponse.json({ error: "project_id, invited_profile_id et role requis." }, { status: 400 });
   }
-  if (
-    !isText(project_id, 64) || !isText(invited_profile_id, 64) ||
-    !isText(role, MAX_ROLE_LENGTH) || !isText(message, MAX_NOTE_LENGTH, true)
-  ) {
-    return NextResponse.json({ error: "Rôle ou message trop long." }, { status: 400 });
+  if (!isText(project_id, 64) || !isText(invited_profile_id, 64) || !isText(message, MAX_NOTE_LENGTH, true)) {
+    return NextResponse.json({ error: "Message trop long." }, { status: 400 });
   }
+  const cleanRole = parseCreditRoles(role);
+  if (!cleanRole) return NextResponse.json({ error: "Choisis des métiers dans la liste (6 au plus)." }, { status: 400 });
   // Chaque invitation envoie une notification : 30 par heure et par compte.
   if (!(await checkRateLimit(`invite-member:${user.id}`, 30, 3600))) {
     return NextResponse.json({ error: "Trop d'invitations. Réessaie plus tard." }, { status: 429 });
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     invitedId: invited_profile_id,
     inviterId: user.id,
     inviterName: guard.profile.display_name || "Un membre d'Unkast",
-    role: role.trim(),
+    role: cleanRole,
     message,
   });
   if (result !== "sent") {

@@ -56,11 +56,11 @@
 | `/api/invitations/[id]` | DELETE | `invitations`, `projects` | `invitations` |
 | `/api/invitations/[id]/resend` | POST | `invitations`, `projects`, `rate_limits` | `invitations` + email Resend |
 | `/api/projects/[id]/credits` | GET | `project_credits`, `invitations`, `project_invitations`, `profiles` | — (lecture) |
-| `/api/projects/[id]/credits/[creditId]` | PATCH, DELETE | `project_credits`, `projects` | `project_credits` |
+| `/api/projects/[id]/credits/[creditId]` | PATCH, DELETE | `project_credits`, `projects` | `project_credits` ; PATCH `{ roles: string[] }` (ou `role`) : métiers de la liste seulement (`parseCreditRoles`), 400 sinon (02/11/2026) |
 | `/api/invitations/project` | POST, GET | `projects`, `project_invitations`, `profiles` | `project_invitations` |
 | `/api/invitations/project/[id]` | PATCH, DELETE | `project_invitations`, `project_credits`, `profiles`, `projects` | `project_invitations`, `project_credits` |
-| `/api/credits/request` | POST | `project_credits`, `projects`, `profiles`, `credit_requests` | `credit_requests` |
-| `/api/credits/[id]` | PATCH, DELETE | `credit_requests`, `projects`, `project_credits` | `credit_requests`, `project_credits` |
+| `/api/credits/request` | POST | `project_credits`, `projects`, `profiles`, `credit_requests` | `credit_requests` ; `role` : métiers de la liste (texte « A / B » ou liste), 400 sinon (02/11/2026). Une personne déjà créditée ne peut pas demander un rôle de plus (409, inchangé) |
+| `/api/credits/[id]` | PATCH, DELETE | `credit_requests`, `projects`, `project_credits` | `credit_requests`, `project_credits` ; accepter passe par `addCreditRole` (les rôles rejoignent la ligne existante, plus d'`insert` direct) ; 409 si le rôle demandé est hors liste (ancienne demande) : la refuser (02/11/2026) |
 | `/api/reports` | POST | `reports`, `admin_logs` | `reports`, `admin_logs` |
 | `/api/notifications/register` | POST | — | `push_tokens` |
 | `/api/availability` | GET, POST, PATCH, DELETE | `profiles`, `availability_signals` | `availability_signals` |
@@ -295,7 +295,7 @@ Met a jour le profil. **Double client d'ecriture** : les colonnes editables par 
 
 > **Équipe d'un film, onglet Créditer (30/10/2026)** : toutes en service role après contrôle dans la route (`projectAccess`, `lib/project-invitations.ts`).
 > - `GET /api/projects/[id]/credits` (gestionnaires) : `{ is_owner, me, team }`, lignes `member` (crédit confirmé), `ghost` (crédit sans compte + état de son invitation email `pending`/`expired`, `resend_count`), `invited` (invitation membre en attente). L'email invité n'est pas renvoyé.
-> - `PATCH /api/projects/[id]/credits/[creditId]` `{ role }` : gestionnaires ; 409 si la personne a déjà ce rôle sur une autre ligne. `DELETE` : **Responsable seul** (un membre se retire lui-même par `DELETE /api/dashboard/credits`).
+> - `PATCH /api/projects/[id]/credits/[creditId]` `{ roles }` (02/11/2026 : liste de métiers, plus de texte libre ; une ligne par personne, donc plus de 409 sur une autre ligne) : gestionnaires. `DELETE` : **Responsable seul** (un membre se retire lui-même par `DELETE /api/dashboard/credits`).
 > - `DELETE /api/invitations/project/[id]` : auteur de l'invitation **ou Responsable**, invitation en attente seulement.
 > - `DELETE /api/invitations/[id]` : annule une invitation par email non acceptée (auteur ou Responsable) ; le crédit sans compte reste.
 > - `POST /api/invitations/[id]/resend` : gestionnaires ; nouveau token, `expires_at` à 30 jours, `status = pending`, `resend_count + 1` (3 au plus, colonne de `20261031_invitation_resends.sql`), compte dans la limite `invite:<userId>` de 5 par jour.

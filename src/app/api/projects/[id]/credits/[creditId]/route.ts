@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
-import { readJsonBody, invalidBodyResponse, isText, MAX_ROLE_LENGTH } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { parseCreditRoles } from "@/lib/credits";
 import { projectAccess } from "@/lib/project-invitations";
 
 type Params = { params: Promise<{ id: string; creditId: string }> };
@@ -33,9 +34,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id, creditId } = await params;
   const body = await readJsonBody(request);
   if (!body) return invalidBodyResponse();
-  const role = typeof body.role === "string" ? body.role.trim() : "";
-  if (!role || !isText(role, MAX_ROLE_LENGTH)) {
-    return NextResponse.json({ error: "Rôle manquant ou trop long." }, { status: 400 });
+  // Les roles de la personne sur ce film : des metiers de la liste, jamais du texte libre.
+  const role = parseCreditRoles(body.roles ?? body.role);
+  if (!role) {
+    return NextResponse.json({ error: "Choisis des métiers dans la liste (6 au plus)." }, { status: 400 });
   }
 
   const admin = createAdminClient();

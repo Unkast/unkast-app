@@ -20,7 +20,7 @@ import Badge from "@/components/ui/Badge";
 import Field from "@/components/ui/Field";
 import GlassCard from "@/components/ui/GlassCard";
 import ReportModal from "@/components/ReportModal";
-import RoleSelector from "@/components/RoleSelector";
+import CreditRolesField from "@/components/CreditRolesField";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { isDirectorRole } from "@/lib/credits";
 import { SERIES_CATEGORY, episodesLabel } from "@/lib/constants";
@@ -123,7 +123,7 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
   const [creditStatus, setCreditStatus] = useState<FilmStatus>(NO_STATUS);
   const [creditStatusLoaded, setCreditStatusLoaded] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
-  const [creditRole, setCreditRole] = useState("");
+  const [creditRoles, setCreditRoles] = useState<string[]>([]);
   const [creditMessage, setCreditMessage] = useState("");
   const [creditSending, setCreditSending] = useState(false);
   const [creditToast, setCreditToast] = useState("");
@@ -163,16 +163,16 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
   function toast(msg: string) { setCreditToast(msg); setTimeout(() => setCreditToast(""), 4000); }
 
   async function submitCreditRequest() {
-    if (!creditRole) return;
+    if (creditRoles.length === 0) return;
     setCreditSending(true);
     try {
       const res = await fetch("/api/credits/request", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: project.id, role: creditRole, message: creditMessage || null }),
+        body: JSON.stringify({ project_id: project.id, role: creditRoles.join(" / "), message: creditMessage || null }),
       });
       const data = await res.json();
       if (res.ok) {
-        setShowCreditModal(false); setCreditRole(""); setCreditMessage("");
+        setShowCreditModal(false); setCreditRoles([]); setCreditMessage("");
         setCreditStatus({ ...creditStatus, hasPendingRequest: true });
         toast("Demande envoyée ! Les gestionnaires du film seront notifiés.");
       } else toast(data.error || "Erreur");
@@ -264,7 +264,9 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
   const desc = project.description || "";
   const descLong = desc.length > 280;
   const poster = project.preview_url || project.poster_url || null;
-  const talents = `${project.credits.length} talent${project.credits.length !== 1 ? "s" : ""}`;
+  // Personnes uniques : une personne = un talent, meme si une ancienne fiche la liste deux fois.
+  const talentCount = new Set(project.credits.map((c) => c.profile_id ?? (c.ghost_name ? `g:${c.ghost_name.trim().toLowerCase()}` : c.id))).size;
+  const talents = `${talentCount} talent${talentCount !== 1 ? "s" : ""}`;
 
   return (
     <>
@@ -596,19 +598,13 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
               <p className="text-sm text-text-secondary mb-5">{project.title}</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Ton rôle *</label>
-                  <RoleSelector
-                    selectedRoles={creditRole ? [creditRole] : []}
-                    onChange={(roles) => setCreditRole(roles[0] || "")}
-                    maxSelection={1}
-                    singleSelect
-                    placeholder="Ton rôle dans ce projet..."
-                  />
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Tes rôles *</label>
+                  <CreditRolesField value={creditRoles} onChange={setCreditRoles} placeholder="Tes rôles dans ce projet..." />
                 </div>
                 <Field multiline rows={3} maxLength={300} label={<>Message <span className="text-text-tertiary">({creditMessage.length}/300)</span></>} value={creditMessage} onChange={(e) => setCreditMessage(e.target.value)} placeholder="Dis-lui comment tu as contribue..." />
               </div>
               <div className="flex gap-3 mt-5">
-                <Button onClick={submitCreditRequest} disabled={!creditRole || creditSending} className="flex-1">
+                <Button onClick={submitCreditRequest} disabled={creditRoles.length === 0 || creditSending} className="flex-1">
                   {creditSending ? "Envoi..." : "Envoyer la demande"}
                 </Button>
                 <Button variant="glass" onClick={() => setShowCreditModal(false)}>Annuler</Button>

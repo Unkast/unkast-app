@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { mergeRoles } from "@/lib/credits";
+import { mergeRoles, parseCreditRoles } from "@/lib/credits";
 import { sendPushToUser } from "@/lib/push";
 import { sendMemberCreditEmail } from "@/lib/email";
 
@@ -34,37 +34,46 @@ export async function projectAccess(
 const REINVITE_DELAY_MS = 30 * 24 * 3600 * 1000;
 
 /**
- * Ajoute un role a une personne sur un film. Si elle est deja creditee, le role
- * rejoint sa ligne (« Monteur / Etalonneur »), sans doublon. Sinon, nouvelle ligne.
+ * Ajoute un ou des roles a une personne sur un film : UNE ligne par personne
+ * (20261102_credits_one_row_per_person.sql). Si elle est deja creditee, les roles
+ * rejoignent sa ligne (« Monteur / Etalonneur »), sans doublon. Sinon, nouvelle
+ * ligne. Un role hors liste est refuse (false), jamais ecrit.
  */
 export async function addCreditRole(admin: Admin, projectId: string, profileId: string, role: string): Promise<boolean> {
-  const { data: existing, error } = await admin
-    .from("project_credits")
-    .select("id, role_on_project")
-    .eq("project_id", projectId)
-    .eq("profile_id", profileId)
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    console.error("[project-invitations] lecture du credit :", error);
-    return false;
-  }
+  const wanted = parseCreditRoles(role);
+  if (!wanted) return false;
 
-  if (existing) {
-    const merged = mergeRoles(existing.role_on_project, role);
-    if (!merged) return true; // role deja present
-    const { error: updateError } = await admin.from("project_credits").update({ role_on_project: merged }).eq("id", existing.id);
-    if (updateError) console.error("[project-invitations] fusion du role :", updateError);
-    return !updateError;
-  }
+  // Deux passes : si un appel simultane cree la ligne entre la lecture et l'insertion
+  // (23505, une seule ligne par personne), la seconde passe fusionne dans cette ligne.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data: existing, error } = await admin
+      .from("project_credits")
+      .select("id, role_on_project")
+      .eq("project_id", projectId)
+      .eq("profile_id", profileId)
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error("[project-invitations] lecture du credit :", error);
+      return false;
+    }
 
-  const { error: insertError } = await admin.from("project_credits").insert({ project_id: projectId, profile_id: profileId, role_on_project: role });
-  // 23505 : ligne creee entre-temps par un appel simultane, le credit existe.
-  if (insertError && insertError.code !== "23505") {
-    console.error("[project-invitations] creation du credit :", insertError);
-    return false;
+    if (existing) {
+      const merged = mergeRoles(existing.role_on_project, wanted);
+      if (!merged) return true; // roles deja presents
+      const { error: updateError } = await admin.from("project_credits").update({ role_on_project: merged }).eq("id", existing.id);
+      if (updateError) console.error("[project-invitations] fusion du role :", updateError);
+      return !updateError;
+    }
+
+    const { error: insertError } = await admin.from("project_credits").insert({ project_id: projectId, profile_id: profileId, role_on_project: wanted });
+    if (!insertError) return true;
+    if (insertError.code !== "23505") {
+      console.error("[project-invitations] creation du credit :", insertError);
+      return false;
+    }
   }
-  return true;
+  return false;
 }
 
 export type InviteMemberResult = "sent" | "already_credited" | "pending" | "recently_refused" | "error";

@@ -124,6 +124,9 @@
 | `api/recruitment/dispatch` (POST), `api/messages/conversation` (POST) | [declenche] | `recordProfileEvent` (`list_add`, `message_click`) dans `after()` : un échec n'affecte jamais la réponse |
 | `MoiClient` (onglet Profil) → `moi/ProfileStats.tsx` | [appelle] | `GET /api/me/stats` → `profile_stats_daily` ; Pro : chiffres, gratuit : aperçu flouté de faux chiffres fixes + `ui/Button` vers `/pro` |
 | `api/cron/retention` | [persiste dans] | `profile_stat_events` (DELETE > 7 jours), `profile_stat_salts` (DELETE jours passés) |
+| `CreditRolesField` | [utilise] | `RoleSelector` (`allowCustom={false}`, `showPrimary={false}`, `maxSelection` = `MAX_CREDIT_ROLES`) ; [utilisé par] `ProjetClient`, `RejoindreClient`, `moi/FilmCard`, `moi/TeamList`, `moi/DuplicateFilm`, `moi/PublishForm` |
+| `lib/credits.ts` (`parseCreditRoles`, `mergeRoles`, `buildFilmCredits`) | [impacte] | `api/credits/request`, `api/credits/[id]`, `api/projects/[id]/credits/[creditId]`, `api/invitations`, `api/invitations/project`, `api/dashboard/projects`, `api/signup`, `lib/project-invitations.ts` (`addCreditRole`), `TeamList` (`splitRoles`) ; l'ordre des métiers suit `ALL_ROLES` et la copie de la migration `20261102` |
+| `api/signup` (invitation par email) | [declenche] | fusion du crédit sans compte dans la ligne du compte s'il est déjà crédité sur le film (`mergeRoles`), sinon rattachement du crédit au compte |
 | `FOLDER_NOTE_MAX` (`lib/constants.ts`) | [impacte] | `api/recruitment/dispatch` (PATCH), `RecruitmentSpace` ; doit rester égal au CHECK `folder_candidates_note_length` |
 | `MoiClient` (onglet Compte) | [appelle] | `POST /api/account/delete` → `lib/stripe.ts` (résiliation), RPC `solo_projects_of`, `auth.admin.deleteUser` (triggers `keep_credit_name_on_profile_delete`, `transfer_projects_on_profile_delete`), Storage `avatars` `posters` `claims`, `lib/email.ts` (`sendAccountDeletedEmail`) ; `ConfirmDialog` (`children`, `confirmDisabled`) ; puis `WelcomeClient` (`/?compte=supprime`, `ui/Toast`) |
 | `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
@@ -235,6 +238,7 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `contact_requests.to_profile_id` | → | `profiles.id` | CASCADE |
 | `profile_stat_events.profile_id` | → | `profiles.id` | CASCADE |
 | `profile_stats_daily.profile_id` | → | `profiles.id` | CASCADE |
+| `project_credits (project_id, profile_id)` | unique | une ligne par personne et par film (index `project_credits_one_row_per_person`) | — |
 
 | `lib/adminGuard.ts`, `lib/supabase/middleware.ts` | [depend de] | `lib/adminSession.ts` (`sessionStrength` : mot de passe + aal2) |
 | `lib/supabase/server.ts` (`createClient`) | [depend de] | cookie `unkast_view` (`lib/adminSession.ts`) : vue visiteur = session ignoree |

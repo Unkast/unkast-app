@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
 import { checkRateLimit, isValidEmail } from "@/lib/rate-limit";
 import { sendInvitationEmail } from "@/lib/email";
-import { readJsonBody, invalidBodyResponse, isText, MAX_ROLE_LENGTH } from "@/lib/api";
+import { readJsonBody, invalidBodyResponse, isText } from "@/lib/api";
+import { mergeRoles, parseCreditRoles } from "@/lib/credits";
 import { addCreditRole } from "@/lib/project-invitations";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, type DisplayNameRow } from "@/lib/profile";
 
@@ -44,10 +45,12 @@ export async function POST(request: NextRequest) {
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "Email invalide." }, { status: 400 });
   }
-  if (!isText(project_id, 64) || !isText(role, MAX_ROLE_LENGTH) || !isText(name.trim(), 120)) {
-    return NextResponse.json({ error: "Nom ou rôle trop long." }, { status: 400 });
+  if (!isText(project_id, 64) || !isText(name.trim(), 120)) {
+    return NextResponse.json({ error: "Nom trop long." }, { status: 400 });
   }
-  const cleanRole = String(role).trim();
+  // Des metiers de la liste (un texte « A / B » ou une liste), jamais du texte libre.
+  const cleanRole = parseCreditRoles(role);
+  if (!cleanRole) return NextResponse.json({ error: "Choisis des métiers dans la liste (6 au plus)." }, { status: 400 });
   const cleanName = name.trim();
 
   const admin = createAdminClient();
@@ -108,18 +111,30 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // 3c) Email inconnu : credit sans compte, rattache a l'inscription.
-  const { data: credit, error: creditError } = await admin
+  // 3c) Email inconnu : credit sans compte, rattache a l'inscription. Une ligne par
+  //     personne : si ce nom a deja un credit sans compte sur ce film, le role le rejoint
+  //     (apres l'invitation, pour ne rien changer si elle echoue).
+  const { data: ghosts } = await admin
     .from("project_credits")
-    .insert({
-      project_id,
-      ghost_name: cleanName,
-      role_on_project: cleanRole,
-    })
-    .select("id")
-    .single();
-  if (creditError || !credit) {
-    return NextResponse.json({ error: "Erreur lors de la création du crédit." }, { status: 500 });
+    .select("id, ghost_name, role_on_project")
+    .eq("project_id", project_id)
+    .is("profile_id", null);
+  const sameGhost = (ghosts ?? []).find((g) => g.ghost_name?.trim().toLowerCase() === cleanName.toLowerCase());
+  let credit: { id: string } | null = sameGhost ? { id: sameGhost.id } : null;
+  if (!credit) {
+    const { data: created, error: creditError } = await admin
+      .from("project_credits")
+      .insert({
+        project_id,
+        ghost_name: cleanName,
+        role_on_project: cleanRole,
+      })
+      .select("id")
+      .single();
+    if (creditError || !created) {
+      return NextResponse.json({ error: "Erreur lors de la création du crédit." }, { status: 500 });
+    }
+    credit = created;
   }
 
   // Invitation (token + expires_at posés par défaut DB).
@@ -136,12 +151,18 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (invError || !invitation) {
-    // Rollback logique : on retire le ghost credit qu'on vient de créer.
-    await admin.from("project_credits").delete().eq("id", credit.id);
+    // Rollback logique : on retire le ghost credit qu'on vient de créer (jamais un
+    // credit qui existait deja).
+    if (!sameGhost) await admin.from("project_credits").delete().eq("id", credit.id);
     // 23505 : cet email est deja invite sur ce film. Meme reponse qu'un envoi, comme
     // pour un membre deja invite.
     if (invError?.code === "23505") return NextResponse.json({ success: true }, { status: 201 });
     return NextResponse.json({ error: "Erreur lors de l'invitation." }, { status: 500 });
+  }
+
+  if (sameGhost) {
+    const merged = mergeRoles(sameGhost.role_on_project, cleanRole);
+    if (merged) await admin.from("project_credits").update({ role_on_project: merged }).eq("id", sameGhost.id);
   }
 
   // Envoi via Resend (sauté proprement en dev sans clé). Le resultat n'est pas

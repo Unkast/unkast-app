@@ -10,6 +10,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import Select from "@/components/ui/Select";
+import CreditRolesField from "@/components/CreditRolesField";
 import { FilmThumb, Note } from "./parts";
 import { callApi, type ManagedProject, type ShowToast } from "./api";
 import FilmManagers from "./FilmManagers";
@@ -205,13 +206,13 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
   const [results, setResults] = useState<MemberHit[]>([]);
   const [searched, setSearched] = useState(false);
   const [member, setMember] = useState<MemberHit | null>(null);
-  const [memberRole, setMemberRole] = useState("");
+  const [memberRole, setMemberRole] = useState<string[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestQuery = useRef("");
   // Invitation par email
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState<string[]>([]);
   // Email reconnu : le membre qui porte cet email
   const [match, setMatch] = useState<MemberHit | null>(null);
   const [sending, setSending] = useState(false);
@@ -243,7 +244,7 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
     const r = await callApi("/api/invitations/project", "POST", {
       project_id: project.id,
       invited_profile_id: target.id,
-      role: targetRole.trim(),
+      role: targetRole,
     });
     setSending(false);
     if (!r.ok) {
@@ -264,7 +265,7 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
     const r = await callApi<{ self?: boolean; match?: MemberHit }>("/api/invitations", "POST", {
       project_id: project.id,
       email,
-      role,
+      role: role.join(" / "),
       name,
     });
     setSending(false);
@@ -280,7 +281,7 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
     showToast(r.data.self ? "Rôle ajouté à ton crédit" : "Invitation envoyée");
     setName("");
     setEmail("");
-    setRole("");
+    setRole([]);
     setTeamVersion((v) => v + 1);
     await reload();
   }
@@ -303,8 +304,10 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
               </Button>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Field aria-label="Rôle sur le film" type="text" value={memberRole} onChange={(e) => setMemberRole(e.target.value)} placeholder="Rôle sur le film" className="sm:flex-1" />
-              <Button onClick={() => inviteMember(member, memberRole)} disabled={!memberRole.trim() || sending} className="sm:shrink-0">
+              <div className="sm:flex-1">
+                <CreditRolesField value={memberRole} onChange={setMemberRole} placeholder="Rôles sur le film" />
+              </div>
+              <Button onClick={() => inviteMember(member, memberRole.join(" / "))} disabled={memberRole.length === 0 || sending} className="sm:shrink-0">
                 Inviter
               </Button>
             </div>
@@ -318,7 +321,7 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
                   <li key={m.id}>
                     <button
                       type="button"
-                      onClick={() => { setMember(m); setMemberRole(""); }}
+                      onClick={() => { setMember(m); setMemberRole([]); }}
                       className="flex min-h-11 w-full items-center rounded-card border border-white/10 bg-white/5 p-2.5 text-left hover:border-lime/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
                     >
                       <MemberLine member={m} />
@@ -343,7 +346,7 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
             <p className="text-sm text-text-primary">Cet email correspond au membre {match.name || "Membre"}.</p>
             <MemberLine member={match} />
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => inviteMember(match, role)} disabled={sending}>
+              <Button onClick={() => inviteMember(match, role.join(" / "))} disabled={sending}>
                 Créditer ce membre
               </Button>
               <Button variant="glass" onClick={() => setMatch(null)} disabled={sending}>
@@ -357,9 +360,9 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
             <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
               <Field aria-label="Nom" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" />
               <Field aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-              <Field aria-label="Rôle" type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Rôle" />
+              <CreditRolesField value={role} onChange={setRole} placeholder="Rôles" />
             </div>
-            <Button onClick={sendEmail} disabled={!name.trim() || !email || !role.trim() || sending} className="mt-3 w-full sm:w-auto">
+            <Button onClick={sendEmail} disabled={!name.trim() || !email || role.length === 0 || sending} className="mt-3 w-full sm:w-auto">
               Inviter par email
             </Button>
           </>

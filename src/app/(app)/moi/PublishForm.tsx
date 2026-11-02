@@ -6,6 +6,7 @@ import type { ProjectCategory } from "@/types/database";
 import Button from "@/components/ui/Button";
 import Field from "@/components/ui/Field";
 import Select from "@/components/ui/Select";
+import CreditRolesField from "@/components/CreditRolesField";
 import { Note } from "./parts";
 import { callApi, type DuplicateProject, type ShowToast } from "./api";
 import DuplicateFilm from "./DuplicateFilm";
@@ -30,7 +31,7 @@ export default function PublishForm({
   const [year, setYear] = useState(new Date().getFullYear());
   const [videoUrl, setVideoUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [ownerRole, setOwnerRole] = useState("");
+  const [ownerRole, setOwnerRole] = useState<string[]>([]);
   const [declaration, setDeclaration] = useState<Declaration>(EMPTY_DECLARATION);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -50,7 +51,7 @@ export default function PublishForm({
       year,
       video_url: videoUrl,
       description: description || null,
-      owner_role: ownerRole.trim() || null,
+      owner_role: ownerRole.length ? ownerRole.join(" / ") : null,
       ...declarationPayload(declaration, category),
     });
     if (r.ok) {
@@ -121,17 +122,14 @@ export default function PublishForm({
       <RightsDeclaration value={declaration} onChange={setDeclaration} category={category} />
 
       <div>
-        <Field
-          label={autoCredit ? "Autre rôle au générique (facultatif)" : "Ton rôle au générique (facultatif)"}
-          type="text"
-          value={ownerRole}
-          onChange={(e) => setOwnerRole(e.target.value)}
-          placeholder={autoCredit ? "Ex : Monteur" : "Ex : Chef opérateur"}
-        />
+        <p className="mb-1.5 text-xs font-medium text-text-secondary">
+          {autoCredit ? "Autres rôles au générique (facultatif)" : "Tes rôles au générique (facultatif)"}
+        </p>
+        <CreditRolesField value={ownerRole} onChange={setOwnerRole} placeholder={autoCredit ? "Ex : Monteur" : "Ex : Directeur de la photographie"} />
         <p className="mt-2 text-xs leading-relaxed text-text-secondary">
           {autoCredit
-            ? `Tu seras crédité comme ${autoCredit}. Ajoute ici un second rôle si tu en as un.`
-            : "Le rôle sous lequel tu apparais dans l'équipe du film."}
+            ? `Tu seras crédité comme ${autoCredit}. Ajoute ici d'autres rôles si tu en as, choisis dans la liste des métiers.`
+            : "Les rôles sous lesquels tu apparais dans l'équipe du film, choisis dans la liste des métiers."}
         </p>
       </div>
 

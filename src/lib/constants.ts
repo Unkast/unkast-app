@@ -234,6 +234,12 @@ export function roleFamily(role: string) {
 // morceau n'est pas un metier officiel, le libelle est garde tel quel.
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const ROLE_BY_FOLDED = new Map(ALL_ROLE_FORMS.map((role) => [fold(role), role]));
+/** Le metier de la liste officielle (ou sa forme feminine) qui correspond a un libelle
+ *  (casse et accents ignores), ou null si ce n'est pas un metier de la liste. */
+export function closedRole(label: string): string | null {
+  return ROLE_BY_FOLDED.get(fold(label)) ?? null;
+}
+
 export function creditRoles(label: string): string[] {
   const whole = ROLE_BY_FOLDED.get(fold(label));
   if (whole) return [whole];

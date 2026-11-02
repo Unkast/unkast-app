@@ -12,6 +12,7 @@ import {
 import { fetchVideoMeta } from "@/lib/oembed";
 import { checkRateLimit, getClientIp, isValidEmail } from "@/lib/rate-limit";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
+import { buildFilmCredits, mergeRoles, parseCreditRoles } from "@/lib/credits";
 import { sendPushToUser } from "@/lib/push";
 import { sendConfirmationEmail, sendAdminNewFilmEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/stripe";
@@ -221,20 +222,11 @@ export async function POST(request: NextRequest) {
     } else if (!meta.ok) {
       videoSkippedReason = "private";
     } else {
-      // p_credits : credit automatique du role declare, owner_role s'il en
-      // differe, puis credits fantomes. (Meme construction dans api/dashboard/projects.)
-      const ownerRole = typeof project.owner_role === "string" ? project.owner_role.trim() : "";
-      const credits = [
-        ...(declaredCredit.credit
-          ? [{ profile_id: userId, ghost_name: null, role: declaredCredit.credit }]
-          : []),
-        ...(ownerRole && ownerRole.toLowerCase() !== declaredCredit.credit?.toLowerCase()
-          ? [{ profile_id: userId, ghost_name: null, role: ownerRole }]
-          : []),
-        ...(Array.isArray(project.credits) ? project.credits : [])
-          .filter((c: { name: string; role: string }) => c?.name && c?.role)
-          .map((c: { name: string; role: string }) => ({ profile_id: null, ghost_name: c.name, role: c.role })),
-      ];
+      // p_credits : une ligne par personne (role declare + owner_role ensemble, puis
+      // credits fantomes). Meme construction dans api/dashboard/projects. A
+      // l'inscription, un role hors liste est simplement ecarte : l'inscription ne
+      // doit jamais echouer pour cela.
+      const { credits } = buildFilmCredits(userId, declaredCredit.credit ?? null, project.owner_role, project.credits);
 
       // Plafond gratuit volontaire meme si le Pro de lancement vient d'etre pose :
       // un seul film se publie a l'inscription, la limite n'a donc pas d'effet.
@@ -289,16 +281,19 @@ export async function POST(request: NextRequest) {
   const videoSkipped = videoSkippedReason !== null || videoFailed;
 
   // 5. Create credit request if provided (talent)
+  // Les roles de la demande : des metiers de la liste (une demande hors liste est ecartee,
+  // l'inscription ne doit jamais echouer pour cela).
+  const requestedRole = credit_request?.role ? parseCreditRoles(credit_request.role) : null;
   if (
     account_type === "talent" &&
     credit_request &&
     credit_request.project_id &&
-    credit_request.role
+    requestedRole
   ) {
     await supabase.from("credit_requests").insert({
       project_id: credit_request.project_id,
       requester_id: userId,
-      role: credit_request.role,
+      role: requestedRole,
       status: "pending",
     });
   }
@@ -321,11 +316,30 @@ export async function POST(request: NextRequest) {
 
       if (inv && inv.status === "pending" && notExpired && emailMatches) {
         // Convertir le ghost credit en crédit réel lié au profil.
+        // Une ligne par personne et par film : si le compte a deja un credit sur ce
+        // film, le role du credit sans compte le rejoint et ce credit est supprime.
         if (inv.credit_id) {
-          await supabase
+          const { data: ghost } = await supabase
             .from("project_credits")
-            .update({ profile_id: userId, ghost_name: null })
-            .eq("id", inv.credit_id);
+            .select("role_on_project")
+            .eq("id", inv.credit_id)
+            .maybeSingle();
+          const { data: own } = await supabase
+            .from("project_credits")
+            .select("id, role_on_project")
+            .eq("project_id", inv.project_id)
+            .eq("profile_id", userId)
+            .maybeSingle();
+          if (ghost && own) {
+            const merged = mergeRoles(own.role_on_project, ghost.role_on_project);
+            if (merged) await supabase.from("project_credits").update({ role_on_project: merged }).eq("id", own.id);
+            await supabase.from("project_credits").delete().eq("id", inv.credit_id);
+          } else {
+            await supabase
+              .from("project_credits")
+              .update({ profile_id: userId, ghost_name: null })
+              .eq("id", inv.credit_id);
+          }
         }
         await supabase.from("invitations").update({ status: "accepted" }).eq("id", inv.id);
 
