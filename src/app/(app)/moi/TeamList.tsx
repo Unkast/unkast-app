@@ -160,11 +160,11 @@ export default function TeamList({ projectId, showToast }: { projectId: string; 
                         </div>
 
                         {editing === key && isCredit ? (
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <div className="sm:flex-1">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                            <div className="min-w-0 sm:flex-1">
                               <CreditRolesField value={editRoles} onChange={setEditRoles} placeholder="Rôles" />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex shrink-0 justify-end gap-2">
                               <Button
                                 size="sm"
                                 disabled={busy || editRoles.length === 0}

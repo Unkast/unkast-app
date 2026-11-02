@@ -303,11 +303,11 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
                 Changer
               </Button>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="sm:flex-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 sm:flex-1">
                 <CreditRolesField value={memberRole} onChange={setMemberRole} placeholder="Rôles sur le film" />
               </div>
-              <Button onClick={() => inviteMember(member, memberRole.join(" / "))} disabled={memberRole.length === 0 || sending} className="sm:shrink-0">
+              <Button onClick={() => inviteMember(member, memberRole.join(" / "))} disabled={memberRole.length === 0 || sending} className="self-end sm:shrink-0">
                 Inviter
               </Button>
             </div>
@@ -357,7 +357,7 @@ function CreditPanel({ project, reload, showToast }: PanelProps) {
         ) : (
           <>
             <p className={`mb-2 ${helpCls}`}>Pour quelqu&apos;un qui n&apos;est pas encore sur Unkast : il reçoit un email pour créer son compte et retrouver son crédit.</p>
-            <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
+            <div className="grid items-start gap-2 sm:grid-cols-[1fr_1.6fr_1fr]">
               <Field aria-label="Nom" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" />
               <Field aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
               <CreditRolesField value={role} onChange={setRole} placeholder="Rôles" />
