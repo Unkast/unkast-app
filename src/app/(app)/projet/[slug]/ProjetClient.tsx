@@ -81,9 +81,8 @@ const textStagger: Variants = {
 export default function ProjetClient({ project, relatedProjects, isVisitor, categoryLabels, categoryColors }: Props) {
   const router = useRouter();
   const reduced = useReducedMotion();
-  const [showVideo, setShowVideo] = useState(false);
   const [synopsisOpen, setSynopsisOpen] = useState(false);
-  // Lecture dans le cadre (desktop) ; en mobile, modale plein écran (showVideo).
+  // Lecture dans le cadre de la page (mobile et desktop) ; plein écran natif du lecteur.
   const [playingInline, setPlayingInline] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -110,10 +109,8 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
 
   // Le lecteur ne se monte qu'après ce clic (règle cookies).
   function play() {
-    if (window.matchMedia("(min-width: 1024px)").matches) {
-      setPlayingInline(true);
-      playerRef.current?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
-    } else setShowVideo(true);
+    setPlayingInline(true);
+    playerRef.current?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
   }
 
   // User status for visibility tiers
@@ -139,9 +136,6 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
     else setReportOpen(true);
   };
 
-  // Video modal touch swipe
-  const videoTouchY = useRef<number | null>(null);
-
   useEffect(() => {
     fetch(`/api/credits/status?project_id=${project.id}`)
       .then((r) => r.json())
@@ -149,13 +143,6 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
       .catch(() => setCreditStatusLoaded(true));
   }, [project.id]);
 
-
-  // Lock body scroll when video modal open
-  useEffect(() => {
-    if (showVideo) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
-  }, [showVideo]);
 
   const showCreditButton = (userStatus === "free" || userStatus === "pro") && creditStatusLoaded && !creditStatus.isCredited && !creditStatus.hasPendingRequest && !creditStatus.isManager;
   const showConversionCTA = userStatus === "anonymous";
@@ -545,40 +532,6 @@ export default function ProjetClient({ project, relatedProjects, isVisitor, cate
           </section>
         )}
       </div>
-
-      {/* ===== VIDEO MODAL ===== */}
-      <AnimatePresence>
-        {showVideo && (
-          <motion.div
-            initial={{ opacity: 0, y: reduced ? 0 : "100%" }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: reduced ? 0 : "100%" }}
-            transition={{ duration: reduced ? 0.15 : 0.3, ease: "easeOut" }}
-            onTouchStart={(e) => { videoTouchY.current = e.touches[0].clientY; }}
-            onTouchEnd={(e) => {
-              if (videoTouchY.current !== null && e.changedTouches[0].clientY - videoTouchY.current > 80) setShowVideo(false);
-              videoTouchY.current = null;
-            }}
-            style={{ position: "fixed", inset: 0, zIndex: 9998, background: "black", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <Button variant="icon" aria-label="Fermer" onClick={() => setShowVideo(false)} className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-5" style={{ zIndex: 9999 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
-            </Button>
-            {/* Panneau arrondi à partir de lg seulement : en mobile la vidéo est bord à bord,
-                l'arrondi rognerait les contrôles du lecteur. */}
-            {/* Série : épisode suivant, en haut à gauche (les commandes du lecteur sont en bas) */}
-            {hasNext && (
-              <Button variant="glass" size="sm" onClick={nextEpisode} className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] left-5" style={{ zIndex: 9999 }}>
-                Épisode {episodeIndex + 2}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
-              </Button>
-            )}
-            <div className="lg:overflow-hidden lg:rounded-panel lg:shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]" style={{ width: "100%", maxWidth: 900, aspectRatio: "16/9" }}>
-              {player}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Toast */}
       <AnimatePresence>

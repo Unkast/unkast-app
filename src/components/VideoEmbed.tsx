@@ -22,6 +22,8 @@ export function playerSrc(url: string): string {
   return `https://www.youtube-nocookie.com/embed/${key.slice(8)}${start ? `?t=${start[1]}` : ""}`;
 }
 
+const VIMEO_CONFIG = { vimeo: { title: false, byline: false, portrait: false } };
+
 interface Props {
   url: string;
   title: string;
@@ -45,6 +47,11 @@ export default function VideoEmbed({ url, title, autoplay = false, onEnded }: Pr
         controls
         light={!autoplay}
         playing={autoplay}
+        // Lecture dans la page (jamais en plein ecran force sur iOS). YouTube : rel=0 et
+        // modestbranding=1 sont deja appliques par youtube-video-element. Vimeo : sans titre,
+        // sans signature, sans portrait.
+        playsInline
+        config={VIMEO_CONFIG}
         onEnded={onEnded}
         style={{ position: "absolute", top: 0, left: 0 }}
         previewAriaLabel={`Video: ${title}`}
