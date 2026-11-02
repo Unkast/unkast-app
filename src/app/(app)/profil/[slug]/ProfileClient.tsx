@@ -100,6 +100,17 @@ export default function ProfileClient({
     checkOwn();
   }, [profile.id]);
 
+  // Statistiques de profil : une visite (le serveur ecarte robots, sa propre fiche,
+  // admin, doublons du jour). Silencieux : aucune reponse a lire, aucune erreur visible.
+  useEffect(() => {
+    fetch("/api/stats/view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profile.id }),
+      keepalive: true,
+    }).catch(() => {});
+  }, [profile.id]);
+
   // Liste complète : les films lisibles et, pour un visiteur non connecté, les
   // cartes verrouillées des films « membres seulement », à leur place selon
   // l'année. `published` : la personne est Responsable du film ; sinon elle y

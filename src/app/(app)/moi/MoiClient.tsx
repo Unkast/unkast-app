@@ -32,6 +32,7 @@ import { SectionLabel, FilmThumb, MoiSkeleton, Note } from "./parts";
 import type { FilmsData } from "./api";
 import FilmsSection from "./FilmsSection";
 import CareerSection from "./CareerSection";
+import ProfileStats from "./ProfileStats";
 
 /* ---------- types ---------- */
 
@@ -888,6 +889,11 @@ export default function MoiClient() {
                 )}
               </EnterItem>
             )}
+
+            {/* Statistiques du profil : chiffres (Pro) ou apercu verrouille (gratuit) */}
+            <EnterItem className="lg:col-span-2">
+              <ProfileStats />
+            </EnterItem>
 
             {/* Rendu profil public */}
             <EnterItem className="glass flex flex-col items-start gap-4 rounded-panel p-5 sm:p-6">

@@ -56,6 +56,7 @@ export default function SupprimerMonComptePage() {
           <li>tes demandes de crédit, tes invitations envoyées et reçues, tes demandes de co-gestion ;</li>
           <li>tes justificatifs de revendication et les autres fichiers que tu avais envoyés ;</li>
           <li>tes notifications sur le téléphone, ta présence dans les listes de recrutement ;</li>
+          <li>les statistiques de ton profil ;</li>
           <li>ton abonnement Pro, qui est résilié.</li>
         </ul>
       </Section>

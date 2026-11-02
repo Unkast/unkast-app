@@ -211,6 +211,15 @@ Ecartement **silencieux** d'un candidat, **par poste**. `id`, `recruiter_id` (�
 
 > **Usage des tables 16-19.** Côté talent : bouton « Disponible » sur `profil/[slug]` → `/api/availability` (écrit `availability_signals`). Côté recruteur : espace pré-casting dans `/moi` (onglet « Recrutement », composant `RecruitmentSpace`, visible si Pro createur/recruteur) → `/api/recruitment/*` (candidatures groupées, dossiers `recruiter_folders`, dispatch `folder_candidates`, écartement `recruiter_dismissals`). « Contacter » réutilise la messagerie existante (l'espace pré-casting est de toute façon réservé aux Pro, dont les contacts sont illimités). Voir `docs/api-routes.md`.
 
+### 21-23. Statistiques de profil *(plan Pro, étape 2, 02/11/2026)* — ⚠️ **migration à exécuter**
+Migration manuelle `supabase/migrations/20261102_profile_stats.sql`, retour arrière `20261102_profile_stats_rollback.sql` (supprime toutes les statistiques). Collecte pour **tous** les profils, affichage aux seuls Pro (`GET /api/me/stats`). Jamais l'identité d'un visiteur.
+- **`profile_stat_events`** (bruts, dédoublonnage seulement) : `id` (bigint identity), `profile_id` (→ profiles, **CASCADE**), `day` (DATE, heure de Paris), `kind` (✅ CHECK `view` | `list_add` | `message_click`), `visitor_hash` (TEXT, sha256 hex), `created_at`. ✅ `UNIQUE (profile_id, day, kind, visitor_hash)` = une fois par visiteur, profil, type et jour. Index `profile_stat_events_day_idx`. **Purgés après 7 jours** par `/api/cron/retention`.
+- **`profile_stats_daily`** (compteurs gardés) : PK (`profile_id` → profiles **CASCADE**, `day`), `views`, `list_adds`, `message_clicks` (INT ≥ 0).
+- **`profile_stat_salts`** : `day` (PK), `salt` (2 uuid v4 concaténés). Un sel par jour, l'ancien détruit au premier événement du jour (et par le cron). Seule des trois **sans clé étrangère** : aucune donnée de profil.
+- **RPC `record_profile_event(p_profile_id, p_kind, p_visitor_key) → boolean`** : `SECURITY DEFINER`, `search_path = ''`, EXECUTE retiré à `public`/`anon`/`authenticated`, donné à `service_role` seulement. Hache `sel du jour : clé visiteur : id du profil` **dans la base** (le sel ne sort jamais), insère l'événement (doublon ignoré), incrémente le compteur du jour. `true` si compté.
+- Clé visiteur (jamais stockée) : `u:<id membre>` ou, visiteur anonyme, `a:<ip>|<user agent>`. Code : `src/lib/profile-stats.ts`.
+- RLS activée **sans policy** + `revoke all` à `anon`/`authenticated` sur les 3 tables : service role uniquement.
+
 ### 20. stripe_events *(fiabilité — 2026-07-02)* — ⚠️ **migration à exécuter**
 Idempotence des webhooks Stripe. `id` (TEXT PK — Stripe `event.id`), `type` (TEXT), `received_at` (TIMESTAMPTZ, défaut `now()`). Le webhook (`api/billing/webhook`) **revendique** `event.id` par INSERT **avant** toute écriture sur `profiles` : doublon (23505) → 200 sans traitement ; échec de traitement → la ligne est supprimée (le retry Stripe rejouera). RLS activée **sans policy** (service role uniquement, même posture que `rate_limits`). Migration manuelle : `supabase/migrations/20260702_stripe_events.sql` — **pas encore exécutée en prod** ; tant qu'elle ne l'est pas, le webhook traite sans dédup (42P01 toléré, loggé).
 
@@ -560,6 +569,7 @@ tables de recrutement creees et verifiees actives le 14/06). RLS non encore vers
 | `recruiter_folders` | ✅ on | `FOR ALL` scopee au **recruteur** (`recruiter_id=auth.uid()`) — aucune lecture talent |
 | `folder_candidates` | ✅ on | `FOR ALL` via le dossier parent (`recruiter_folders.recruiter_id=auth.uid()`) — aucune lecture talent |
 | `recruiter_dismissals` | ✅ on | `FOR ALL` scopee au **recruteur** — **aucune policy SELECT talent** → ecartement invisible |
+| `profile_stat_events`, `profile_stats_daily`, `profile_stat_salts` | ✅ on | **Aucune policy** + droits retirés à anon/authenticated → service role uniquement (RPC `record_profile_event`, `GET /api/me/stats`, cron retention). Migration `20261102_profile_stats.sql` |
 
 > **RLS recrutement (migration `20260614_recruitment.sql`)** : l'invisibilite des dossiers et de l'ecartement est **structurelle** (tables sans aucune policy SELECT cote talent), pas seulement applicative. C'est la raison d'avoir mis l'ecartement dans une table separee plutot qu'une colonne sur `availability_signals` (ligne que le talent a le droit de lire).
 

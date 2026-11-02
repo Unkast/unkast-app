@@ -120,6 +120,10 @@
 | `MoiClient` | [utilise] | `moi/parts.tsx`, `RoleSelector`, `AvatarUpload`, `motion.tsx`, `ui/Badge`, `ui/Button`, `ui/Chip`, `ui/Field`, `ui/GlassCard`, `ui/Select`, `ui/Toast`, `ui/Toggle` |
 | `RecruitmentSpace` | [utilise] | `motion.tsx`, `ui/Button`, `ui/Chip`, `ui/Field`, `FOLDER_NOTE_MAX` (`lib/constants.ts`) ; remarque privée via `PATCH /api/recruitment/dispatch` |
 | `ProfileClient` → `profil/[slug]/AddToList.tsx` | [appelle] | `GET /api/recruitment/folders?talent_id=`, `POST /api/recruitment/folders`, `POST`/`DELETE /api/recruitment/dispatch` (rangement sans poste) ; affiché pour un visiteur Pro créateur ou recruteur (`useUserStatus` + `account_type`) |
+| `ProfileClient` (montage) | [appelle] | `POST /api/stats/view` (statistiques de profil, réponse ignorée) → `lib/profile-stats.ts` (`isBot`, `isAdminAccount`, `recordProfileEvent`) + `lib/rate-limit.ts` → RPC `record_profile_event` |
+| `api/recruitment/dispatch` (POST), `api/messages/conversation` (POST) | [declenche] | `recordProfileEvent` (`list_add`, `message_click`) dans `after()` : un échec n'affecte jamais la réponse |
+| `MoiClient` (onglet Profil) → `moi/ProfileStats.tsx` | [appelle] | `GET /api/me/stats` → `profile_stats_daily` ; Pro : chiffres, gratuit : aperçu flouté de faux chiffres fixes + `ui/Button` vers `/pro` |
+| `api/cron/retention` | [persiste dans] | `profile_stat_events` (DELETE > 7 jours), `profile_stat_salts` (DELETE jours passés) |
 | `FOLDER_NOTE_MAX` (`lib/constants.ts`) | [impacte] | `api/recruitment/dispatch` (PATCH), `RecruitmentSpace` ; doit rester égal au CHECK `folder_candidates_note_length` |
 | `MoiClient` (onglet Compte) | [appelle] | `POST /api/account/delete` → `lib/stripe.ts` (résiliation), RPC `solo_projects_of`, `auth.admin.deleteUser` (triggers `keep_credit_name_on_profile_delete`, `transfer_projects_on_profile_delete`), Storage `avatars` `posters` `claims`, `lib/email.ts` (`sendAccountDeletedEmail`) ; `ConfirmDialog` (`children`, `confirmDisabled`) ; puis `WelcomeClient` (`/?compte=supprime`, `ui/Toast`) |
 | `RecruitmentSpace` | [depend de] | `AppShell` (hauteurs de navigation mobile, classe `app-installed`) |
@@ -229,6 +233,8 @@ Relations route → table code-verifiees (voir docs/api-routes.md pour le detail
 | `project_credits.project_id` | → | `projects.id` | CASCADE |
 | `project_credits.profile_id` | → | `profiles.id` | SET NULL |
 | `contact_requests.to_profile_id` | → | `profiles.id` | CASCADE |
+| `profile_stat_events.profile_id` | → | `profiles.id` | CASCADE |
+| `profile_stats_daily.profile_id` | → | `profiles.id` | CASCADE |
 
 | `lib/adminGuard.ts`, `lib/supabase/middleware.ts` | [depend de] | `lib/adminSession.ts` (`sessionStrength` : mot de passe + aal2) |
 | `lib/supabase/server.ts` (`createClient`) | [depend de] | cookie `unkast_view` (`lib/adminSession.ts`) : vue visiteur = session ignoree |

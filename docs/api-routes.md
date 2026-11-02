@@ -17,7 +17,8 @@
 |---|---|---|---|---|
 | `/api/billing/webhook` | POST | — | `profiles` | **Stripe** — pas d'auth utilisateur, **vérif de signature** sur raw body. Seule source de vérité pour la comptabilité Stripe (`plan` est désormais dérivé, voir `recompute_plan`) |
 | `/api/cron/pro-expiry` | GET | `profiles` | `profiles` | **Cron Vercel** — pas d'auth utilisateur, secouru par `CRON_SECRET` (header `Authorization: Bearer …`) |
-| `/api/cron/retention` | GET | `project_claims` | `rate_limits` (DELETE), `project_claims` (UPDATE `document_path`), Storage `claims` | **Cron Vercel** (2026-11-01), même authentification que `pro-expiry`. Durées de conservation promises dans `/confidentialite` |
+| `/api/cron/retention` | GET | `project_claims` | `rate_limits` (DELETE), `project_claims` (UPDATE `document_path`), Storage `claims`, `profile_stat_events` + `profile_stat_salts` (DELETE) | **Cron Vercel** (2026-11-01), même authentification que `pro-expiry`. Durées de conservation promises dans `/confidentialite` |
+| `/api/stats/view` | POST | `profiles` (admin ?) | RPC `record_profile_event` | **02/11/2026**, statistiques de profil. Corps `{ profile_id }`. Répond **toujours 204** sans corps. Ignore : robots (user agent), cookie de vue visiteur de l'admin, sa propre fiche, compte admin, au-delà de 60/min/IP (`stats-view:<ip>`). Comptage dans `after()`, silencieux. Auth optionnelle |
 | `/api/search` | GET | `profiles`, `profile_roles`, `projects` | — | filtre `status='approved'` |
 | `/api/signup` | POST | — | `profiles`, `profile_roles`, `projects`, `project_credits`, `credit_requests` | rate-limit 5/IP/h ; **email à confirmer** (generateLink + Resend) |
 | `/api/auth/google` | POST | `profiles`, `profile_roles` | `profiles` | **lot 11** : suite d'une connexion Google par jeton (session déjà ouverte par `signInWithIdToken`). Corps `{ next?, terms? }`. Crée le profil minimal à la première connexion (CGU enregistrées si `terms` est la version en vigueur), répond `{ redirect }` : finalisation ou page demandée. 401 sans session, 403 si le compte n'est pas relié à Google. Règle partagée avec `/auth/callback` : `lib/google-account.ts` |
@@ -32,6 +33,7 @@
 | Route | Methodes | Tables lues | Tables ecrites |
 |---|---|---|---|
 | `/api/me` | GET | `profiles` (service role) | — |
+| `/api/me/stats` | GET | `profiles`, `profile_stats_daily` (service role) | — | **02/11/2026**. `getActiveUser`. Pro : `{ locked: false, views_7d, views_30d, views_total, list_adds_total, message_clicks_total }` (fenêtres en jours de Paris, aujourd'hui compris). Gratuit : `{ locked: true }`, **aucun chiffre**. 503 si lecture impossible |
 | `/api/dashboard/profile` | GET, PATCH | `profiles`, `profile_roles` | `profiles`, `profile_roles` | lot 8 : `playing_ages` (2 au plus), `role_type`, `languages`, validés par `checkCastingFields`, lus et écrits à part (tolère l'absence des colonnes avant la migration `20261016`) |
 | `/api/dashboard/projects` | GET, POST, PATCH, DELETE | `projects`, `project_credits`, `project_managers`, `project_rights_declarations`, `project_manager_requests` | `projects` (RPC `publish_project`), `project_rights_declarations` |
 | `/api/projects/[id]/managers` | GET, POST, PATCH, DELETE | `projects`, `project_managers`, `project_manager_requests`, `project_credits`, `profiles` | `project_managers`, `project_manager_requests` (RPC) |
@@ -44,7 +46,7 @@
 | `/api/account/delete` | POST | `profiles`, `project_claims`, `projects` (RPC `solo_projects_of`) | Auth (`deleteUser`, cascades et triggers), Storage `avatars`, `posters`, `claims`, `invitations`, `contact_requests`, `waitlist`, `rate_limits` ; Stripe (résiliation) ; Resend. Voir le détail plus bas |
 | `/api/messages` | POST, GET | `profiles`, `conversations`, `messages` | `conversations`, `messages` |
 | `/api/messages/[conversationId]` | GET | `conversations`, `messages`, `profiles` | `messages` (is_read) |
-| `/api/messages/conversation` | POST | `conversations`, `profiles` | `conversations` |
+| `/api/messages/conversation` | POST | `conversations`, `profiles` | `conversations` ; RPC `record_profile_event` (`message_click` pour le destinataire, après validation de `recipient_id`, avant les quotas, dans `after()`, silencieux) |
 | `/api/messages/read` | PATCH | `messages`, `conversations` | `messages` |
 | `/api/messages/unread-count` | GET | `messages` | — |
 | `/api/messages/daily-count` | GET | `conversations` | — |
@@ -65,7 +67,7 @@
 | `/api/recruitment/candidates` | GET | `profiles`, `availability_signals`, `recruiter_dismissals`, `folder_candidates` | — |
 | `/api/recruitment/folders` | GET, POST, PATCH, DELETE | `recruiter_folders`, `folder_candidates` | `recruiter_folders` |
 | `/api/recruitment/folders/[id]` | GET | `recruiter_folders`, `folder_candidates`, `profiles` | — |
-| `/api/recruitment/dispatch` | POST, PATCH, DELETE | — | `folder_candidates` |
+| `/api/recruitment/dispatch` | POST, PATCH, DELETE | — | `folder_candidates` ; POST : RPC `record_profile_event` (`list_add`, si la ligne est nouvelle, dans `after()`, silencieux) |
 | `/api/recruitment/dismissals` | POST, DELETE | — | `recruiter_dismissals` |
 | `/api/billing/checkout` | POST | `profiles` | `profiles` (stripe_customer_id) + Stripe (Checkout Session) |
 | `/api/billing/portal` | POST | `profiles` | Stripe (Billing Portal Session) |
@@ -172,7 +174,7 @@ Réponse JSON : `{ expired_launch: { matched, recomputed, errors }, reminders: {
 
 ### GET /api/cron/retention *(2026-11-01, promesses légales)*
 Cron Vercel (`vercel.json`, `30 4 * * *`). Même authentification que `pro-expiry` : `Authorization: Bearer <CRON_SECRET>` vérifié en premier, 401 sinon (et toujours 401 si `CRON_SECRET` est absent, comme en local).
-Deux passes **indépendantes** (lancées ensemble, chacune dans son `try` ; l'échec de l'une n'arrête jamais l'autre) :
+Trois passes **indépendantes** (lancées ensemble, chacune dans son `try` ; l'échec de l'une n'arrête jamais les autres). La 3e (02/11/2026) supprime les `profile_stat_events` de plus de **7 jours** (jour de Paris) et les `profile_stat_salts` des jours passés ; les compteurs `profile_stats_daily` sont gardés. Réponse : clé supplémentaire `profile_stat_events: { deleted, salts_deleted, error }`. ⚠️ Tant que la migration `20261102_profile_stats.sql` n'est pas exécutée, cette passe échoue et le cron répond 500 (les deux autres tournent quand même).
 1. **`rate_limits`** : supprime les lignes dont `window_start` a plus de **7 jours**. La plus longue fenêtre du code est de 1 jour (`invite:*`, `claim:*`, `invite:global`) : aucune limite en cours n'est remise à zéro. Les clés contiennent des IP, des identifiants de compte et des emails.
 2. **Justificatifs de revendication** : revendications décidées (`status` `accepted`/`rejected`) dont `reviewed_at` a plus d'**1 an** et qui ont un `document_path` (500 au plus par passage, les plus anciennes d'abord). Suppression des fichiers du bucket privé `claims`, puis `document_path` vidé par **UPDATE** : la ligne `project_claims` est toujours gardée (historique de modération). Si le Storage échoue, rien n'est vidé (nouvel essai le lendemain) ; un fichier déjà absent n'est pas une erreur.
 Réponse : `{ rate_limits: { deleted, error }, claim_documents: { matched, cleared, error } }`, statut 500 si une passe a échoué (les deux ont quand même tourné).

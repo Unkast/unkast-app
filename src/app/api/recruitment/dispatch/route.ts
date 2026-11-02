@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { memberVisitorKey, recordProfileEvent } from "@/lib/profile-stats";
 import { getProWriter } from "../guard";
 import { readJsonBody, invalidBodyResponse } from "@/lib/api";
 import { FOLDER_NOTE_MAX } from "@/lib/constants";
@@ -41,15 +42,23 @@ export async function POST(request: NextRequest) {
   }
 
   // Upsert : ranger 2x le meme talent/poste dans un dossier est idempotent.
-  const { error } = await supabase
+  // select("id") ne renvoie que les lignes vraiment inserees (doublon = []).
+  const { data: inserted, error } = await supabase
     .from("folder_candidates")
     .upsert(
       { ...target, signal_id: body.signal_id ?? null },
       { onConflict: "folder_id,talent_id,role", ignoreDuplicates: true }
-    );
+    )
+    .select("id");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  // Statistiques du talent : un ajout compte au plus une fois par recruteur et par
+  // jour, sans dire qui. Apres la reponse, en silence (lib/profile-stats.ts).
+  if (inserted && inserted.length > 0) {
+    const recruiterId = guard.user.id;
+    after(() => recordProfileEvent(target.talent_id, "list_add", memberVisitorKey(recruiterId)));
   }
   return NextResponse.json({ success: true });
 }

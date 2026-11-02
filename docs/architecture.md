@@ -150,6 +150,11 @@ UTILITY  lib/api.ts          — readJsonBody()/invalidBodyResponse() : body JSO
 UTILITY  lib/push.ts         — envoi de notifications push (lit push_tokens)
 UTILITY  lib/firebase-admin.ts — init FCM cote serveur
 UTILITY  lib/profile.ts      — helpers profil
+UTILITY  lib/profile-stats.ts — statistiques de profil (02/11/2026) : recordProfileEvent (RPC
+         record_profile_event, ne leve jamais, appele dans after()), isBot, isAdminAccount,
+         memberVisitorKey. Collecte : visite (POST /api/stats/view depuis ProfileClient), ajout a
+         une liste (api/recruitment/dispatch POST), clic message (api/messages/conversation POST).
+         Migration 20261102_profile_stats.sql ; purge des bruts a 7 jours par cron/retention.
 
 HOOK  useUserStatus (src/hooks/useUserStatus.ts)        — "anonymous" | "free" | "pro"
 HOOK  usePushNotifications (src/hooks/usePushNotifications.ts) — enregistrement push natif (Capacitor)
@@ -350,6 +355,10 @@ FEATURE  Mon compte — /moi (src/app/(app)/moi/ + MoiClient + RecruitmentSpace 
   ListSkeleton) ; Select, Toggle, Toast et les statuts sont des briques ui/ depuis le chantier 7. RecruitmentSpace : barre « ecarte / Annuler »
   portee dans <body> et calee au-dessus de la navigation mobile (68 px + safe area, 100 px si
   app-installed, 24 px en desktop).
+  Statistiques du profil (02/11/2026, plan Pro etape 2) : moi/ProfileStats.tsx, carte en haut de
+  l'onglet Profil. Pro : visites 7 j / 30 j / total, ajouts a une liste, clics « Envoyer un
+  message » (GET /api/me/stats). Gratuit : apercu floute de FAUX chiffres fixes + « Passe Pro pour
+  voir qui te regarde en chiffres » (la route ne renvoie aucun chiffre).
   RecruitmentSpace, detail d'un dossier (01/11/2026) : groupe « Sans poste » en dernier, remarque
   privee par talent (280 caracteres, FOLDER_NOTE_MAX, aide « pas d'information sensible »),
   enregistree par PATCH /api/recruitment/dispatch.
@@ -394,7 +403,8 @@ CORE  Cron expiration Pro — /api/cron/pro-expiry (src/app/api/cron/pro-expiry/
 CORE  Cron conservation des donnees — /api/cron/retention (src/app/api/cron/retention/,
   2026-11-01) — Vercel Cron quotidien (vercel.json, 30 4 * * *), meme CRON_SECRET que pro-expiry.
   Tient les durees promises dans /confidentialite et /supprimer-mon-compte :
-  rate_limits de plus de 7 jours supprimees ; justificatifs de revendication supprimes du bucket
+  rate_limits de plus de 7 jours supprimees ; evenements bruts des statistiques de profil de plus
+  de 7 jours et sels des jours passes supprimes (02/11/2026) ; justificatifs de revendication supprimes du bucket
   claims 1 an apres reviewed_at (document_path vide, ligne project_claims gardee).
   Deux passes independantes. Fonctions Vercel en region cdg1 (Paris, vercel.json "regions"),
   pres de la base Supabase eu-west-3.

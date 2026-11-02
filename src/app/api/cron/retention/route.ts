@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Cron Vercel (vercel.json, une fois par jour) : tient les durees de conservation
 // promises dans /confidentialite et /supprimer-mon-compte.
 //
-// Deux passes INDEPENDANTES : l'echec de l'une n'empeche jamais l'autre.
+// Trois passes INDEPENDANTES : l'echec de l'une n'empeche jamais les autres
+// (la 3e, statistiques de profil, est decrite au-dessus de sa fonction).
 //   1. rate_limits : lignes dont la fenetre a demarre il y a plus de 7 jours.
 //      La plus longue fenetre du code est de 1 jour (invite:*, claim:*) : 7 jours
 //      ne remet jamais une limite en cours a zero. Les cles contiennent des IP,
@@ -19,6 +20,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const RATE_LIMIT_RETENTION_DAYS = 7;
 const CLAIM_DOCUMENT_RETENTION_DAYS = 365;
+const PROFILE_STAT_EVENTS_RETENTION_DAYS = 7;
 // Plafond par passage : le reste part les jours suivants.
 const CLAIMS_PER_RUN = 500;
 
@@ -34,10 +36,43 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const [rateLimits, claimDocuments] = await Promise.all([purgeRateLimits(admin), purgeClaimDocuments(admin)]);
-  const failed = rateLimits.error !== null || claimDocuments.error !== null;
+  const [rateLimits, claimDocuments, profileStats] = await Promise.all([
+    purgeRateLimits(admin),
+    purgeClaimDocuments(admin),
+    purgeProfileStatEvents(admin),
+  ]);
+  const failed = rateLimits.error !== null || claimDocuments.error !== null || profileStats.error !== null;
 
-  return NextResponse.json({ rate_limits: rateLimits, claim_documents: claimDocuments }, { status: failed ? 500 : 200 });
+  return NextResponse.json(
+    { rate_limits: rateLimits, claim_documents: claimDocuments, profile_stat_events: profileStats },
+    { status: failed ? 500 : 200 }
+  );
+}
+
+// 3. Statistiques de profil (20261102_profile_stats.sql) : evenements bruts de plus
+//    de 7 jours (ils ne servent qu'a dedoublonner dans la journee) et sels des jours
+//    passes (deja detruits par la RPC au premier evenement du jour, filet ici).
+//    Les compteurs par jour (profile_stats_daily) sont gardes.
+async function purgeProfileStatEvents(admin: Admin) {
+  try {
+    const cutoff = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(
+      new Date(Date.now() - PROFILE_STAT_EVENTS_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+    );
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
+    const [events, salts] = await Promise.all([
+      admin.from("profile_stat_events").delete({ count: "exact" }).lt("day", cutoff),
+      admin.from("profile_stat_salts").delete({ count: "exact" }).lt("day", today),
+    ]);
+    const error = events.error ?? salts.error;
+    if (error) {
+      console.error("[cron/retention] purge des statistiques de profil échouée :", error);
+      return { deleted: events.count ?? 0, salts_deleted: salts.count ?? 0, error: error.message };
+    }
+    return { deleted: events.count ?? 0, salts_deleted: salts.count ?? 0, error: null };
+  } catch (err) {
+    console.error("[cron/retention] purge des statistiques de profil échouée :", err);
+    return { deleted: 0, salts_deleted: 0, error: String(err) };
+  }
 }
 
 async function purgeRateLimits(admin: Admin) {

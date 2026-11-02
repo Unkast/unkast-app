@@ -53,6 +53,16 @@ export default function ConfidentialitePage() {
             religion, opinions, vie privée).
           </li>
           <li>
+            <strong>Les statistiques des profils</strong> : quand quelqu&apos;un consulte un profil, l&apos;ajoute
+            à une liste ou clique sur « Envoyer un message », nous l&apos;ajoutons à un compteur de ce profil.
+            Pour ne compter chaque personne qu&apos;une fois par jour, nous enregistrons une empreinte
+            illisible, calculée à partir de ton identifiant de membre, ou, si tu n&apos;es pas connecté, de ton
+            adresse IP et de ton navigateur. Ni l&apos;adresse IP ni ton identifiant ne sont enregistrés. Le
+            secret qui sert au calcul change chaque jour et l&apos;ancien est détruit : l&apos;empreinte ne
+            permet donc de retrouver personne, ni de te suivre d&apos;un jour à l&apos;autre ou d&apos;un profil à
+            l&apos;autre. Ta propre visite, celles des robots et de notre équipe ne sont pas comptées.
+          </li>
+          <li>
             <strong>La modération</strong> : signalements, revendications et leurs justificatifs, décisions
             prises sur ton compte ou tes films.
           </li>
@@ -77,7 +87,8 @@ export default function ConfidentialitePage() {
         </ul>
         <p>
           Nous ne collectons pas de données sensibles et nous n&apos;utilisons aucun outil de mesure
-          d&apos;audience ni de publicité.
+          d&apos;audience extérieur ni de publicité. Les statistiques des profils sont calculées par Unkast
+          seul, sans cookie.
         </p>
       </Section>
 
@@ -101,6 +112,11 @@ export default function ConfidentialitePage() {
             aucun autre membre ne peut les voir. Tu peux en demander l&apos;accès (voir « Tes droits »).
           </li>
           <li>
+            <strong>Statistiques de ton profil</strong> : visibles par toi seul, si tu as le Pro. Ce sont des
+            chiffres (nombre de visites sur 7 jours, sur 30 jours et au total, nombre d&apos;ajouts à une liste,
+            nombre de clics sur « Envoyer un message ») : jamais le nom ni l&apos;identité des personnes.
+          </li>
+          <li>
             <strong>Notre équipe</strong> peut consulter les contenus signalés et les informations
             nécessaires à la modération.
           </li>
@@ -121,6 +137,11 @@ export default function ConfidentialitePage() {
           <li>
             <strong>T&apos;écrire</strong> pour le fonctionnement du service (confirmation de compte,
             invitation, décision sur un film). Pas de newsletter sans ton accord.
+          </li>
+          <li>
+            <strong>Montrer à chaque membre l&apos;intérêt suscité par son profil</strong> (statistiques
+            en chiffres, sans identité) : c&apos;est notre intérêt légitime, et le traitement est réduit au
+            strict nécessaire (empreinte renouvelée chaque jour, aucune adresse IP enregistrée).
           </li>
           <li>
             <strong>Respecter la loi</strong> quand elle nous l&apos;impose.
@@ -211,6 +232,11 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Listes et remarques des recruteurs</strong> : tant que le recruteur les garde. Elles sont
             supprimées si lui ou la personne concernée supprime son compte.
+          </li>
+          <li>
+            <strong>Statistiques des profils</strong> : les empreintes quotidiennes sont supprimées au bout de
+            7 jours ; seuls restent des compteurs par jour, sans aucune empreinte, tant que le profil existe.
+            Tout est supprimé avec le profil.
           </li>
           <li>
             <strong>Justificatifs de revendication</strong> : 1 an après la décision, ou supprimés avec ton

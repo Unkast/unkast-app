@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { memberVisitorKey, recordProfileEvent } from "@/lib/profile-stats";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveUser } from "@/lib/auth-guard";
@@ -42,6 +43,12 @@ export async function POST(request: NextRequest) {
   if (recipient_id === user.id) {
     return NextResponse.json({ error: "Impossible de se contacter soi-même." }, { status: 400 });
   }
+
+  // Statistiques du destinataire : clic « Envoyer un message », compte meme si le
+  // quota bloque ensuite. Une fois par membre et par jour, sans dire qui. Apres la
+  // reponse et en silence (lib/profile-stats.ts). Le compte admin n'arrive pas
+  // ici : getActiveUser le refuse.
+  after(() => recordProfileEvent(recipient_id, "message_click", memberVisitorKey(user.id)));
 
   // Comptage impossible => on bloque (fail-closed).
   const countUnavailable = () =>
