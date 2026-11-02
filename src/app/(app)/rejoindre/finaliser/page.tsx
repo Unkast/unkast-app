@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeNextPath } from "@/lib/utils";
 import FinaliserClient from "./FinaliserClient";
@@ -23,8 +23,7 @@ export default async function FinaliserPage({
   const candidate = safeNextPath(Array.isArray(rawNext) ? rawNext[0] : rawNext, "");
   const next = candidate.startsWith("/rejoindre") ? "" : candidate;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/connexion");
 
   // Son propre vrai nom : ces colonnes sont fermees au client utilisateur, elles

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/user";
 import { CATEGORY_LABELS, CATEGORY_COLORS, episodesLabel } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import { EnterItem, EnterList } from "@/components/motion";
@@ -41,7 +42,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const supabase = await createClient();
   // Visiteur non connecté : son équipe passe par public_project_credits.
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
 
   // Une seule requête, bornée. Client utilisateur : la visibilité (public /
   // membres seulement / dépublié) est appliquée par la RLS. Le réalisateur vient

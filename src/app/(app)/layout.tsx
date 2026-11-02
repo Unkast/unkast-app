@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import AppShell from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DISPLAY_NAME_COLUMNS, displayNameOf } from "@/lib/profile";
 import { TERMS_VERSION } from "@/lib/legal";
@@ -16,7 +17,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
 
   let initialUser = null;
   let initialUnread = 0;

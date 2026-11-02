@@ -329,6 +329,10 @@ export default function AppShell({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  // Compte deja synchronise avec le serveur (props) ou relu : evite de relire le profil
+  // quand supabase-js rejoue SIGNED_IN pour le meme compte.
+  const syncedUserId = useRef<string | null>(null);
+
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
       const res = await fetch("/api/dashboard/profile");
@@ -362,8 +366,16 @@ export default function AppShell({
       // INITIAL_SESSION est déjà couvert par les props serveur — on l'ignore pour
       // ne pas refaire un fetch profil inutile au montage. Sauf si le serveur n'a
       // pas fourni le compte : c'est alors le navigateur qui tranche.
-      if (event === "INITIAL_SESSION" && initialUser) return;
+      if (event === "INITIAL_SESSION" && initialUser) {
+        syncedUserId.current = session?.user.id ?? null;
+        return;
+      }
       if (session?.user) {
+        // SIGNED_IN rejoue au chargement ou au retour sur l'onglet, TOKEN_REFRESHED :
+        // meme compte que celui deja affiche, le serveur l'a envoye en props. Un
+        // changement de profil passe par router.refresh() (nouvelles props, voir plus haut).
+        if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && user && session.user.id === syncedUserId.current) return;
+        syncedUserId.current = session.user.id;
         // En attente jusqu'au profil : pas de barre « visiteur » sur une session ouverte.
         setAuthPending(true);
         fetchUserProfile(session.user.id);

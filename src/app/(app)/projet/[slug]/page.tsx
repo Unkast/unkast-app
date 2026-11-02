@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/user";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/constants";
 import type {
   Profile,
@@ -49,8 +50,8 @@ async function getProject(slug: string): Promise<{
   // Client utilisateur : la RLS décide de ce qui est lisible (visiteur : approuvé
   // et public ; membre : approuvé, public ou membres seulement ; gestionnaires :
   // toujours le leur). Un film non lisible ne revient pas => page introuvable.
-  const [{ data: { user } }, { data: project }] = await Promise.all([
-    supabase.auth.getUser(),
+  const [user, { data: project }] = await Promise.all([
+    getUser(),
     supabase
       .from("projects")
       .select(`
@@ -107,27 +108,57 @@ async function getProject(slug: string): Promise<{
   const rolesMap = new Map<string, ProfileRole[]>();
   const projectCountMap = new Map<string, number>();
 
-  if (profileIds.length > 0) {
-    const [rolesResult, countsResult] = await Promise.all([
-      supabase
-        .from("profile_roles")
-        .select("*")
-        .in("profile_id", profileIds),
-      supabase
-        .from("projects")
-        .select("profile_id")
-        .in("profile_id", profileIds),
-    ]);
+  // Related projects — batch approach. Les identifiants des collaborateurs viennent des
+  // credits bruts (profile_id), les memes que ceux des profils joints : cette lecture
+  // ne depend donc pas des roles et compteurs, on les lance ensemble.
+  const collaboratorIds = rawCredits
+    .map((c) => c.profile_id)
+    .filter((id): id is string => id !== null);
 
-    for (const role of rolesResult.data ?? []) {
-      const existing = rolesMap.get(role.profile_id) ?? [];
-      existing.push(role);
-      rolesMap.set(role.profile_id, existing);
-    }
+  // Nombre de collaborateurs communs par film lié.
+  const relatedCounts = new Map<string, number>();
+  async function loadRelatedCounts() {
+    if (isVisitor) {
+      // Un visiteur ne lit pas project_credits : la fonction fait le rapprochement
+      // et ne renvoie que des films publics, sans aucune identité.
+      const { data: related } = await supabase.rpc("related_public_projects", { p_project_id: project!.id });
+      for (const r of (related ?? []) as { project_id: string; common_collaborators: number }[]) {
+        relatedCounts.set(r.project_id, r.common_collaborators);
+      }
+    } else if (collaboratorIds.length > 0) {
+      const { data: otherCredits } = await supabase
+        .from("project_credits")
+        .select("project_id, profile_id")
+        .in("profile_id", collaboratorIds)
+        .neq("project_id", project!.id);
 
-    for (const p of countsResult.data ?? []) {
-      projectCountMap.set(p.profile_id, (projectCountMap.get(p.profile_id) ?? 0) + 1);
+      const projectCollabMap = new Map<string, Set<string>>();
+      for (const credit of otherCredits ?? []) {
+        if (!projectCollabMap.has(credit.project_id)) {
+          projectCollabMap.set(credit.project_id, new Set());
+        }
+        if (credit.profile_id) {
+          projectCollabMap.get(credit.project_id)!.add(credit.profile_id);
+        }
+      }
+      for (const [id, set] of projectCollabMap) relatedCounts.set(id, set.size);
     }
+  }
+
+  const [rolesResult, countsResult] = await Promise.all([
+    profileIds.length > 0 ? supabase.from("profile_roles").select("*").in("profile_id", profileIds) : null,
+    profileIds.length > 0 ? supabase.from("projects").select("profile_id").in("profile_id", profileIds) : null,
+    loadRelatedCounts(),
+  ]);
+
+  for (const role of rolesResult?.data ?? []) {
+    const existing = rolesMap.get(role.profile_id) ?? [];
+    existing.push(role);
+    rolesMap.set(role.profile_id, existing);
+  }
+
+  for (const p of countsResult?.data ?? []) {
+    projectCountMap.set(p.profile_id, (projectCountMap.get(p.profile_id) ?? 0) + 1);
   }
 
   const creditsWithProfiles: CreditWithProfile[] = rawCredits.map((credit) => {
@@ -144,40 +175,7 @@ async function getProject(slug: string): Promise<{
     } as unknown as CreditWithProfile;
   });
 
-  // Related projects — batch approach
-  const collaboratorIds = creditsWithProfiles
-    .map((c) => c.profile_id)
-    .filter((id): id is string => id !== null);
-
   let relatedProjects: RelatedProject[] = [];
-
-  // Nombre de collaborateurs communs par film lié.
-  const relatedCounts = new Map<string, number>();
-  if (isVisitor) {
-    // Un visiteur ne lit pas project_credits : la fonction fait le rapprochement
-    // et ne renvoie que des films publics, sans aucune identité.
-    const { data: related } = await supabase.rpc("related_public_projects", { p_project_id: project.id });
-    for (const r of (related ?? []) as { project_id: string; common_collaborators: number }[]) {
-      relatedCounts.set(r.project_id, r.common_collaborators);
-    }
-  } else if (collaboratorIds.length > 0) {
-    const { data: otherCredits } = await supabase
-      .from("project_credits")
-      .select("project_id, profile_id")
-      .in("profile_id", collaboratorIds)
-      .neq("project_id", project.id);
-
-    const projectCollabMap = new Map<string, Set<string>>();
-    for (const credit of otherCredits ?? []) {
-      if (!projectCollabMap.has(credit.project_id)) {
-        projectCollabMap.set(credit.project_id, new Set());
-      }
-      if (credit.profile_id) {
-        projectCollabMap.get(credit.project_id)!.add(credit.profile_id);
-      }
-    }
-    for (const [id, set] of projectCollabMap) relatedCounts.set(id, set.size);
-  }
 
   const sortedProjectIds = [...relatedCounts.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -225,9 +223,9 @@ async function getProject(slug: string): Promise<{
 // verrouillée (identifiant, adresse, titre, image, année). Rien d'autre du film
 // n'est lu ici : ni lien vidéo, ni description, ni équipe.
 async function getLockedFilm(slug: string): Promise<LockedFilm | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (user) return null;
+  const supabase = await createClient();
 
   const { data } = await supabase.rpc("member_only_film_teasers", { p_slug: slug });
   const row = ((data ?? []) as LockedFilmRow[])[0];

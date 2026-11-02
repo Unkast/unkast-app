@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/user";
 import { CATEGORY_LABELS, SERIES_CATEGORY } from "@/lib/constants";
 import type { ProjectCategory } from "@/types/database";
 import { Section, AnimatedCard } from "./HomeAnimations";
@@ -101,7 +102,7 @@ async function getHomeData() {
   const supabase = await createClient();
   // Visiteur non connecte : il ne lit aucune ligne de project_credits (RLS),
   // son equipe passe par public_project_credits (un seul appel pour la page).
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
 
   const categoriesToShow: ProjectCategory[] = ["court-metrage", SERIES_CATEGORY, "publicite", "clip", "documentaire"];
 

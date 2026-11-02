@@ -373,6 +373,8 @@ export default function MoiClient() {
       return;
     }
     await fetchProfile();
+    // Le bandeau (nom, avatar) vient du layout serveur : on le relit.
+    router.refresh();
     setIsEditing(false);
     setSaving(false);
     // Recruteur : une modif de description part en validation admin.
@@ -548,7 +550,7 @@ export default function MoiClient() {
               <SectionLabel className="self-start">Photo</SectionLabel>
               <AvatarUpload
                 currentAvatarUrl={profile.avatar_url}
-                onUploadComplete={(url) => setProfile({ ...profile, avatar_url: url || null })}
+                onUploadComplete={(url) => { setProfile({ ...profile, avatar_url: url || null }); router.refresh(); }}
                 initials={getInitials()}
                 size={96}
               />

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/user";
 import type { CareerEntry, Profile, ProfileRole, Project, ProjectCredit } from "@/types/database";
 import { fetchVisitorCredits, visitorCreditAsMemberCredit } from "@/lib/film-team";
 import { DISPLAY_NAME_COLUMNS, displayNameOf, withDisplayName, type DisplayNameRow } from "@/lib/profile";
@@ -58,7 +59,11 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   // client — la règle « la page publique n'expose pas le plan » tient toujours.
   // Les projets imbriqués sont filtrés sur status=approved pour ne pas exposer
   // publiquement les projets pending/refused.
-  const { data: profile } = await supabase
+  // Trois lectures independantes lancees ensemble : le profil, ses champs facultatifs
+  // (casting, lus par adresse : la meme ligne) et l'utilisateur connecte. Si le profil
+  // est introuvable ou retire, on sort juste apres, comme avant.
+  const [{ data: profile }, { data: casting }, user] = await Promise.all([
+  supabase
     .from("profiles")
     .select(`
       id, ${DISPLAY_NAME_COLUMNS}, slug, avatar_url, location, is_available, bio,
@@ -70,18 +75,19 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
     .eq("status", "approved")
     .not("is_suspended", "is", true) // suspendu => retire de la vue publique (chantier 3)
     .eq("projects.status", "approved")
-    .single();
-
-  if (!profile) return null;
-
+    .single(),
   // Champs facultatifs du lot 8 (âge de jeu, type de rôles, langues), publics
   // s'ils sont remplis. Lus à part : tant que la migration 20261016 n'est pas
   // passée, les colonnes n'existent pas et la requête principale échouerait.
-  const { data: casting } = await supabase
+  supabase
     .from("profiles")
     .select("playing_ages, role_type, languages")
-    .eq("id", profile.id)
-    .maybeSingle();
+    .eq("slug", slug)
+    .maybeSingle(),
+  getUser(),
+  ]);
+
+  if (!profile) return null;
 
   const roles = (profile.profile_roles ?? []) as ProfileRole[];
   type RawProject = Project & {
@@ -92,7 +98,6 @@ async function getProfile(slug: string): Promise<ProfileWithRelations | null> {
   const rawProjects = (profile.projects ?? []) as RawProject[];
 
   // Parcours (lecture publique pour un profil approuvé).
-  const { data: { user } } = await supabase.auth.getUser();
   // Second verrou, en plus de la RLS : un visiteur ne recoit que les films
   // publics. Un film « membres seulement » ne lui parvient que sous forme de
   // carte verrouillee (member_only_film_teasers), sans video ni equipe.
