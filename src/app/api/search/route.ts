@@ -193,7 +193,10 @@ async function search(request: NextRequest, raw: Record<string, unknown>) {
           projects!projects_profile_id_fkey ( id )
         `)
         .eq("status", "approved")
-        .not("is_suspended", "is", true); // chantier 3 : suspendus hors vue publique
+        .not("is_suspended", "is", true) // chantier 3 : suspendus hors vue publique
+        // Le compte admin n'est pas reference (la RLS le laisse lisible par lui-meme).
+        // Les .or() de la requete (q, champs declares) sont combines en ET par PostgREST.
+        .or("account_type.is.null,account_type.neq.admin");
 
       if (q) {
         const term = sanitizeSearchTerm(q);

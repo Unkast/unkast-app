@@ -213,6 +213,8 @@ FEATURE  Page de vente — unkast.com (src/app/site/, 01/11/2026, ADR 0018) — 
 
 FEATURE  Feed — /feed (src/app/(app)/feed/page.tsx) [Server Component]
   Bloc « A la une » + rangees par categorie + talents a decouvrir.
+  Talents : compte admin exclu (05/11/2026, `.or("account_type.is.null,account_type.neq.admin")`) — la RLS
+  le laisse lisible par lui-meme, il se voyait donc dans le feed une fois connecte en admin.
   [utilise] HeroCarousel, FilmRow, HomeAnimations, ConversionBanner, FilmPoster, FilmLink
   Lot 7 (09/10/2026) : HeroCarousel = bloc arrondi 32 px, texte a gauche (A LA UNE 01 / 05, titre,
   FilmMeta, description sur 2 lignes, avatars de l'equipe, « Voir le film », « Voir l'equipe »,
@@ -283,6 +285,7 @@ FEATURE  Recherche — voir ci-dessous. Verre liquide (chantier 4) : bascule Par
 
 FEATURE  Recherche — /recherche (src/app/(app)/recherche/) [+ RechercheClient]
   Recherche debounced, filtres role/categorie/localisation. [declenche] GET /api/search
+  Compte admin exclu des talents (/api/search) et de la vitrine « Je recrute » (05/11/2026).
   ?q= (lot 7) : ouvre la page en mode Rechercher avec ce texte (champ de l'en-tete d'AppShell).
 
 FEATURE  Categories — /categories/[slug] (src/app/(app)/categories/[slug]/)

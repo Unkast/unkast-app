@@ -36,6 +36,7 @@ async function getRecruitingProfiles() {
     `)
     .eq("status", "approved")
     .eq("is_recruiting", true)
+    .or("account_type.is.null,account_type.neq.admin") // compte admin non reference
     .order("updated_at", { ascending: false })
     // Coup de pouce Pro : departage secondaire a date egale (quasi no-op car
     // is_recruiting implique deja Pro ; robustesse pour d'eventuelles donnees legacy).

@@ -94,6 +94,7 @@
 **Nom** : le filtre `q` et le tri par nom portent sur `display_name` (nom d'affichage), jamais sur le vrai nom : chercher le vrai nom d'une personne qui affiche un nom de scène ne la trouve pas.
 Recherche unifiee talents + projets. Params : `q`, `type` (`all`/`talents`/`projets`), `category`, `location`, `role`, `sort` (`pertinence`/`date`/`projets`). Filtre `status='approved'`, limite 50/type.
 **Performance** : utilise des **joins Supabase** (`profile_roles(...)`, `projects(id)`, `profiles!fk(...)`) — **2 requetes au total**, enrichissement en `.map()`. (L'ancienne note « pattern N+1 ~150 requetes » etait fausse — corrigee.) Indexes trigram via migration `20260610_search_trgm_indexes.sql`.
+**Compte admin exclu (05/11/2026)** : `talentQuery` ajoute `.or("account_type.is.null,account_type.neq.admin")` (`talents` et `other_talents`). La RLS « Admin accounts are private » laisse le compte admin lisible par lui-même, donc connecté en admin il se voyait dans les résultats. `account_type` est nullable, d'où le `.or`. Même filtre dans `recherche/page.tsx` (vitrine « Je recrute ») et `feed/page.tsx` (talents à découvrir).
 **Mise en avant Pro** : le `plan` est un **critere de tri SECONDAIRE** (departage a rang egal, jamais « Pro d'abord »). Le `plan` reste **interne au tri**, non expose dans la reponse. Même tie-break dans la vitrine « Je recrute » de `recherche/page.tsx`.
 
 ### /api/availability *(recrutement — chantier 2, cote talent)*
